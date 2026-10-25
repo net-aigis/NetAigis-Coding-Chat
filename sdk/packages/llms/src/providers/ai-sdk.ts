@@ -1,3 +1,5 @@
+// NETAIGIS_CONVERSATION_HEADER_V1
+import { netaigisConversation, netaigisConversationId } from "./netaigis-conversation";
 import type { LanguageModelV4 } from "@ai-sdk/provider";
 import type {
 	AgentMessage,
@@ -2433,7 +2435,7 @@ function createAiSdkProvider(
 					aiSdkTelemetry.isEnabled,
 					request,
 					() =>
-						streamText({
+						netaigisConversation.run(netaigisConversationId(request.metadata), () => streamText({
 							model: withEmptyResponseRetry(
 								provider.operations.language(context.model.id),
 								provider.retryEmptyResponses,
@@ -2488,7 +2490,7 @@ function createAiSdkProvider(
 								capturedError.current = captured;
 								await reportError(captured);
 							},
-						}) as unknown as AiSdkStreamResult,
+						})) as unknown as AiSdkStreamResult,
 				);
 
 				// Suppress dangling promise rejections (finishReason, totalUsage, steps, etc.)

@@ -2096,7 +2096,17 @@ export class AgentRuntime {
 		let stream: AsyncIterable<AgentModelEvent>;
 		let phase = "provider_request_started";
 		try {
-			stream = await this.config.model.stream(request);
+			// NETAIGIS_SESSION_METADATA_V4
+                    stream = await this.config.model.stream({
+                        ...request,
+                        options: {
+                            ...request.options,
+                            metadata: {
+                                ...(request.options?.metadata as Record<string, unknown> | undefined),
+                                sessionId: this.config.sessionId,
+                            },
+                        },
+                    });
 			this.throwIfAborted();
 			phase = "provider_stream_started";
 			this.captureTaskLifecycle(TASK_PROVIDER_STREAM_STARTED_EVENT, {
