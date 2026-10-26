@@ -41,6 +41,7 @@ import { getDistinctId } from "@/services/logging/distinctId"
 import type { McpHub } from "@/services/mcp/McpHub"
 import { Logger } from "@/shared/services/Logger"
 import { type VscodeGitTelemetry, VscodeGitTelemetryManager } from "./git-telemetry"
+import { archiveSdkEvent, drainRecallOutbox } from "./recall-outbox"
 import type { SdkForegroundCommandCoordinator } from "./sdk-foreground-command-coordinator"
 import type { SdkSessionHost } from "./session-host"
 import { createVscodeExtraTools } from "./vscode-runtime-builder"
@@ -193,6 +194,7 @@ export class VscodeSessionHost implements SdkSessionHost {
 		if (options.getTerminalManager) {
 			Logger.log("[VscodeSessionHost] SDK run_commands suppressed; using custom foreground/background terminal tool")
 		}
+		void drainRecallOutbox().catch((error) => Logger.error("[TOTAL RECALL] replay failed:", error))
 		return new VscodeSessionHost(inner, prepareStartSessionInput, options)
 	}
 
@@ -339,6 +341,10 @@ export class VscodeSessionHost implements SdkSessionHost {
 	}
 
 	subscribe(listener: (event: CoreSessionEvent) => void): () => void {
-		return this.inner.subscribe(listener)
+		return this.inner.subscribe((event) => {
+			// Preserve normal SDK delivery even when optional archival fails.
+			void archiveSdkEvent(event).catch((error) => Logger.error("[TOTAL RECALL] archive failed:", error))
+			listener(event)
+		})
 	}
 }
