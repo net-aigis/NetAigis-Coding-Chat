@@ -18,6 +18,10 @@ describe("StateManager initialization", () => {
 	let temporaryDirectory: string | undefined
 
 	afterEach(async () => {
+		const { StateManager } = await import("./StateManager")
+		const instance = Reflect.get(StateManager, "instance")
+		if (instance) Reflect.get(instance, "dispose").call(instance)
+		Reflect.set(StateManager, "instance", undefined)
 		mock.restore()
 		if (temporaryDirectory) {
 			await fs.rm(temporaryDirectory, { recursive: true, force: true })
@@ -59,5 +63,17 @@ describe("StateManager initialization", () => {
 		expect(readDirectory).not.toHaveBeenCalled()
 		expect(watch).not.toHaveBeenCalled()
 		expect(await fs.readFile(agentFile, "utf8")).toBe(legacyConfig)
+	})
+
+	it("keeps Recall credentials in protected storage and out of model API configuration", async () => {
+		temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "cline-recall-state-"))
+		const storage = createStorageContext({ clineDir: temporaryDirectory })
+		await storage.secrets.setBatch({ apiKey: "fixture-model-key", "netaigis-recall_token": "fixture-recall-key", "netaigis-recall_actor": "Friseer" })
+		const { StateManager } = await import("./StateManager")
+		const manager = await StateManager.initialize(storage)
+		expect(manager.getSecretKey("netaigis-recall_token")).toBe("fixture-recall-key")
+		expect(manager.getApiConfiguration().apiKey).toBe("fixture-model-key")
+		expect(manager.getApiConfiguration()).not.toHaveProperty("netaigis-recall_token")
+		expect(manager.getApiConfiguration()).not.toHaveProperty("netaigis-recall_actor")
 	})
 })

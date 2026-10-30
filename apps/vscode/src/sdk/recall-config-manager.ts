@@ -1,137 +1,103 @@
-/**
- * TotalRecallConfigManager - Manages TOTAL RECALL configuration in VS Code SecretStorage
- */
-
+/** TOTAL RECALL uses the existing shared, protected file-backed secret store. */
+import type * as vscode from "vscode"
+import { StateManager } from "@/core/storage/StateManager"
 import { Logger } from "@/shared/services/Logger"
 import type { RecallConfiguration } from "./recall-outbox"
-import * as vscode from "vscode"
 
 export const TOTAL_RECALL_SECRET_PREFIX = "netaigis-recall"
-
+const CONFIG_KEYS = ["base_url", "token", "project", "actor"] as const
 export interface TotalRecallConfigSecrets {
-  baseUrl?: string
-  token?: string
-  project?: string
-  actor?: string
+	baseUrl?: string
+	token?: string
+	project?: string
+	actor?: string
 }
 
-/**
- * Manages TOTAL RECALL configuration securely in VS Code SecretStorage.
- */
 export class TotalRecallConfigManager {
-  private static readonly CONFIG_KEYS = ["base_url", "token", "project", "actor"] as const
+	// Retain the old construction API. Native storage is read only by the
+	// dedicated migration before StateManager is initialized.
+	constructor(_context?: vscode.ExtensionContext) {}
 
-  constructor(private readonly context: vscode.ExtensionContext) {}
+	async initialize(): Promise<RecallConfiguration | undefined> {
+		try {
+			const state = StateManager.get()
+			const baseUrl = state.getSecretKey("netaigis-recall_base_url")
+			const token = state.getSecretKey("netaigis-recall_token")
+			const project = state.getSecretKey("netaigis-recall_project")
+			const actor = state.getSecretKey("netaigis-recall_actor")
+			if (!baseUrl || !token || !project?.trim() || !actor?.trim()) return undefined
+			const url = new URL(baseUrl)
+			if (url.protocol !== "http:" && url.protocol !== "https:") return undefined
+			return {
+				baseUrl: baseUrl.replace(/\/+$/, ""),
+				token,
+				project,
+				actor,
+				enabled: state.getSecretKey("netaigis-recall_enabled") !== "false",
+			}
+		} catch {
+			// Do not log configuration objects, invalid URL inputs or credentials.
+			Logger.error("[TOTAL RECALL] Configuration unavailable or invalid")
+			return undefined
+		}
+	}
 
-  /**
-   * Initializes TOTAL RECALL configuration from SecretStorage.
-   */
-  async initialize(): Promise<RecallConfiguration | undefined> {
-    try {
-      const baseUrl = await this.context.secrets.get(`${TOTAL_RECALL_SECRET_PREFIX}_base_url`)
-      const token = await this.context.secrets.get(`${TOTAL_RECALL_SECRET_PREFIX}_token`)
-      const project = await this.context.secrets.get(`${TOTAL_RECALL_SECRET_PREFIX}_project`)
-      const actor = await this.context.secrets.get(`${TOTAL_RECALL_SECRET_PREFIX}_actor`)
+	async isConfigured(): Promise<boolean> {
+		return Boolean((await this.initialize())?.enabled)
+	}
 
-      if (!baseUrl || !token || !project || !actor) {
-        return undefined
-      }
+	async storeSecret(key: (typeof CONFIG_KEYS)[number], value: string): Promise<void> {
+		const state = StateManager.get()
+		state.setSecret(`${TOTAL_RECALL_SECRET_PREFIX}_${key}`, value)
+		await state.flushPendingState()
+	}
 
-      try {
-        new URL(baseUrl)
-      } catch {
-        Logger.error("[TOTAL RECALL] Invalid base URL format")
-        return undefined
-      }
+	async configure(config: Required<TotalRecallConfigSecrets>): Promise<void> {
+		const url = new URL(config.baseUrl)
+		if (!["http:", "https:"].includes(url.protocol) || !config.token || !config.project.trim() || !config.actor.trim()) {
+			throw new Error("TOTAL RECALL requires a valid HTTP endpoint, credential, project and actor")
+		}
+		const state = StateManager.get()
+		state.setSecretsBatch({
+			"netaigis-recall_base_url": config.baseUrl.replace(/\/+$/, ""),
+			"netaigis-recall_token": config.token,
+			"netaigis-recall_project": config.project,
+			"netaigis-recall_actor": config.actor,
+			"netaigis-recall_enabled": "true",
+			"netaigis-recall_migration_v1": "1",
+		})
+		await state.flushPendingState()
+	}
 
-      const config: RecallConfiguration = {
-        baseUrl: baseUrl.replace(/\/+$/, ""),
-        token,
-        project,
-        actor,
-        enabled: true,
-      }
+	async setEnabled(enabled: boolean): Promise<void> {
+		const state = StateManager.get()
+		state.setSecret("netaigis-recall_enabled", String(enabled))
+		await state.flushPendingState()
+	}
 
-      Logger.info("[TOTAL RECALL] Configuration initialized successfully")
-      return config
-    } catch (error) {
-      Logger.error("[TOTAL RECALL] Failed to load configuration:", error)
-      return undefined
-    }
-  }
+	async clear(): Promise<void> {
+		const state = StateManager.get()
+		for (const key of CONFIG_KEYS) state.setSecret(`${TOTAL_RECALL_SECRET_PREFIX}_${key}`, undefined)
+		state.setSecret("netaigis-recall_enabled", "false")
+		state.setSecret("netaigis-recall_migration_v1", "1")
+		await state.flushPendingState()
+	}
 
-  async isConfigured(): Promise<boolean> {
-    const config = await this.initialize()
-    return !!config && config.enabled
-  }
-
-  async storeSecret(key: (typeof TotalRecallConfigManager.CONFIG_KEYS)[number], value: string): Promise<void> {
-    const secretKey = `${TOTAL_RECALL_SECRET_PREFIX}_${key}`
-    await this.context.secrets.store(secretKey, value)
-    Logger.info(`[TOTAL RECALL] Stored ${key} successfully`)
-  }
-
-  async clear(): Promise<void> {
-    for (const key of TotalRecallConfigManager.CONFIG_KEYS) {
-      const secretKey = `${TOTAL_RECALL_SECRET_PREFIX}_${key}`
-      await this.context.secrets.delete(secretKey)
-    }
-    Logger.info("[TOTAL RECALL] Configuration cleared")
-  }
-
-  async validate(): Promise<{ valid: boolean; errors?: string[] }> {
-    const config = await this.initialize()
-    if (!config) {
-      return { valid: false, errors: ["Not fully configured"] }
-    }
-
-    const errors: string[] = []
-
-    try {
-      new URL(config.baseUrl)
-    } catch {
-      errors.push("Invalid base URL format")
-    }
-
-    if (!config.token || config.token.length < 16) {
-      errors.push("Token too short or missing")
-    }
-
-    if (!config.project || config.project.trim().length === 0) {
-      errors.push("Project ID missing")
-    }
-
-    if (!config.actor || config.actor.trim().length === 0) {
-      errors.push("Actor ID missing")
-    }
-
-    return { valid: errors.length === 0, errors }
-  }
+	async validate(): Promise<{ valid: boolean; errors?: string[] }> {
+		return (await this.initialize()) ? { valid: true } : { valid: false, errors: ["Configuration incomplete or invalid"] }
+	}
 }
 
 let recallConfigManager: TotalRecallConfigManager | undefined
-let cachedRecallConfig: RecallConfiguration | undefined
-
-export function getRecallConfigManager(context: vscode.ExtensionContext): TotalRecallConfigManager {
-  if (!recallConfigManager) {
-    recallConfigManager = new TotalRecallConfigManager(context)
-  }
-  return recallConfigManager
+export function getRecallConfigManager(context?: vscode.ExtensionContext): TotalRecallConfigManager {
+	return (recallConfigManager ??= new TotalRecallConfigManager(context))
 }
-
 export async function getRecallConfiguration(): Promise<RecallConfiguration | undefined> {
-  if (!recallConfigManager) return undefined
-  return await recallConfigManager.initialize()
+	return getRecallConfigManager().initialize()
 }
-
 export async function refreshRecallConfiguration(): Promise<void> {
-  const config = await getRecallConfiguration()
-  if (config) {
-    cachedRecallConfig = config
-    Logger.info("[TOTAL RECALL] Configuration refreshed")
-  }
+	await getRecallConfiguration()
 }
-
 export function clearRecallConfigurationCache(): void {
-  cachedRecallConfig = undefined
+	recallConfigManager = undefined
 }

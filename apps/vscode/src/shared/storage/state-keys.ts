@@ -315,6 +315,15 @@ const GLOBAL_STATE_AND_SETTINGS_FIELDS = { ...GLOBAL_STATE_FIELDS, ...SETTINGS_F
 // SECRET KEYS AND LOCAL STATE - Static definitions
 // ============================================================================
 
+export const TOTAL_RECALL_SECRET_KEYS = [
+	"netaigis-recall_base_url",
+	"netaigis-recall_token",
+	"netaigis-recall_project",
+	"netaigis-recall_actor",
+	"netaigis-recall_enabled",
+	"netaigis-recall_migration_v1",
+] as const
+
 // Secret keys used in Api Configuration
 const SECRETS_KEYS = [
 	"apiKey",
@@ -413,7 +422,10 @@ const SettingsKeysSet = new Set(Object.keys(SETTINGS_FIELDS))
 const GlobalStateAndSettingsKeySet = new Set(Object.keys(GLOBAL_STATE_AND_SETTINGS_FIELDS))
 const ApiHandlerSettingsKeysSet = new Set(Object.keys(API_HANDLER_SETTINGS_FIELDS))
 
-export const SecretKeys = Array.from(SECRETS_KEYS)
+// Integration credentials share the protected store, but are deliberately
+// excluded from model API configuration and generated wire Secrets messages.
+export const ApiSecretKeys = Array.from(SECRETS_KEYS)
+export const SecretKeys = [...SECRETS_KEYS, ...TOTAL_RECALL_SECRET_KEYS]
 export const SettingsKeys = Array.from(SettingsKeysSet) as (keyof Settings)[]
 export const ApiHandlerSettingsKeys = Array.from(ApiHandlerSettingsKeysSet) as (keyof ApiHandlerOptionSettings)[]
 export const GlobalStateAndSettingKeys = Array.from(GlobalStateAndSettingsKeySet) as GlobalStateAndSettingsKey[]
@@ -433,7 +445,7 @@ const COMPUTED_PROPERTIES = extractMetadata({ ...GLOBAL_STATE_FIELDS, ...SETTING
 
 export const isGlobalStateKey = (key: string): key is GlobalStateKey => GlobalStateKeys.has(key)
 export const isSettingsKey = (key: string): key is SettingsKey => SettingsKeysSet.has(key)
-export const isSecretKey = (key: string): key is SecretKey => new Set(SECRETS_KEYS).has(key as SecretKey)
+export const isSecretKey = (key: string): key is SecretKey => new Set(SecretKeys).has(key as SecretKey)
 export const isLocalStateKey = (key: string): key is LocalStateKey => new Set(LocalStateKeys).has(key as LocalStateKey)
 
 // ============================================================================

@@ -4,6 +4,8 @@ import { Logger } from "../services/Logger"
 import { ClineSyncStorage } from "./ClineStorage"
 
 export interface ClineFileStorageOptions {
+	/** Protected stores must not acknowledge failed writes or replace unreadable data. */
+	failOnError?: boolean
 	/**
 	 * File permissions mode (e.g., 0o600 for owner read/write only).
 	 * If not set, uses the system default.
@@ -21,12 +23,14 @@ export class ClineFileStorage<T = any> extends ClineSyncStorage<T> {
 	private data: Record<string, T>
 	private readonly fsPath: string
 	private readonly fileMode?: number
+	private readonly failOnError: boolean
 
 	constructor(filePath: string, name = "ClineFileStorage", options?: ClineFileStorageOptions) {
 		super()
 		this.fsPath = filePath
 		this.name = name
 		this.fileMode = options?.fileMode
+		this.failOnError = options?.failOnError ?? false
 		this.data = this.readFromDisk()
 	}
 
@@ -49,6 +53,8 @@ export class ClineFileStorage<T = any> extends ClineSyncStorage<T> {
 	 * since it only writes to disk once.
 	 */
 	public setBatch(entries: Record<string, T | undefined>): Thenable<void> {
+		const previousData = this.data
+		if (this.failOnError) this.data = { ...previousData }
 		const changedKeys: string[] = []
 		for (const [key, value] of Object.entries(entries)) {
 			if (value === undefined) {
@@ -62,7 +68,12 @@ export class ClineFileStorage<T = any> extends ClineSyncStorage<T> {
 			}
 		}
 		if (changedKeys.length > 0) {
-			this.writeToDisk()
+			try {
+				this.writeToDisk()
+			} catch (error) {
+				this.data = previousData
+				throw error
+			}
 			for (const key of changedKeys) {
 				this.fireChange(key)
 			}
@@ -77,9 +88,13 @@ export class ClineFileStorage<T = any> extends ClineSyncStorage<T> {
 	private readFromDisk(): Record<string, T> {
 		try {
 			if (fs.existsSync(this.fsPath)) {
-				return JSON.parse(fs.readFileSync(this.fsPath, "utf-8"))
+				const value = JSON.parse(fs.readFileSync(this.fsPath, "utf-8"))
+				if (this.failOnError && (!value || typeof value !== "object" || Array.isArray(value)))
+					throw new Error("Invalid protected store")
+				return value
 			}
 		} catch (error) {
+			if (this.failOnError) throw new Error("Protected storage is unreadable or invalid; existing data preserved")
 			Logger.error(`[${this.name}] failed to read from ${this.fsPath}:`, error)
 		}
 		return {}
@@ -91,6 +106,7 @@ export class ClineFileStorage<T = any> extends ClineSyncStorage<T> {
 			fs.mkdirSync(dir, { recursive: true })
 			atomicWriteFileSync(this.fsPath, JSON.stringify(this.data, null, 2), this.fileMode)
 		} catch (error) {
+			if (this.failOnError) throw new Error("Protected storage could not be persisted; existing data preserved")
 			Logger.error(`[${this.name}] failed to write to ${this.fsPath}:`, error)
 		}
 	}

@@ -139,6 +139,7 @@ export function createStorageContext(opts: StorageContextOptions = {}): StorageC
 		globalStateBackingStore: globalState,
 		secrets: new ClineFileStorage<string>(path.join(dataDir, "secrets.json"), "Secrets", {
 			fileMode: 0o600, // Owner read/write only — protects API keys
+			failOnError: true,
 		}),
 		workspaceState: new ClineFileStorage(path.join(workspaceDir, "workspaceState.json"), "WorkspaceState"),
 		dataDir,

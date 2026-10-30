@@ -35,7 +35,7 @@
 import type * as vscode from "vscode"
 import { type AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "@/shared/AutoApprovalSettings"
 import { Logger } from "@/shared/services/Logger"
-import { GlobalStateAndSettingKeys, LocalStateKeys, SecretKeys } from "@/shared/storage/state-keys"
+import { ApiSecretKeys, GlobalStateAndSettingKeys, LocalStateKeys } from "@/shared/storage/state-keys"
 import type { StorageContext } from "@/shared/storage/storage-context"
 import { migrateLegacyMcpSettings } from "./mcp-settings-legacy-migration"
 
@@ -107,6 +107,15 @@ export async function exportVSCodeStorageToSharedFiles(
 		mcpServersSkippedExisting: 0,
 		yoloModeMigrated: false,
 	}
+	// These keys were added after the general export sentinel. Migrate them
+	// independently, without reopening or overwriting earlier migrations.
+	try {
+		const recallCount = await migrateLegacyRecallSecrets(vscodeContext, storage)
+		result.secretsCount += recallCount
+		if (recallCount > 0) result.migrated = true
+	} catch {
+		Logger.warn("[Migration] TOTAL RECALL native secrets unavailable; migration will retry without changing legacy data")
+	}
 
 	// Check sentinels independently
 	const globalVersion = storage.globalState.get<number>(MIGRATION_VERSION_KEY)
@@ -169,7 +178,7 @@ export async function exportVSCodeStorageToSharedFiles(
 
 			// Batch secrets
 			const secretsBatch: Record<string, string> = {}
-			for (const key of SecretKeys) {
+			for (const key of ApiSecretKeys) {
 				try {
 					const vscodeValue = await vscodeContext.secrets.get(key)
 					if (vscodeValue === undefined || vscodeValue === "") {
@@ -258,6 +267,25 @@ export async function exportVSCodeStorageToSharedFiles(
 	}
 
 	return result
+}
+
+/** File-backed values win; retain native secrets for an independently tested rollback. */
+export async function migrateLegacyRecallSecrets(
+	context: Pick<vscode.ExtensionContext, "secrets">,
+	storage: Pick<StorageContext, "secrets">,
+): Promise<number> {
+	const sentinel = "netaigis-recall_migration_v1"
+	if (storage.secrets.get(sentinel) === "1") return 0
+	const batch: Record<string, string> = {}
+	for (const suffix of ["base_url", "token", "project", "actor"] as const) {
+		const key = `netaigis-recall_${suffix}`
+		if (storage.secrets.get(key) !== undefined) continue
+		const value = await context.secrets.get(key)
+		if (value !== undefined && value !== "") batch[key] = value
+	}
+	const count = Object.keys(batch).length
+	await storage.secrets.setBatch({ ...batch, [sentinel]: "1" })
+	return count
 }
 
 /**

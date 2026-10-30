@@ -1,6 +1,7 @@
 import type { ApiConfiguration } from "@shared/api"
 import {
 	ApiHandlerSettingsKeys,
+	ApiSecretKeys,
 	type GlobalState,
 	type GlobalStateAndSettings,
 	type GlobalStateAndSettingsKey,
@@ -10,7 +11,6 @@ import {
 	type LocalStateKey,
 	type RemoteConfigFields,
 	type SecretKey,
-	SecretKeys,
 	type Secrets,
 	type Settings,
 	type SettingsKey,
@@ -744,7 +744,10 @@ export class StateManager {
 	 */
 	private constructApiConfigurationFromCache(): ApiConfiguration {
 		// Build secrets object
-		const secrets = Object.fromEntries(SecretKeys.map((key) => [key, this.getSecret(key)])) as Secrets
+		const secrets = Object.fromEntries(ApiSecretKeys.map((key) => [key, this.getSecret(key)])) as Pick<
+			Secrets,
+			(typeof ApiSecretKeys)[number]
+		>
 
 		// Preserve legacy fallback behavior for LiteLLM API key:
 		// if a remoteLiteLlmApiKey is set (via remote config), it should
