@@ -41,7 +41,8 @@ import { getDistinctId } from "@/services/logging/distinctId"
 import type { McpHub } from "@/services/mcp/McpHub"
 import { Logger } from "@/shared/services/Logger"
 import { type VscodeGitTelemetry, VscodeGitTelemetryManager } from "./git-telemetry"
-import { archiveSdkEvent, drainRecallOutbox } from "./recall-outbox"
+import { getRecallConfiguration } from "./recall-config-manager"
+import { archiveSdkEvent, flushRecallOutboxWrites, startRecallOutbox } from "./recall-outbox"
 import type { SdkForegroundCommandCoordinator } from "./sdk-foreground-command-coordinator"
 import type { SdkSessionHost } from "./session-host"
 import { createVscodeExtraTools } from "./vscode-runtime-builder"
@@ -98,6 +99,9 @@ export class VscodeSessionHost implements SdkSessionHost {
 	private readonly inner: ClineCore
 	private readonly prepareStartSessionInput: (input: ClineCoreStartInput) => Promise<ClineCoreStartInput>
 	private readonly gitTelemetry: VscodeGitTelemetryManager
+	private readonly stopRecallReplay: () => void
+	private readonly unsubscribeRecall: () => void
+	private recallCapture = Promise.resolve()
 
 	private constructor(
 		inner: ClineCore,
@@ -108,6 +112,38 @@ export class VscodeSessionHost implements SdkSessionHost {
 		this.runtimeAddress = inner.runtimeAddress
 		this.prepareStartSessionInput = prepareStartSessionInput
 		this.gitTelemetry = new VscodeGitTelemetryManager(options.telemetry)
+		this.stopRecallReplay = startRecallOutbox(getRecallConfiguration)
+		// One journal subscription per host, independent of UI subscriptions.
+		this.unsubscribeRecall = inner.subscribe((event) => {
+			const config = getRecallConfiguration()
+			// Core notifications deliberately omit messages. Capture the canonical
+			// transcript explicitly; the journal is not a substitute chat history.
+			const captured = config.then((configuration) =>
+				event.type === "session_snapshot" && configuration?.enabled
+					? inner
+							.readLiveMessages(event.payload.sessionId)
+							.then(
+								(messages): CoreSessionEvent => ({
+									...event,
+									payload: { ...event.payload, snapshot: { ...event.payload.snapshot, messages } },
+								}),
+							)
+							.catch(() => {
+								Logger.error("[TOTAL RECALL] Snapshot transcript unavailable; no empty replacement was generated")
+								return event
+							})
+					: event,
+			)
+			// Keep notification order even if an earlier transcript read is slower.
+			this.recallCapture = this.recallCapture
+				.then(async () => {
+					const [record, configuration] = await Promise.all([captured, config])
+					void archiveSdkEvent(record, configuration).catch(() =>
+						Logger.error("[TOTAL RECALL] Event staging failed; canonical session history is retained"),
+					)
+				})
+				.catch(() => Logger.error("[TOTAL RECALL] Configuration unavailable for archival"))
+		})
 	}
 	updateSessionModel?(sessionId: string, modelId: string): Promise<void> {
 		return this.inner.updateSessionModel(sessionId, modelId)
@@ -194,7 +230,6 @@ export class VscodeSessionHost implements SdkSessionHost {
 		if (options.getTerminalManager) {
 			Logger.log("[VscodeSessionHost] SDK run_commands suppressed; using custom foreground/background terminal tool")
 		}
-		void drainRecallOutbox().catch((error) => Logger.error("[TOTAL RECALL] replay failed:", error))
 		return new VscodeSessionHost(inner, prepareStartSessionInput, options)
 	}
 
@@ -254,7 +289,16 @@ export class VscodeSessionHost implements SdkSessionHost {
 
 	async dispose(reason?: string): Promise<void> {
 		this.gitTelemetry.dispose()
-		return this.inner.dispose(reason)
+		this.stopRecallReplay()
+		try {
+			await this.inner.dispose(reason)
+		} finally {
+			// Disposal can emit the final abort/process state. Stage it before
+			// releasing the journal subscription, without waiting for the network.
+			this.unsubscribeRecall()
+			await this.recallCapture
+			await flushRecallOutboxWrites()
+		}
 	}
 
 	async get(sessionId: string): Promise<SessionRecord | undefined> {
@@ -341,10 +385,6 @@ export class VscodeSessionHost implements SdkSessionHost {
 	}
 
 	subscribe(listener: (event: CoreSessionEvent) => void): () => void {
-		return this.inner.subscribe((event) => {
-			// Preserve normal SDK delivery even when optional archival fails.
-			void archiveSdkEvent(event).catch((error) => Logger.error("[TOTAL RECALL] archive failed:", error))
-			listener(event)
-		})
+		return this.inner.subscribe(listener)
 	}
 }

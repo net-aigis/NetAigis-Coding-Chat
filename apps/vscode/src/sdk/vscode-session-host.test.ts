@@ -53,11 +53,14 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks()
 		mockInnerStart.mockReset().mockResolvedValue({ sessionId: "core-task" })
-		mockClineCoreCreate.mockReset().mockResolvedValue({
-			start: mockInnerStart,
-			stop: async () => {},
-			dispose: async () => {},
-		})
+		mockClineCoreCreate
+			.mockReset()
+			.mockResolvedValue({
+				subscribe: () => () => {},
+				start: mockInnerStart,
+				stop: async () => {},
+				dispose: async () => {},
+			})
 		mockCreateVscodeExtraTools.mockReset().mockResolvedValue([])
 	})
 
@@ -131,6 +134,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 			preparedConfig = prepared.config
 		}
 		mockClineCoreCreate.mockResolvedValue({
+			subscribe: () => () => {},
 			start: async (start: ClineCoreStartInput) => {
 				checkPrepared(start)
 				return { sessionId: actualId }
@@ -214,6 +218,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 		const open = vi.spyOn(VscodeGitTelemetry.prototype, "open")
 		const failure = new Error("startup failed")
 		mockClineCoreCreate.mockResolvedValue({
+			subscribe: () => () => {},
 			start: async () => {
 				throw failure
 			},
@@ -236,6 +241,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	it("closes a restored observer on host disposal", async () => {
 		const dispose = vi.spyOn(VscodeGitTelemetry.prototype, "dispose")
 		mockClineCoreCreate.mockResolvedValue({
+			subscribe: () => () => {},
 			restore: async () => ({ sessionId: "git-task", startResult: { sessionId: "git-task" } }),
 			dispose: async () => {},
 		})
@@ -264,7 +270,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	it.each(["start", "restore"])("prepares %s once: readiness, remote config, then extra tools", async (method) => {
 		const events: string[] = []
 		const restore = vi.fn(async (_input: unknown) => ({ checkpoint: {} }))
-		mockClineCoreCreate.mockResolvedValue({ start: mockInnerStart, restore })
+		mockClineCoreCreate.mockResolvedValue({ subscribe: () => () => {}, start: mockInnerStart, restore })
 		mockCreateVscodeExtraTools.mockImplementationOnce(async () => {
 			events.push("tools")
 			return [{ name: "vscode-tool" }] as never
@@ -313,7 +319,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	it("does not prepare a workspace-only restore", async () => {
 		const restore = vi.fn(async () => ({ checkpoint: {} }))
 		const beforeStartSession = vi.fn()
-		mockClineCoreCreate.mockResolvedValue({ restore })
+		mockClineCoreCreate.mockResolvedValue({ subscribe: () => () => {}, restore })
 		const host = await VscodeSessionHost.create({ mcpHub: {} as never, beforeStartSession })
 		await host.restore({ sessionId: "session-1", checkpointRunCount: 1 })
 		expect(beforeStartSession).not.toHaveBeenCalled()
