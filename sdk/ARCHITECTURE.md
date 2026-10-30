@@ -1359,3 +1359,18 @@ contents. Reconstructing or restoring a session replays canonical recorded tool
 calls into the existing loop tracker without executing them. Fresh-conversation
 boundaries still reset it. This uses the existing transcript and tracker, with
 no extra storage or independent monitoring service inside Cline.
+
+
+### Fork: compaction continuity from canonical history
+
+Compaction summaries and the existing sidecar remain derived projections.
+They retain literal source user requests and structured command observations
+separately from generated prose. The state-aware prepare-turn boundary rebuilds
+missing records from canonical messages, including for older sidecars. The
+`task_continuity` notice has zero user-run span and is replaced rather than
+recursively folded. Existing literal requests are matched by occurrence and
+source metadata; embedded records are trusted for deduplication only while
+their exact rendering survives. Synthetic resumption hints never become source
+user instructions. A mandatory notice that exceeds the known model input limit
+fails explicitly; canonical history remains available. No provider endpoint,
+model routing, database or independent supervisor is introduced.

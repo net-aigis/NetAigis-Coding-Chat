@@ -224,3 +224,56 @@ Runtime-Integrationsfälle. `p2-recovery-build` und `p2-recovery-types`: Exit 0.
 Kontextkomprimierung und vollständige persistierte Fortsetzung werden im
 nächsten Teil dieser Priorität geprüft. TOTAL RECALL/Agenten/Android wurden
 noch nicht produktiv geprüft oder als fertig bezeichnet.
+
+
+### Priorität 2 — Komprimierung und überprüfbare Auftragskontinuität
+
+Drei rote Tests (`p2-compaction-continuity-red`) zeigen, dass eine allgemeine
+Modellzusammenfassung Originalauftrag, Korrekturen, vorhandene Urheber-Metadaten
+und unbestätigte Prozesszustände verlieren kann. Weitere echte Rotbelege:
+`p2-basic-process-state-red` (ein verlorener Prozesszustand),
+`p2-legacy-sidecar-red` (älterer zusammengefasster Wiedereinstieg ohne Original)
+und `p2-injected-resumption-red` (synthetischer TASK-RESUMPTION-Hinweis wurde zum
+Originalauftrag befördert). Diese sechs Fälle sind nach der Korrektur grün.
+
+Die vorhandenen Komprimierungs-Metadaten tragen nun deterministisch erfasste
+wörtliche Nutzertexte samt vorhandenen Quellen-/Urheberangaben und strukturierte
+`run_commands`-Ergebnisse. Der ursprüngliche kanonische Verlauf bleibt die
+Quelle. Modellzusammenfassung und belegte Einträge sind ausdrücklich getrennt.
+Datei-/Bildinhalte werden nicht erneut in den Komprimierungstext kopiert; sie
+bleiben im kanonischen Verlauf. Es wird keine neue Datenbank oder konkurrierende
+Speicherarchitektur angelegt.
+
+Beim Wiederverwenden eines Sidecars rekonstruiert die vorhandene PrepareTurn-
+Grenze fehlende Angaben aus dem kanonischen Verlauf. Ein `task_continuity`-
+Eintrag zählt mit `userRunSpan: 0` keinen zusätzlichen Nutzerlauf. Bereits
+wörtlich vorhandene Aufträge und unverändert gerenderte Einträge werden nicht
+verdoppelt; mehrere identische echte Nutzeraufträge behalten ihre Anzahl.
+Wiederholte Vorbereitung erzeugt genau eine notwendige Projektion mit konstanter
+Größe. Synthetische Fortsetzungshinweise werden über die bestehende
+Nutzerlauf-Klassifikation ausgeschlossen. Übersteigt allein der notwendige
+Zusatz das bekannte Modellbudget, wird mit erhaltenem kanonischen Verlauf
+explizit abgebrochen statt Aufträge still zu kürzen. Dies ist keine Behauptung,
+dass beliebig große vollständige Historien in jedes Modellfenster passen.
+
+Die einfache Komprimierung erhält strukturierte Prozessangaben auch dann,
+wenn verworfene Arbeit mangels Transport-IDs keinem bisherigen Zwischenbericht
+zugeordnet werden konnte. `reportedSuccess` beschreibt den gespeicherten
+Werkzeugbericht und behauptet keine aktuelle Prozessaktivität. Zustände und
+Exitcodes werden nicht aus Modelltext oder verstrichener Zeit erfunden.
+
+Abschließende gezielte Prüfung: `p2-continuity-accepted` 338/338 (Komprimierung,
+Sidecar-JSON, Runtime, Wiederholungsschutz, Persistenz und importierte Sitzungen).
+`p2-vscode-session-regression` 82/82, zusammen 420 unterschiedliche Prüfungen.
+`p2-continuity-build-accepted` und `p2-continuity-types-accepted` Exit 0.
+Frühere Zwischenläufe und fehlgeschlagene Erwartungen bleiben erhalten. Zwei
+PrepareTurn- und vier Host-Vertragsprüfungen wurden ausdrücklich um den neuen
+abgeleiteten Kontexteintrag ergänzt; eine künstliche 10-Token-Host-Grenze wurde
+durch eine weiterhin überlaufende Historie mit realistischem Platz für die
+Pflichtangaben ersetzt. Die Grenzenprüfung selbst ist separat abgedeckt.
+
+Prüfmanifest `SHA256SUMS.p2-continuity`: 92 Einträge,
+SHA256 `a816004f36cb0e3b5ab13272f92cc5672c6ea1fb40a2934c34ffd8c426844a6b`. Gezielte Priorität-2-Reparatur damit abgeschlossen.
+Dies ersetzt keine Phase-5-Gesamtregression oder produktive Abnahme. TOTAL
+RECALL und produktive gegenseitige Übernahme sind nicht durch diese Tests
+als fertig belegt. Weiter mit Priorität 3, dann Acer-Schnittstellen und Android.

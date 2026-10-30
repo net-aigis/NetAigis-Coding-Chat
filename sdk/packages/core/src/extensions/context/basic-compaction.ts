@@ -12,6 +12,8 @@ import { buildBudgetProjection } from "./budget-projection";
 import {
 	type EstimateMessageTokens,
 	formatToolActivitySummary,
+	collectCompactionContinuity,
+	withCompactionContinuity,
 	hasToolActivity,
 	isTurnStartMessage,
 	summarizeToolActivity,
@@ -658,7 +660,7 @@ export function runBasicCompaction(options: {
 			prior.messagesRemoved + (originalMessages.length - mergedMessages.length),
 		...(usageBefore ? { usageBefore } : {}),
 	};
-	const resultMessages = mergedMessages.map((message, index) => {
+	let resultMessages = mergedMessages.map((message, index) => {
 		if (index === 0 && isTurnStartMessage(message)) {
 			return stripStaleMetrics({
 				...message,
@@ -677,6 +679,17 @@ export function runBasicCompaction(options: {
 				: markPreservedByCompaction(message),
 		);
 	});
+	// Output pruning must not erase an observed command state, even when
+	// messages have no transport IDs and gap summaries cannot be anchored.
+	if (
+		collectCompactionContinuity(originalMessages).toolObservations.length > 0
+	) {
+		resultMessages = withCompactionContinuity(
+			resultMessages,
+			originalMessages,
+			options.context.budget.request.maxInputTokens,
+		);
+	}
 
 	const afterTokens = getTotalTokens(
 		resultMessages,

@@ -118,3 +118,8 @@ Der gemessene 3000-ms-sendText-Pfad und der zweite Markerless-Fristpfad erzeugen
 ### Phase 4 — Priorität 2 teilweise repariert
 
 Startfehler verlieren den Auftrag nicht mehr und sperren keine spätere Wiederaufnahme. Gespeicherte Werkzeugaufrufe erhalten den Schleifenzähler über Restore/Neukonstruktion. 102 gezielte Tests bestanden, Core-Build und Typprüfung erfolgreich. Komprimierung und vollständige Fortsetzung sind weiter offen.
+
+
+### Phase 4 — Priorität 2 gezielt geprüft
+
+Originalaufträge/Korrekturen und gespeicherte Prozesszustände bleiben unabhängig von generierten Zusammenfassungen erhalten, einschließlich älterer Sidecars. Synthetische Wiederaufnahmehinweise werden nicht als Originalaufträge übernommen. 338 Core-/Runtime-/Persistenzprüfungen und 82 VS-Code-Sitzungsprüfungen erfolgreich; Build und Typprüfung bestanden. Keine produktive Abnahme. Priorität 3 TOTAL RECALL folgt.

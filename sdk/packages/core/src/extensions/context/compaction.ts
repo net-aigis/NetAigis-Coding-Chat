@@ -31,6 +31,7 @@ import {
 	findLatestSummaryIndex,
 	MAX_INPUT_UNDERESTIMATE_FACTOR,
 	resolveEffectiveMaxInputTokens,
+	withCompactionContinuity,
 } from "./compaction-shared";
 
 export interface ContextPipelinePrepareTurnInput {
@@ -776,8 +777,18 @@ export function createCompactionStateAwarePrepareTurn(input: {
 }): ContextPipelinePrepareTurn {
 	return async (context) => {
 		const existingState = input.getState?.();
-		const projectedMessages = existingState
+		const maxInputTokens = resolveEffectiveMaxInputTokens(
+			context.model.info ?? {},
+		);
+		const savedProjection = existingState
 			? projectSessionCompactionState(existingState, context.messages)
+			: undefined;
+		const projectedMessages = savedProjection
+			? withCompactionContinuity(
+					savedProjection,
+					context.messages,
+					maxInputTokens,
+				)
 			: undefined;
 		if (existingState && projectedMessages) {
 			// Re-compaction intentionally starts from the compacted projection plus
@@ -792,16 +803,22 @@ export function createCompactionStateAwarePrepareTurn(input: {
 					})
 				: undefined;
 			if (result?.messages) {
+				const messages = withCompactionContinuity(
+					result.messages,
+					context.messages,
+					maxInputTokens,
+				);
 				const systemPrompt = result.systemPrompt ?? existingState.system_prompt;
 				const nextState = createSessionCompactionState({
 					sourceMessages: context.messages,
-					compactedMessages: result.messages,
+					compactedMessages: messages,
 					conversationId: context.conversationId,
 					systemPrompt,
 				});
 				await input.saveState?.(nextState, context.messages);
 				return {
 					...result,
+					messages,
 					...(systemPrompt !== undefined ? { systemPrompt } : {}),
 				};
 			}
@@ -816,13 +833,19 @@ export function createCompactionStateAwarePrepareTurn(input: {
 		}
 		const result = input.compact ? await input.compact(context) : undefined;
 		if (result?.messages) {
+			const messages = withCompactionContinuity(
+				result.messages,
+				context.messages,
+				maxInputTokens,
+			);
 			const nextState = createSessionCompactionState({
 				sourceMessages: context.messages,
-				compactedMessages: result.messages,
+				compactedMessages: messages,
 				conversationId: context.conversationId,
 				systemPrompt: result.systemPrompt,
 			});
 			await input.saveState?.(nextState, context.messages);
+			return { ...result, messages };
 		}
 		return result;
 	};

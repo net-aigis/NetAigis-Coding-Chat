@@ -13,6 +13,7 @@ import {
 import {
 	buildSummaryMessage,
 	buildSummaryRequest,
+	collectCompactionContinuity,
 	type EstimateMessageTokens,
 	ensureFilesSection,
 	estimateTokens,
@@ -230,6 +231,7 @@ export async function runAgenticCompaction(options: {
 			fileOps,
 			tokensBefore,
 			userRunSpan: countUserRunMessages(messagesToSummarize),
+			continuity: collectCompactionContinuity(messagesToSummarize),
 		}),
 		...messages.slice(cutIndex),
 	];

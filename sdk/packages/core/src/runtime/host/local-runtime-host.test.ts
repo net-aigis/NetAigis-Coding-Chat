@@ -6780,6 +6780,12 @@ describe("LocalRuntimeHost", () => {
 			},
 		});
 		expect(projected?.messages).toEqual([
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					kind: "task_continuity",
+					userRunSpan: 0,
+				}),
+			}),
 			{ role: "user", content: "projected summary" },
 			{ role: "user", content: "follow-up" },
 		]);
@@ -6923,6 +6929,12 @@ describe("LocalRuntimeHost", () => {
 			expect.objectContaining({ mode: "manual", messages: resumedMessages }),
 		);
 		expect(first?.messages).toEqual([
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					kind: "task_continuity",
+					userRunSpan: 0,
+				}),
+			}),
 			{ role: "user", content: "imported summary" },
 			{ role: "user", content: "keep going" },
 		]);
@@ -6973,6 +6985,12 @@ describe("LocalRuntimeHost", () => {
 			},
 		);
 		expect((await summarized.runPrepareTurn())?.messages).toEqual([
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					kind: "task_continuity",
+					userRunSpan: 0,
+				}),
+			}),
 			{
 				role: "user",
 				content: "earlier summary",
@@ -7006,7 +7024,11 @@ describe("LocalRuntimeHost", () => {
 		const abortedRun = aborted.runPrepareTurn(abortController.signal);
 		abortController.abort();
 		await expect(abortedRun).rejects.toThrow("aborted");
-		expect((await aborted.runPrepareTurn())?.messages?.[0]).toEqual({
+		const resumedAfterAbort = await aborted.runPrepareTurn();
+		expect(resumedAfterAbort?.messages?.[0]?.metadata?.kind).toBe(
+			"task_continuity",
+		);
+		expect(resumedAfterAbort?.messages?.[1]).toEqual({
 			role: "user",
 			content: "retried summary",
 		});
@@ -7152,6 +7174,12 @@ describe("LocalRuntimeHost", () => {
 				}),
 			).resolves.toEqual({
 				messages: [
+					expect.objectContaining({
+						metadata: expect.objectContaining({
+							kind: "task_continuity",
+							userRunSpan: 0,
+						}),
+					}),
 					{ role: "user", content: "summary" },
 					{ role: "user", content: "next" },
 				],
@@ -7159,6 +7187,12 @@ describe("LocalRuntimeHost", () => {
 			expect(
 				createAgent.mock.results[0]?.value.prepareProviderMessagesForApi,
 			).toHaveBeenCalledWith([
+				expect.objectContaining({
+					metadata: expect.objectContaining({
+						kind: "task_continuity",
+						userRunSpan: 0,
+					}),
+				}),
 				{ role: "user", content: "summary" },
 				{ role: "user", content: "next" },
 			]);
@@ -7182,7 +7216,7 @@ describe("LocalRuntimeHost", () => {
 		const manifest = createManifest(sessionId);
 		const priorMessages: MessageWithMetadata[] = [
 			{ role: "user", content: "task", id: "m1", ts: 1 },
-			{ role: "assistant", content: "working", id: "m2", ts: 2 },
+			{ role: "assistant", content: "working".repeat(5000), id: "m2", ts: 2 },
 		];
 		// What the conversation store holds mid-turn: prior transcript plus the
 		// just-appended follow-up WITHOUT identity fields.
@@ -7296,11 +7330,19 @@ describe("LocalRuntimeHost", () => {
 			model: {
 				id: "mock-model",
 				provider: "mock-provider",
-				// Tiny budget so the auto trigger always fires.
-				info: { id: "mock-model", maxInputTokens: 10 },
+				// Overflowing transcript with enough room for protected instructions.
+				info: { id: "mock-model", maxInputTokens: 1000 },
 			},
 		});
-		expect(result?.messages).toEqual([{ role: "user", content: "summary" }]);
+		expect(result?.messages).toEqual([
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					kind: "task_continuity",
+					userRunSpan: 0,
+				}),
+			}),
+			{ role: "user", content: "summary" },
+		]);
 
 		// The sidecar write must validate against the exact source messages the
 		// state was computed from, not the store's id-less mid-turn shapes.
@@ -7309,7 +7351,15 @@ describe("LocalRuntimeHost", () => {
 			expect.objectContaining({
 				conversation_id: sessionId,
 				source_message_count: runtimeMessages.length,
-				messages: [{ role: "user", content: "summary" }],
+				messages: [
+					expect.objectContaining({
+						metadata: expect.objectContaining({
+							kind: "task_continuity",
+							userRunSpan: 0,
+						}),
+					}),
+					{ role: "user", content: "summary" },
+				],
 			}),
 		);
 	});

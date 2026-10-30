@@ -4735,6 +4735,12 @@ describe("createContextCompactionPrepareTurn", () => {
 		});
 
 		expect(result?.messages).toEqual([
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					kind: "task_continuity",
+					userRunSpan: 0,
+				}),
+			}),
 			...compactedMessages,
 			{ role: "user", content: "follow-up request" },
 		]);
@@ -4791,11 +4797,23 @@ describe("createContextCompactionPrepareTurn", () => {
 		});
 
 		const projected = [{ role: "user", content: "summary" }, ...tail];
-		expect(prepareApiMessages).toHaveBeenLastCalledWith(projected);
+		expect(prepareApiMessages).toHaveBeenLastCalledWith([
+			expect.objectContaining({
+				metadata: expect.objectContaining({
+					kind: "task_continuity",
+					userRunSpan: 0,
+				}),
+			}),
+			...projected,
+		]);
 		expect(compact).toHaveBeenCalledTimes(1);
 		const compactContext = compact.mock.calls[0][0];
-		expect(compactContext.messages).toEqual(projected);
+		expect(compactContext.messages.slice(1)).toEqual(projected);
+		expect(compactContext.messages[0].content).toContain("original request");
 		expect(compactContext.apiMessages).toEqual([
+			expect.objectContaining({
+				metadata: expect.objectContaining({ kind: "task_continuity" }),
+			}),
 			{ role: "user", content: "summary" },
 			{ role: "user", content: "x".repeat(8_000) },
 		]);

@@ -11,6 +11,7 @@ export { CHARS_PER_TOKEN, estimateTokens };
 
 import type { CoreCompactionSummarizerConfig } from "../../types/config";
 import type { ProviderConfig } from "../../types/provider-settings";
+import { getUserRunSpan } from "../../session/user-run-messages";
 
 export const DEFAULT_MAX_INPUT_TOKENS = 128_000;
 /** Estimate the usable input share when only a context window is reported. */
@@ -49,6 +50,44 @@ export interface CompactionSummaryMetadata {
 	details: FileOperationSummary;
 	tokensBefore: number;
 	generatedAt: number;
+	continuity?: CompactionContinuity;
+}
+
+/** Deterministic records inside the existing summary, never a second store. */
+export interface CompactionContinuity {
+	version: 1;
+	requests: MessageWithMetadata[];
+	toolObservations: Array<{
+		toolUseId: string;
+		query?: unknown;
+		reportedSuccess?: boolean;
+		execution?: Record<string, unknown>;
+	}>;
+}
+
+function readContinuity(value: unknown): CompactionContinuity | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const record = value as Record<string, unknown>;
+	if (
+		record.version !== 1 ||
+		!Array.isArray(record.requests) ||
+		!Array.isArray(record.toolObservations)
+	)
+		return undefined;
+	if (
+		!record.requests.every(
+			(message) =>
+				message?.role === "user" && typeof message.content === "string",
+		)
+	)
+		return undefined;
+	if (
+		!record.toolObservations.every(
+			(item) => item && typeof item.toolUseId === "string",
+		)
+	)
+		return undefined;
+	return JSON.parse(JSON.stringify(record)) as CompactionContinuity;
 }
 
 export type EstimateMessageTokens = (message: MessageWithMetadata) => number;
@@ -257,6 +296,7 @@ export function getCompactionSummaryMetadata(
 		return undefined;
 	}
 	const details = metadata.details as Record<string, unknown> | undefined;
+	const continuity = readContinuity(metadata.continuity);
 	return {
 		kind: "compaction_summary",
 		displayRole: "system",
@@ -283,7 +323,195 @@ export function getCompactionSummaryMetadata(
 		},
 		tokensBefore: Number(metadata.tokensBefore ?? 0),
 		generatedAt: Number(metadata.generatedAt ?? 0),
+		...(continuity ? { continuity } : {}),
 	};
+}
+
+export function collectCompactionContinuity(
+	messages: readonly MessageWithMetadata[],
+): CompactionContinuity {
+	const result: CompactionContinuity = {
+		version: 1,
+		requests: [],
+		toolObservations: [],
+	};
+	const commandIds = new Set<string>();
+	for (const message of messages) {
+		// A projection notice is rebuilt from canonical history at the outer
+		// boundary. Folding it again would recursively duplicate its records.
+		if (message.metadata?.kind === "task_continuity") continue;
+		const previous = readContinuity(message.metadata?.continuity);
+		if (previous) {
+			result.requests.push(...previous.requests);
+			result.toolObservations.push(...previous.toolObservations);
+			continue;
+		}
+		if (
+			isTurnStartMessage(message) &&
+			getUserRunSpan(message) > 0 &&
+			message.metadata?.displayRole !== "system"
+		) {
+			// Keep literal text and its existing authorship/envelope. Old media
+			// payloads stay in canonical history, not duplicated into summaries.
+			const text =
+				typeof message.content === "string"
+					? message.content
+					: message.content
+							.filter((part) => part.type === "text")
+							.map((part) => part.text)
+							.join("\n");
+			if (text) result.requests.push({ ...message, content: text });
+		}
+		if (!Array.isArray(message.content)) continue;
+		for (const block of message.content) {
+			if (block.type === "tool_use" && block.name === "run_commands")
+				commandIds.add(block.id);
+			if (
+				block.type !== "tool_result" ||
+				(!commandIds.has(block.tool_use_id) && block.name !== "run_commands")
+			)
+				continue;
+			const texts =
+				typeof block.content === "string"
+					? [block.content]
+					: block.content
+							.filter((part) => part.type === "text")
+							.map((part) => part.text);
+			for (const text of texts) {
+				let parsed: unknown;
+				try {
+					parsed = JSON.parse(text);
+				} catch {
+					continue;
+				}
+				for (const item of Array.isArray(parsed) ? parsed : [parsed]) {
+					if (!item || typeof item !== "object") continue;
+					const record = item as Record<string, unknown>;
+					if (typeof record.success !== "boolean" && !record.execution)
+						continue;
+					result.toolObservations.push({
+						toolUseId: block.tool_use_id,
+						...(record.query !== undefined ? { query: record.query } : {}),
+						...(typeof record.success === "boolean"
+							? { reportedSuccess: record.success }
+							: {}),
+						...(record.execution &&
+						typeof record.execution === "object" &&
+						!Array.isArray(record.execution)
+							? { execution: record.execution as Record<string, unknown> }
+							: {}),
+					});
+				}
+			}
+		}
+	}
+	return JSON.parse(JSON.stringify(result)) as CompactionContinuity;
+}
+
+function renderContinuity(
+	continuity: CompactionContinuity | undefined,
+): string {
+	if (!continuity) return "";
+	return `\n\n## Recorded task continuity\nThese records come from stored messages, independently of the generated summary. User instructions remain verbatim and chronological. Recorded tool outcomes are historical observations, not proof of current liveness. An unknown outcome must not be treated as completed. Follow these requests and verified evidence; do not invent a resumption point.\n\n${continuity.requests.map(({ content, ...source }) => `Source: ${JSON.stringify(source)}\n${content}`).join("\n\n")}\n\nRecorded command outcomes:\n${JSON.stringify(continuity.toolObservations)}`;
+}
+
+/** Rebuild the provider projection from canonical evidence on each turn. */
+export function withCompactionContinuity(
+	messages: readonly MessageWithMetadata[],
+	canonicalMessages: readonly MessageWithMetadata[],
+	maxInputTokens?: number,
+): MessageWithMetadata[] {
+	const continuity = collectCompactionContinuity(canonicalMessages);
+	const projection = messages.filter(
+		(message) => message.metadata?.kind !== "task_continuity",
+	);
+	// A new summary may already render these exact records. Trust its
+	// records for deduplication only while that literal rendering survives;
+	// retained metadata alone cannot prove that a truncated body contains it.
+	const embedded = projection.flatMap((message) => {
+		const records = readContinuity(message.metadata?.continuity);
+		const text =
+			typeof message.content === "string"
+				? message.content
+				: message.content
+						.filter((part) => part.type === "text")
+						.map((part) => part.text)
+						.join("\n");
+		return records && text.includes(renderContinuity(records).trim())
+			? [records]
+			: [];
+	});
+	// Consume matches individually: identical repeated requests must retain
+	// their occurrence count. Different metadata keeps the source record.
+	const visibleRequests = projection
+		.filter(isTurnStartMessage)
+		.map((message) => ({
+			...message,
+			content:
+				typeof message.content === "string"
+					? message.content
+					: message.content
+							.filter((part) => part.type === "text")
+							.map((part) => part.text)
+							.join("\n"),
+		}));
+	visibleRequests.push(
+		...embedded
+			.flatMap((records) => records.requests)
+			.map((message) => ({ ...message, content: String(message.content) })),
+	);
+	const key = (message: MessageWithMetadata) =>
+		JSON.stringify([
+			message.content,
+			message.agent,
+			message.sessionId,
+			message.metadata,
+		]);
+	continuity.requests = continuity.requests.filter((request) => {
+		const index = visibleRequests.findIndex(
+			(message) => key(message) === key(request),
+		);
+		if (index < 0) return true;
+		visibleRequests.splice(index, 1);
+		return false;
+	});
+	const visibleObservations = [
+		...embedded.flatMap((records) => records.toolObservations),
+		...collectCompactionContinuity(
+			projection.filter((message) => !message.metadata?.continuity),
+		).toolObservations,
+	];
+	continuity.toolObservations = continuity.toolObservations.filter(
+		(observation) => {
+			const index = visibleObservations.findIndex(
+				(visible) => JSON.stringify(visible) === JSON.stringify(observation),
+			);
+			if (index < 0) return true;
+			visibleObservations.splice(index, 1);
+			return false;
+		},
+	);
+	if (!continuity.requests.length && !continuity.toolObservations.length)
+		return projection;
+	const notice: MessageWithMetadata = {
+		role: "user",
+		content: renderContinuity(continuity).trim(),
+		metadata: {
+			kind: "task_continuity",
+			displayRole: "system",
+			userRunSpan: 0,
+			continuity,
+		},
+	};
+	if (
+		maxInputTokens !== undefined &&
+		createTokenEstimator()(notice) > maxInputTokens
+	) {
+		throw new Error(
+			"Recorded user instructions and process states exceed the model input budget; canonical history is preserved and instructions were not silently truncated.",
+		);
+	}
+	return [notice, ...projection];
 }
 
 export function isToolResultOnlyUserMessage(
@@ -497,13 +725,15 @@ export interface ToolActivitySummary {
 	readFiles: string[];
 	editedFiles: string[];
 	commands: string[];
+	toolObservations?: CompactionContinuity["toolObservations"];
 }
 
 export function hasToolActivity(summary: ToolActivitySummary): boolean {
 	return (
 		summary.readFiles.length > 0 ||
 		summary.editedFiles.length > 0 ||
-		summary.commands.length > 0
+		summary.commands.length > 0 ||
+		(summary.toolObservations?.length ?? 0) > 0
 	);
 }
 
@@ -656,7 +886,14 @@ export function summarizeToolActivity(
 	for (const path of editorPathsByToolUseId.values()) {
 		pushUniqueEntry(editedFiles, path);
 	}
-	return { readFiles, editedFiles, commands };
+	const toolObservations =
+		collectCompactionContinuity(messages).toolObservations;
+	return {
+		readFiles,
+		editedFiles,
+		commands,
+		...(toolObservations.length ? { toolObservations } : {}),
+	};
 }
 
 export function formatToolActivitySummary(
@@ -666,6 +903,11 @@ export function formatToolActivitySummary(
 		`Files read:\n${summary.readFiles.join("\n")}`,
 		`Files edited:\n${summary.editedFiles.join("\n")}`,
 		`Commands ran:\n${summary.commands.join("\n")}`,
+		...(summary.toolObservations?.length
+			? [
+					`Recorded command outcomes (historical; unknown is not completed):\n${JSON.stringify(summary.toolObservations)}`,
+				]
+			: []),
 	].join("\n\n");
 }
 
@@ -795,13 +1037,14 @@ export function buildSummaryMessage(options: {
 	fileOps: FileOperationSummary;
 	tokensBefore: number;
 	userRunSpan: number;
+	continuity?: CompactionContinuity;
 }): MessageWithMetadata {
 	return {
 		role: "user",
 		content: [
 			{
 				type: "text",
-				text: `Context summary:\n\n${options.summary}`,
+				text: `Context summary:\n\n${options.summary}${renderContinuity(options.continuity)}`,
 			},
 		],
 		metadata: {
@@ -812,6 +1055,7 @@ export function buildSummaryMessage(options: {
 			details: options.fileOps,
 			tokensBefore: options.tokensBefore,
 			generatedAt: Date.now(),
+			...(options.continuity ? { continuity: options.continuity } : {}),
 		} satisfies CompactionSummaryMetadata,
 	};
 }
