@@ -1,4 +1,4 @@
-import { CommandExitError } from "@cline/core"
+import { CommandCompletionUnknownError, CommandAbortError, CommandExitError } from "@cline/core"
 import { EventEmitter } from "events"
 import * as fs from "fs"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -345,6 +345,61 @@ describe("formatCommandForTerminal", () => {
 })
 
 describe("executeForeground", () => {
+	it("does not turn an undefined process rejection into success", async () => {
+		const process = createRejectedTerminalProcess(undefined as never)
+		await expect(executeForeground("fixture", "/workspace", createFakeTerminalManager(process), 1000)).rejects.toBeInstanceOf(
+			CommandCompletionUnknownError,
+		)
+	})
+
+	it.each([Number.NaN, Number.POSITIVE_INFINITY])("does not report %s as a real exit code", async (exitCode) => {
+		const process = createFakeTerminalProcess({ completionDetails: { exitCode } })
+		const error = await executeForeground("fixture", "/workspace", createFakeTerminalManager(process), 1000).catch(
+			(e: unknown) => e,
+		)
+		expect(error).toBeInstanceOf(CommandCompletionUnknownError)
+		expect(error).not.toHaveProperty("exitCode")
+	})
+
+	it("preserves output on cancellation without claiming the terminal process has exited", async () => {
+		const abort = new AbortController()
+		const { process, emitLine } = createControllableTerminalProcess()
+		const result = executeForeground("fixture", "/workspace", createFakeTerminalManager(process), 1000, abort.signal)
+		const error = result.catch((error: unknown) => error)
+		await waitFor(() => process.listenerCount("line") > 0)
+		emitLine("already received")
+		abort.abort()
+		expect(await error).toBeInstanceOf(CommandAbortError)
+		expect(await error).toMatchObject({
+			output: "already received",
+			execution: { state: "aborted", terminationConfirmed: false },
+		})
+		expect(await error).not.toHaveProperty("exitCode")
+	})
+
+	it("does not acquire a terminal for an already cancelled command", async () => {
+		const abort = new AbortController()
+		abort.abort()
+		const manager = { getOrCreateTerminal: vi.fn() } as unknown as VscodeTerminalManager
+		await expect(executeForeground("fixture", "/workspace", manager, 1000, abort.signal)).rejects.toBeInstanceOf(
+			CommandAbortError,
+		)
+		expect(manager.getOrCreateTerminal).not.toHaveBeenCalled()
+	})
+
+	it("preserves the observed signal separately from numeric exit codes", async () => {
+		const process = createFakeTerminalProcess({ lines: ["partial"], completionDetails: { signal: "SIGTERM" } })
+		const error = await executeForeground("fixture", "/workspace", createFakeTerminalManager(process), 1000).catch(
+			(e: unknown) => e,
+		)
+		expect(error).toMatchObject({
+			signal: "SIGTERM",
+			output: "partial",
+			execution: { state: "terminated", signal: "SIGTERM" },
+		})
+		expect(error).not.toHaveProperty("exitCode")
+	})
+
 	it("rejects an unconfirmed completion when no exit code was captured", async () => {
 		const process = createFakeTerminalProcess({ lines: ["hello"], completionDetails: {} })
 		const terminalManager = createFakeTerminalManager(process)
@@ -353,12 +408,13 @@ describe("executeForeground", () => {
 			await executeForeground("echo hello", "/workspace", terminalManager, 1000)
 			expect.unreachable("expected executeForeground to reject a completion without an exit code")
 		} catch (error) {
-			expect(error).toBeInstanceOf(CommandExitError)
-			expect((error as InstanceType<typeof CommandExitError>).exitCode).toBe(1)
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain(
+			expect(error).toBeInstanceOf(CommandCompletionUnknownError)
+			expect(error).not.toHaveProperty("exitCode")
+			expect(error).toHaveProperty("execution.state", "unknown")
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain(
 				"completion could not be confirmed",
 			)
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain("hello")
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain("hello")
 		}
 	})
 
@@ -369,9 +425,10 @@ describe("executeForeground", () => {
 			await executeForeground("touch /tmp/marker", "/workspace", terminalManager, 1000)
 			expect.unreachable("expected executeForeground to reject a silent, unconfirmed completion")
 		} catch (error) {
-			expect(error).toBeInstanceOf(CommandExitError)
-			expect((error as InstanceType<typeof CommandExitError>).exitCode).toBe(1)
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain(
+			expect(error).toBeInstanceOf(CommandCompletionUnknownError)
+			expect(error).not.toHaveProperty("exitCode")
+			expect(error).toHaveProperty("execution.state", "unknown")
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain(
 				"no output and no exit code were reported",
 			)
 		}
@@ -427,7 +484,7 @@ describe("executeForeground", () => {
 		expect(result).toContain("dropped")
 	})
 
-	it("throws CommandExitError when the terminal closes mid-command, even with no exit code", async () => {
+	it("reports unknown outcome when the terminal closes mid-command, even with no exit code", async () => {
 		const process = createFakeTerminalProcess({
 			lines: ["partial output"],
 			completionDetails: { terminalClosed: true },
@@ -438,12 +495,12 @@ describe("executeForeground", () => {
 			await executeForeground("long-running-cmd", "/workspace", terminalManager, 1000)
 			expect.unreachable("expected executeForeground to throw when the terminal closed mid-command")
 		} catch (error) {
-			expect(error).toBeInstanceOf(CommandExitError)
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain("Terminal closed")
+			expect(error).toBeInstanceOf(CommandCompletionUnknownError)
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain("Terminal closed")
 		}
 	})
 
-	it("throws an indeterminate CommandExitError when command completion cannot be observed", async () => {
+	it("reports unknown outcome when command completion cannot be observed", async () => {
 		const process = createFakeTerminalProcess({
 			lines: ["partial output"],
 			completionDetails: { unobservedCommand: { source: "sendText", ownership: "managed" } },
@@ -454,12 +511,14 @@ describe("executeForeground", () => {
 			await executeForeground("long-running-cmd", "/workspace", terminalManager, 1000)
 			expect.unreachable("expected executeForeground to reject indeterminate completion")
 		} catch (error) {
-			expect(error).toBeInstanceOf(CommandExitError)
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain("must not be assumed to have succeeded")
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain(
+			expect(error).toBeInstanceOf(CommandCompletionUnknownError)
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain(
+				"must not be assumed to have succeeded",
+			)
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain(
 				"The terminal remains open for now, but starting another foreground command will attempt to close it",
 			)
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain("partial output")
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain("partial output")
 		}
 	})
 
@@ -474,11 +533,11 @@ describe("executeForeground", () => {
 			await executeForeground("remote-command", "/workspace", createFakeTerminalManager(process), 1000)
 			expect.unreachable("expected executeForeground to reject indeterminate completion")
 		} catch (error) {
-			expect(error).toBeInstanceOf(CommandExitError)
-			expect((error as InstanceType<typeof CommandExitError>).output).toContain(
+			expect(error).toBeInstanceOf(CommandCompletionUnknownError)
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain(
 				"left open and will not be closed automatically",
 			)
-			expect((error as InstanceType<typeof CommandExitError>).output).not.toContain("next foreground command")
+			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).not.toContain("next foreground command")
 		}
 	})
 
@@ -533,7 +592,7 @@ describe("executeForeground", () => {
 
 		abortController.abort()
 
-		await expect(resultPromise).rejects.toThrow("Command execution aborted")
+		await expect(resultPromise).rejects.toThrow("Command was aborted")
 		// The command must be interrupted (Ctrl+C), not merely left running.
 		expect(sendInterrupt).toHaveBeenCalledTimes(1)
 		// And observation stops afterward.
@@ -556,7 +615,7 @@ describe("executeForeground", () => {
 		await waitFor(() => process.listenerCount("line") > 0)
 		abortController.abort()
 
-		await expect(resultPromise).rejects.toThrow("Command execution aborted")
+		await expect(resultPromise).rejects.toThrow("Command was aborted")
 	})
 })
 
@@ -905,7 +964,7 @@ describe("executeForeground — Proceed While Running", () => {
 
 		expect(coordinator.isRunning).toBe(true)
 		abortController.abort()
-		await expect(resultPromise).rejects.toThrow("Command execution aborted")
+		await expect(resultPromise).rejects.toThrow("Command was aborted")
 		expect(coordinator.isRunning).toBe(false)
 
 		releaseTerminal()
@@ -935,7 +994,7 @@ describe("executeForeground — Proceed While Running", () => {
 
 		await expect(
 			executeForeground("cancelled-as-acquired", "/workspace", terminalManager, 1000, abortController.signal, coordinator),
-		).rejects.toThrow("Command execution aborted")
+		).rejects.toThrow("Command was aborted")
 
 		expect(runCommand).not.toHaveBeenCalled()
 		expect(releaseTerminalReservation).toHaveBeenCalledWith(terminalInfo)

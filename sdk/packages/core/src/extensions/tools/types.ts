@@ -33,6 +33,13 @@ export interface ToolOperationResult {
 	error?: string;
 	/** Whether the operation succeeded */
 	success: boolean;
+	/** Observed command outcome. Missing exit events must never invent a code. */
+	execution?: {
+		state: "failed" | "terminated" | "aborted" | "timed_out" | "unknown";
+		exitCode?: number;
+		signal?: NodeJS.Signals | null;
+		terminationConfirmed?: boolean;
+	};
 	/** Duration in MS */
 	duration?: number;
 }

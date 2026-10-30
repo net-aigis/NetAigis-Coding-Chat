@@ -118,3 +118,8 @@ sind nicht eigenmächtig festzulegen.
 
 Vollständiger Phase-3-Stand: [phase3-upstream-v4.1.26.md](phase3-upstream-v4.1.26.md).
 Frühere Einträge bleiben unverändert als historische Aufträge erhalten.
+
+
+## Phase 4 — Benutzerauftrag vom 30.10.2026, erfasst 2026-10-30T19:47:50+01:00
+
+Phase 4 ist freigegeben: Priorität 1 Terminal/Signal/Timeout/Exitcodes/Ausgabe/Schleifenschutz; danach Priorität 2 Kontext, Originalauftrag und Sitzungsfortsetzung; Priorität 3 vorhandenes TOTAL RECALL mit Retry-Outbox, Browser, echter Wiederherstellung, Friseer/jimmi und Schreibzuständigkeit; Priorität 4 Schnittstellen der getrennten Acer-Dienste; Priorität 5 Android auf derselben laufenden Sitzung. Gezielte Regression nach jeder Korrektur und eigenständige Commits. Keine Wiederholung der Phasen 1–3, kein Eingriff in Originalbranch, Installation oder produktive Dienste. Watchdog separat außerhalb Cline. Vollständige fortgeltende Grenzen und Nachweise: [phase4-reparatur.md](phase4-reparatur.md).

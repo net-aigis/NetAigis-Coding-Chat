@@ -998,6 +998,7 @@ describe("default run_commands tool", () => {
 				result: "[Command exited with code 1]\nfailed assertion details",
 				error: "Command exited with code 1",
 				success: false,
+				execution: { state: "failed", exitCode: 1 },
 			},
 		]);
 	});

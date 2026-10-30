@@ -1,4 +1,10 @@
-import { CommandExitError, CommandSpawnError, CommandTerminationError } from "@cline/core"
+import {
+	CommandExitError,
+	CommandSpawnError,
+	CommandTerminationError,
+	CommandCompletionUnknownError,
+	CommandTimeoutError,
+} from "@cline/core"
 
 /** Telemetry dimensions for one failed background (`child_process`) execution. */
 export interface BackgroundFailureDimensions {
@@ -22,6 +28,8 @@ export interface BackgroundFailureDimensions {
  * closed terminal in the same success=false bucket.
  */
 export function describeBackgroundFailure(error: unknown): BackgroundFailureDimensions {
+	if (error instanceof CommandTimeoutError) return { errorCode: "timeout" }
+	if (error instanceof CommandCompletionUnknownError) return { errorCode: "unknown" }
 	if (error instanceof CommandExitError) {
 		return { exitCode: error.exitCode }
 	}

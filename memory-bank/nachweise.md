@@ -127,3 +127,13 @@ Erhaltungscheck: Originalbranch weiterhin `coding-agent-v4` auf `624c2cd66`,
 alle acht geänderten und 19 unversionierten Originaldateien SHA256-identisch
 zum vorhandenen Phase-2-Manifest. Zwölf historische Arbeitsartefakte im
 Reparatur-Worktree unverändert erhalten. Keine erneute Sicherung erstellt.
+
+
+## Phase 4 — laufende Nachweise, 2026-10-30T19:47:50+01:00
+
+Prüfpfad im Reparatur-Worktree: `tmp/phase4-checks-20261030T193507+0100`. Darin bleiben rote Regressionen, Umgebungskontrollen und alle anschließenden Befehle/Exitcodes erhalten. `p1-signal-outside-sandbox`: unverändert 2/2; `p1-cancellation-red`: 0/4; `p1-core-green`: 135 bestanden, 2 Bash-Startausgabe-Abweichungen, 14 übersprungen; neue Abbruchtests dabei 4/4. `p1-vscode-corrected`: 80/80. Keine produktiven Modell-/Dienst-/Android-Tests behauptet. [Bericht](phase4-reparatur.md).
+
+
+### Phase 4 — geprüfte Terminalkorrektur
+
+Abschluss der ersten Korrektur: `p1-core-final` 138/138 ausführbar, 14 übersprungen; VS-Code zuletzt 54 Terminaltests plus 29 unveränderte erfolgreich geprüfte Adaptertests. Keine Fehler in diesen Prüfungen. Build/Typ-Exitcodes in `metadata/`.

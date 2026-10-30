@@ -29,6 +29,9 @@ export {
 // Built-in Executors
 export {
 	type ApplyPatchExecutorOptions,
+	CommandAbortError,
+	CommandCompletionUnknownError,
+	CommandTimeoutError,
 	CommandExitError,
 	CommandSpawnError,
 	CommandTerminationError,

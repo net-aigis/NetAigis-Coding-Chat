@@ -54,7 +54,8 @@ function detachedCommandMarker(pid: number, processStartToken: string): string {
 
 describe("createShellExecutor", () => {
 	it("runs a simple command and returns stdout", async () => {
-		const shell = createShellExecutor();
+		// Test capture independently of the operator's Bash startup output.
+		const shell = createShellExecutor({ shell: process.platform === "win32" ? undefined : "/bin/sh" });
 		const output = await shell("echo hello", process.cwd(), ctx);
 		expect(output.trim()).toBe("hello");
 	});
@@ -605,8 +606,7 @@ describe("createShellExecutor", () => {
 		// Models emit e.g. { command: "echo hello" } — a full command line in
 		// the object form. Spawning it verbatim fails with ENOENT; it must be
 		// routed through the shell like the string form.
-		const shell = createShellExecutor();
-		const output = await shell({ command: "echo hello" }, process.cwd(), ctx);
+		const output = await createShellExecutor({ shell: process.platform === "win32" ? undefined : "/bin/sh" })({ command: "echo hello" }, process.cwd(), ctx);
 		expect(output.trim()).toBe("hello");
 	});
 

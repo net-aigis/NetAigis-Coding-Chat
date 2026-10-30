@@ -120,6 +120,9 @@ export function setModelToolEnabledGlobally(name: ModelToolName, enabled: boolea
 
 export {
 	CommandExitError,
+	CommandAbortError,
+	CommandCompletionUnknownError,
+	CommandTimeoutError,
 	CommandSpawnError,
 	CommandTerminationError,
 } from "../../../../sdk/packages/core/src/extensions/tools/executors/bash"

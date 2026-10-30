@@ -32,6 +32,9 @@ export {
 } from "./apply-patch";
 export { PATCH_MARKERS, PatchActionType } from "./apply-patch-parser";
 export {
+	CommandAbortError,
+	CommandCompletionUnknownError,
+	CommandTimeoutError,
 	CommandExitError,
 	CommandSpawnError,
 	CommandTerminationError,

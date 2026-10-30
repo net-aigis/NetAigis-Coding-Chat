@@ -93,3 +93,13 @@ aktuelle, belegte Stand steht in [phase3-upstream-v4.1.26.md](phase3-upstream-v4
 - Gesamtauftrag bleibt bis zur geprüften produktiven Installation und den
   echten Funktionstests offen; Android, Learning-Agent, Coding-Agent, Recall,
   Friseer/jimmi und Originalauftragstreue bleiben verbindlich.
+
+
+## Phase 4 gestartet — 2026-10-30T19:47:50+01:00
+
+Priorität 1 in Arbeit. Signalbefund als Sandbox-Effekt mit unverändert bestandenem Test außerhalb eingegrenzt. Vier echte Abbruch-/Timeout-Regressionen vor Patch fehlgeschlagen, nach Patch bestanden. 80 gezielte VS-Code-Tests erfolgreich; abschließende Core-/Typprüfung und Schleifenschutz folgen. Weitere Prioritäten noch nicht begonnen. Details: [phase4-reparatur.md](phase4-reparatur.md).
+
+
+### Phase 4 — geprüfte Terminalkorrektur
+
+Terminal-/Abbruchkorrektur gezielt geprüft: 221 unterschiedliche Tests bestanden, 14 plattformbedingt übersprungen. SDK/Core-Build und Core-/VS-Code-Typprüfung erfolgreich. Priorität 1 bleibt bis zur nachfolgenden Schleifenschutzprüfung in Arbeit.

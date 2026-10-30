@@ -16,12 +16,20 @@ import {
 	zodToJsonSchema,
 } from "@cline/shared";
 import { captureRunCommandsTimeout } from "../../services/telemetry/core-events";
-import { CommandExitError, CommandTerminationError } from "./executors/bash";
+import {
+	CommandAbortError,
+	CommandCompletionUnknownError,
+	CommandExitError,
+	CommandTerminationError,
+	CommandTimeoutError,
+	createRollingCollector,
+} from "./executors/bash";
 import {
 	MAX_COMMAND_OUTPUT_CHARS,
 	MAX_READ_LINES,
 	MAX_READ_OUTPUT_CHARS,
 	MAX_SEARCH_OUTPUT_CHARS,
+	truncateCommandOutput,
 } from "./executors/output-limits";
 import {
 	coalesceOrphanReadRanges,
@@ -177,6 +185,96 @@ function coalesceAdjacentStringHeredocs(
 	return coalesced;
 }
 
+/** Cancel on deadline, then allow a bounded interval for pipe/tree cleanup. */
+async function executeShellCommand(
+	executor: ShellExecutor,
+	command: string | StructuredCommandInput,
+	cwd: string,
+	context: AgentToolContext,
+	timeoutMs: number,
+): Promise<string> {
+	const controller = new AbortController();
+	const stdout = createRollingCollector(MAX_COMMAND_OUTPUT_CHARS);
+	const stderr = createRollingCollector(MAX_COMMAND_OUTPUT_CHARS);
+	let cancellation: "timed_out" | "aborted" | undefined;
+	let grace: ReturnType<typeof setTimeout> | undefined;
+	let rejectForced!: (error: Error) => void;
+	const forced = new Promise<never>((_resolve, reject) => {
+		rejectForced = reject;
+	});
+	const cancellationError = () => {
+		const out = stdout.current();
+		const err = stderr.current();
+		const output = truncateCommandOutput(
+			out.text + (err.text ? `\n[stderr]\n${err.text}` : ""),
+			{
+				totalChars: out.totalChars + err.totalChars,
+			},
+		);
+		return cancellation === "timed_out"
+			? new CommandTimeoutError(timeoutMs, output)
+			: new CommandAbortError(output);
+	};
+	const cancel = (state: "timed_out" | "aborted") => {
+		if (cancellation) return;
+		cancellation = state;
+		controller.abort(
+			state === "timed_out"
+				? new TimeoutError(`Command timed out after ${timeoutMs}ms`, timeoutMs)
+				: context.signal?.reason,
+		);
+		// An executor that ignores cancellation must not block the caller or
+		// claim that its process is gone. Its eventual rejection is still observed.
+		grace = setTimeout(() => rejectForced(cancellationError()), 2000);
+	};
+	const onAbort = () => cancel("aborted");
+	const timer = setTimeout(() => cancel("timed_out"), timeoutMs);
+	context.signal?.addEventListener("abort", onAbort, { once: true });
+	if (context.signal?.aborted) onAbort();
+	try {
+		return await Promise.race([
+			forced,
+			Promise.resolve()
+				.then(() => {
+					if (controller.signal.aborted) throw cancellationError();
+					return executor(command, cwd, {
+						...context,
+						signal: controller.signal,
+						emitUpdate(update) {
+							const value = update as
+								| { stream?: string; chunk?: unknown }
+								| undefined;
+							if (typeof value?.chunk === "string") {
+								(value.stream === "stderr" ? stderr : stdout).append(
+									Buffer.from(value.chunk),
+								);
+							}
+							context.emitUpdate?.(update);
+						},
+					});
+				})
+				.then(
+					(output) => {
+						if (cancellation) throw cancellationError();
+						return output;
+					},
+					(error: unknown) => {
+						if (
+							error instanceof CommandAbortError ||
+							error instanceof CommandTimeoutError
+						)
+							throw error;
+						throw cancellation ? cancellationError() : error;
+					},
+				),
+		]);
+	} finally {
+		clearTimeout(timer);
+		clearTimeout(grace);
+		context.signal?.removeEventListener("abort", onAbort);
+	}
+}
+
 async function executeShellCommands(
 	commands: Array<string | StructuredCommandInput>,
 	options: {
@@ -213,10 +311,12 @@ async function executeShellCommands(
 						}
 					: context;
 				try {
-					const output = await withTimeout(
-						executor(command, cwd, commandContext),
+					const output = await executeShellCommand(
+						executor,
+						command,
+						cwd,
+						commandContext,
 						timeoutMs,
-						`Command timed out after ${timeoutMs}ms`,
 					);
 					return {
 						query,
@@ -234,13 +334,17 @@ async function executeShellCommands(
 					}
 					if (
 						error instanceof CommandExitError ||
-						error instanceof CommandTerminationError
+						error instanceof CommandTerminationError ||
+						error instanceof CommandAbortError ||
+						error instanceof CommandTimeoutError ||
+						error instanceof CommandCompletionUnknownError
 					) {
 						return {
 							query,
 							result: error.output,
 							error: error.message,
 							success: false,
+							execution: error.execution,
 						};
 					}
 					const msg = formatError(error);

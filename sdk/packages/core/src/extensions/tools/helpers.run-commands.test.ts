@@ -1,6 +1,6 @@
 import { zodToJsonSchema } from "@cline/shared";
-import { describe, expect, it } from "vitest";
-import { normalizeRunCommandsInput } from "./helpers";
+import { describe, expect, it, vi } from "vitest";
+import { normalizeRunCommandsInput, withTimeout } from "./helpers";
 import { RunCommandsInputSchema } from "./schemas";
 
 describe("normalizeRunCommandsInput", () => {
@@ -34,5 +34,17 @@ describe("RunCommandsInputSchema", () => {
 			properties: { commands: { minItems?: number } };
 		};
 		expect(schema.properties.commands.minItems).toBe(1);
+	});
+});
+
+describe("tool deadline cleanup", () => {
+	it("releases the timeout after a tool has already settled", async () => {
+		vi.useFakeTimers();
+		try {
+			await expect(withTimeout(Promise.resolve("done"), 30_000, "expired")).resolves.toBe("done");
+			expect(vi.getTimerCount()).toBe(0);
+			await expect(withTimeout(Promise.reject(new Error("failed")), 30_000, "expired")).rejects.toThrow("failed");
+			expect(vi.getTimerCount()).toBe(0);
+		} finally { vi.useRealTimers(); }
 	});
 });

@@ -319,12 +319,14 @@ export async function cleanupStaleDetachedCommandLogs(
 }
 
 export class CommandExitError extends Error {
+	readonly execution: { state: "failed"; exitCode: number };
 	constructor(
 		readonly exitCode: number,
 		readonly output: string,
 	) {
 		super(`Command exited with code ${exitCode}`);
 		this.name = "CommandExitError";
+		this.execution = { state: "failed", exitCode };
 	}
 }
 
@@ -340,12 +342,55 @@ function commandCompletionMessage(
 
 /** The process terminated without a numeric exit code, usually by signal. */
 export class CommandTerminationError extends Error {
+	readonly execution: {
+		state: "terminated" | "unknown";
+		signal: NodeJS.Signals | null;
+	};
 	constructor(
 		readonly signal: NodeJS.Signals | null,
 		readonly output: string,
 	) {
 		super(commandCompletionMessage(null, signal));
 		this.name = "CommandTerminationError";
+		this.execution = { state: signal ? "terminated" : "unknown", signal };
+	}
+}
+
+/** A cancellation request is distinct from an observed numeric exit code. */
+export class CommandAbortError extends Error {
+	readonly execution: { state: "aborted"; terminationConfirmed: boolean };
+	constructor(
+		readonly output: string,
+		terminationConfirmed = false,
+	) {
+		super("Command was aborted");
+		this.name = "AbortError";
+		this.execution = { state: "aborted", terminationConfirmed };
+	}
+}
+
+export class CommandTimeoutError extends TimeoutError {
+	readonly execution: { state: "timed_out"; terminationConfirmed: boolean };
+	constructor(
+		timeoutMs: number,
+		readonly output: string,
+		terminationConfirmed = false,
+	) {
+		super(`Command timed out after ${timeoutMs}ms`, timeoutMs);
+		this.name = "CommandTimeoutError";
+		this.execution = { state: "timed_out", terminationConfirmed };
+	}
+}
+
+/** No exit event is available; never fabricate exit code 1 for this state. */
+export class CommandCompletionUnknownError extends Error {
+	readonly execution = { state: "unknown" as const };
+	constructor(
+		message: string,
+		readonly output: string,
+	) {
+		super(message);
+		this.name = "CommandCompletionUnknownError";
 	}
 }
 
@@ -454,7 +499,7 @@ interface SpawnConfig {
  * Collects stream output with bounded memory: the first half of the budget
  * is kept verbatim, the rest rolls so the latest output always survives.
  */
-function createRollingCollector(maxChars: number) {
+export function createRollingCollector(maxChars: number) {
 	const headLimit = Math.ceil(maxChars / 2);
 	const tailLimit = Math.max(1, maxChars - headLimit);
 	// StringDecoder keeps multibyte UTF-8 sequences split across stream
@@ -725,7 +770,7 @@ function spawnAndCollect(
 	processStartTokenProbe: ProcessStartTokenProbe = probeProcessStartTokenAsync,
 ): Promise<string> {
 	if (context.signal?.aborted) {
-		return Promise.reject(new Error("Command was aborted"));
+		return Promise.reject(new CommandAbortError("", true));
 	}
 	return new Promise((resolve, reject) => {
 		const isWindows = process.platform === "win32";
@@ -817,9 +862,17 @@ function spawnAndCollect(
 		};
 
 		let timeout: NodeJS.Timeout;
-		const abortHandler = () => killAndReject(new Error("Command was aborted"));
+		let cancellation: Error | undefined;
+		let cancellationGrace: NodeJS.Timeout | undefined;
+		const abortHandler = () =>
+			killAndReject(
+				context.signal?.reason instanceof TimeoutError
+					? context.signal.reason
+					: new CommandAbortError(""),
+			);
 		const cleanup = () => {
 			clearTimeout(timeout);
+			clearTimeout(cancellationGrace);
 			if (exitStreamGraceTimer) {
 				clearTimeout(exitStreamGraceTimer);
 			}
@@ -829,9 +882,48 @@ function spawnAndCollect(
 		const killAndReject = (error: Error) => {
 			if (killed || settled) return;
 			killed = true;
+			cancellation = error;
+			clearTimeout(timeout);
+			// Keep collecting until close drains stdout/stderr. Killing the tree
+			// alone does not mean its pipes have delivered the final bytes.
+			cancellationGrace = setTimeout(() => finishCancellation(false), 1500);
+			void killProcessTree().catch(() => undefined);
+		};
+		const finishCancellation = (terminationConfirmed: boolean) => {
+			if (settled || !cancellation) return;
+			const out = stdout.snapshot();
+			const err = stderr.snapshot();
 			progress.stop({ flush: true });
 			cleanup();
-			void killProcessTree().finally(() => settle(() => reject(error)));
+			const text = combineOutput
+				? out.text + (err.text ? `\n[stderr]\n${err.text}` : "")
+				: out.text;
+			const output = truncateCommandOutput(text, {
+				maxChars: maxOutputChars,
+				totalChars: combineOutput
+					? out.totalChars + err.totalChars
+					: out.totalChars,
+			});
+			const error =
+				cancellation instanceof TimeoutError
+					? new CommandTimeoutError(
+							cancellation.timeoutMs,
+							output,
+							terminationConfirmed,
+						)
+					: cancellation instanceof CommandAbortError
+						? new CommandAbortError(output, terminationConfirmed)
+						: new CommandCompletionUnknownError(cancellation.message, output);
+			if (!terminationConfirmed) {
+				child.unref();
+				(
+					child.stdout as typeof child.stdout & { unref?: () => void }
+				)?.unref?.();
+				(
+					child.stderr as typeof child.stderr & { unref?: () => void }
+				)?.unref?.();
+			}
+			settle(() => reject(error));
 		};
 
 		timeout = setTimeout(
@@ -1027,7 +1119,11 @@ function spawnAndCollect(
 		};
 
 		child.on("close", (code, signal) => {
-			if (killed || settledOnExitGrace) return;
+			if (killed) {
+				finishCancellation(true);
+				return;
+			}
+			if (settledOnExitGrace) return;
 
 			const out = stdout.snapshot();
 			const err = stderr.snapshot();

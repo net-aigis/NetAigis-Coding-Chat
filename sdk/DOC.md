@@ -448,8 +448,7 @@ or its inline-byte validation.
 The executor returned by `createShellExecutor` rejects on execution failure.
 The following error classes are exported from `@cline/core` so hosts can
 distinguish process outcomes without parsing messages. They are not an exhaustive
-list of rejections: cancellation, timeout, and stdin-write failures can reject
-with other errors.
+list of rejections; host-specific failures may still reject with other errors.
 
 - `CommandExitError` — the shell started and exited non-zero. `exitCode` is the
   numeric process exit code and `output` contains a completion notice and the
@@ -466,14 +465,24 @@ with other errors.
   when the working directory no longer exists, `missing` records which path was
   absent at failure time: `"executable"` or `"cwd"`. It is `undefined` for every
   other code. `code` itself is `undefined` if the underlying error has no code.
+- `CommandAbortError` — cancellation was requested. `output` retains received
+  output. `execution.terminationConfirmed` is true only after the owned child
+  has closed; a foreground Ctrl+C request alone does not establish that.
+- `CommandTimeoutError` — extends `TimeoutError`, retains `timeoutMs` and
+  `output`, and distinguishes deadline expiry from a numeric process exit.
+  The same termination confirmation rule applies.
+- `CommandCompletionUnknownError` — a host cannot confirm completion, such as
+  when terminal observation is lost. It retains `output` and has no exit code.
 
 The public `run_commands` tool catches executor failures and resolves with
 per-command results containing `success: false`, rather than propagating these
-errors as rejected tool calls. For `CommandExitError` and
-`CommandTerminationError`, the failed result retains `output` in its `result`
-field. For `CommandSpawnError`, `result` is empty and `error` includes the spawn
-failure message. Hosts that need the structured error fields must observe the
-executor rejection before this conversion.
+errors as rejected tool calls. Output-bearing errors retain `output` in `result`.
+The optional `execution` field preserves `state` (`failed`, `terminated`,
+`aborted`, `timed_out`, or `unknown`) and observed exit/signal or termination
+confirmation metadata. For `CommandSpawnError`, `result` is empty and `error`
+includes the spawn failure message. Successful results retain `success: true`.
+Deadlines propagate cancellation to the executor; an executor that ignores it
+is released after a bounded cleanup interval with termination unconfirmed.
 
 Hosts that record command telemetry should label a `CommandSpawnError` by its
 `code` (and `missing`) rather than inventing an exit code. The VS Code and

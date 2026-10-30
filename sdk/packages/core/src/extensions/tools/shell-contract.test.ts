@@ -50,7 +50,7 @@ describe("public shell error boundary", () => {
 				command: process.execPath,
 				args: [
 					"-e",
-					"process.stdout.write('partial output', () => process.kill(process.pid, 'SIGTERM'))",
+					"require('node:fs').writeSync(1, 'partial output'); require('node:fs').writeSync(2, 'partial error'); process.kill(process.pid, 'SIGTERM')",
 				],
 			};
 			const executor = createShellExecutor();
@@ -59,6 +59,10 @@ describe("public shell error boundary", () => {
 			);
 			expect(error).toBeInstanceOf(CommandTerminationError);
 			expect(error).not.toHaveProperty("exitCode");
+			expect(error).toHaveProperty(
+				"output",
+				expect.stringContaining("partial output"),
+			);
 
 			const tool = createBuiltinTools({ cwd: process.cwd() }).find(
 				(candidate) => candidate.name === "run_commands",
@@ -69,9 +73,10 @@ describe("public shell error boundary", () => {
 			).resolves.toEqual([
 				{
 					query: expect.any(String),
-					result: "[Command terminated by signal SIGTERM]\npartial output",
+					result: "[Command terminated by signal SIGTERM]\npartial output\n[stderr]\npartial error",
 					error: "Command terminated by signal SIGTERM",
 					success: false,
+					execution: { state: "terminated", signal: "SIGTERM" },
 				},
 			]);
 		},

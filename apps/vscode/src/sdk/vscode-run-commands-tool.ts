@@ -13,6 +13,9 @@
 
 import {
 	CommandExitError,
+	CommandAbortError,
+	CommandCompletionUnknownError,
+	CommandTerminationError,
 	createShellExecutor,
 	createShellTool,
 	MAX_COMMAND_OUTPUT_CHARS,
@@ -228,6 +231,7 @@ export async function executeForeground(
 	foregroundCommands?: SdkForegroundCommandCoordinator,
 	terminalProfileId?: string,
 ): Promise<string> {
+	if (abortSignal?.aborted) throw new CommandAbortError("", true)
 	const terminalCommand = formatCommandForTerminal(command)
 
 	// "Proceed While Running": register a per-invocation handle so the user can
@@ -320,7 +324,7 @@ export async function executeForeground(
 				// reserved terminal after this tool result settles. Consume it so a
 				// pre-start cancellation cannot leave that terminal permanently busy.
 				void acquisition.then(finishAbortedAcquisition)
-				throw new Error("Command execution aborted")
+				throw new CommandAbortError("")
 			}
 
 			const log = detachedLog
@@ -337,7 +341,7 @@ export async function executeForeground(
 		// the promise continuation was pending.
 		if (state.phase === "aborted") {
 			finishAbortedAcquisition(firstOutcome)
-			throw new Error("Command execution aborted")
+			throw new CommandAbortError("")
 		}
 		if (state.phase === "detached") {
 			const log = detachedLog
@@ -420,10 +424,13 @@ export async function executeForeground(
 			}
 
 			// Wait for completion (or detach, which also resolves the promise)
-			await process
-
-			if (abortSignal?.aborted) {
-				throw new Error("Command execution aborted")
+			let processError: unknown
+			let processRejected = false
+			try {
+				await process
+			} catch (error) {
+				processRejected = true
+				processError = error
 			}
 
 			const bufferedOutput =
@@ -433,6 +440,16 @@ export async function executeForeground(
 			const output = truncateCommandOutput(bufferedOutput.trim(), {
 				maxChars: maxOutputChars,
 			})
+			if (abortSignal?.aborted) {
+				// Ctrl+C is a request, not proof of process termination.
+				throw new CommandAbortError(output)
+			}
+			if (processRejected) {
+				throw new CommandCompletionUnknownError(
+					processError instanceof Error ? processError.message : String(processError),
+					output,
+				)
+			}
 
 			if (detachedLog !== undefined) {
 				return formatDetachedResult(detachedLog.path, output, detachReason ?? "timeout")
@@ -448,7 +465,7 @@ export async function executeForeground(
 					output.length > 0
 						? `[Terminal closed while the command was running; output may be incomplete]\n${output}`
 						: "[Terminal closed while the command was running; no output was captured]"
-				throw new CommandExitError(1, result)
+				throw new CommandCompletionUnknownError("Terminal closed; process outcome is unknown", result)
 			}
 
 			if (completionDetails?.unobservedCommand) {
@@ -461,7 +478,7 @@ export async function executeForeground(
 					output.length > 0
 						? `[Command completion could not be observed; the command may still be running and must not be assumed to have succeeded. ${lifecycle}]\n${output}`
 						: `[Command completion could not be observed; the command may still be running and must not be assumed to have succeeded. ${lifecycle}]`
-				throw new CommandExitError(1, result)
+				throw new CommandCompletionUnknownError("Command completion could not be observed", result)
 			}
 
 			// Plumb the exit code from onDidEndTerminalShellExecution through to the tool
@@ -470,24 +487,23 @@ export async function executeForeground(
 			// `success: false` and includes the exit code in the error message —
 			// matching the background (child_process) executor's behavior.
 			const exitCode = completionDetails?.exitCode
-			if (exitCode === undefined || exitCode === null) {
+			if (completionDetails?.signal) {
+				throw new CommandTerminationError(completionDetails.signal, output)
+			}
+			if (typeof exitCode !== "number" || !Number.isSafeInteger(exitCode)) {
 				// Completion was reported by the read loop but no exit code ever
 				// arrived: VS Code fired neither a CommandFinished (D) marker nor
 				// onDidEndTerminalShellExecution within EXIT_CODE_EVENT_TIMEOUT_MS.
 				// Whether the command succeeded is unknown, and an empty output in
 				// particular must never be read as "the file exists" / "the tests
-				// passed". Report it as a failure with exit code 1 so the agent has
-				// to verify the effect through another channel instead of assuming.
-				const reason =
-					" No exit code was reported for this command, so its completion is unconfirmed."
-				Logger.warn(
-					`[VscodeRunCommands] Completion without exit code for command: ${terminalCommand}`,
-				);
+				// passed". Preserve the unknown state without inventing an exit code.
+				const reason = " No exit code was reported for this command, so its completion is unconfirmed."
+				Logger.warn(`[VscodeRunCommands] Completion without exit code for command: ${terminalCommand}`)
 				const result =
 					output.length > 0
 						? `[Command completion could not be confirmed; no exit code was reported and the command may still be running. Do not assume it succeeded — verify its effect before relying on it.]${reason}\n${output}`
-						: "[Command completion could not be confirmed; no output and no exit code were reported. The command may still be running or may have failed silently. Do not assume it succeeded — verify its effect before relying on it.]";
-				throw new CommandExitError(1, result);
+						: "[Command completion could not be confirmed; no output and no exit code were reported. The command may still be running or may have failed silently. Do not assume it succeeded — verify its effect before relying on it.]"
+				throw new CommandCompletionUnknownError("Command completion is unconfirmed", result)
 			}
 
 			if (exitCode !== 0) {
