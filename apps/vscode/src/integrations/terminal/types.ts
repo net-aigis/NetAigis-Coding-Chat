@@ -27,9 +27,11 @@ export type UnobservedTerminalCommandDisposition = "disposeBeforeNextTerminalAcq
 
 /** Derive cleanup and reporting policy from the same unobserved-command snapshot. */
 export function getUnobservedTerminalCommandDisposition(
-	command: UnobservedTerminalCommand,
+	_command: UnobservedTerminalCommand,
 ): UnobservedTerminalCommandDisposition {
-	return command.source === "sendText" && command.ownership === "managed" ? "disposeBeforeNextTerminalAcquisition" : "preserve"
+	// Loss of observation is never evidence that a process can be destroyed.
+	// A later tool acquisition must preserve possibly active user work.
+	return "preserve"
 }
 
 export interface TerminalCompletionDetails {

@@ -38,7 +38,9 @@ describe("VscodeTerminalManager", () => {
 	let manager: VscodeTerminalManager
 
 	beforeEach(() => {
-		sandbox = sinon.createSandbox({ useFakeTimers: true })
+		sandbox = sinon.createSandbox({
+			useFakeTimers: { toFake: ["setTimeout", "clearTimeout", "Date"], shouldClearNativeTimers: true },
+		})
 		manager = new VscodeTerminalManager()
 	})
 
@@ -382,117 +384,68 @@ describe("VscodeTerminalManager", () => {
 		assert.equal(disposeSpy.calledOnce, true)
 	})
 
-	it("defers fallback terminal disposal until the next terminal acquisition", async () => {
+	it("refuses an unobservable dispatch and preserves its terminal at the next acquisition", async () => {
 		setVscodeHostProviderMock()
 		const terminalInfo = TerminalRegistry.createTerminal()
 		sandbox.stub(terminalInfo.terminal, "shellIntegration").get(() => undefined)
-		sandbox.stub(terminalInfo.terminal, "sendText")
-		const disposeSpy = sandbox.spy(terminalInfo.terminal, "dispose")
-		let nextTerminal: TerminalInfo | undefined
-		let nextManager: VscodeTerminalManager | undefined
-
+		const send = sandbox.stub(terminalInfo.terminal, "sendText")
+		const dispose = sandbox.spy(terminalInfo.terminal, "dispose")
+		let next: TerminalInfo | undefined
 		try {
-			const process = manager.runCommand(
-				terminalInfo as unknown as Parameters<VscodeTerminalManager["runCommand"]>[0],
-				"sleep 999",
+			const running = manager.runCommand(terminalInfo as any, "sleep 999")
+			const rejected = running.then(
+				() => {
+					throw Error("Expected refusal")
+				},
+				(error) => error,
 			)
 			await sandbox.clock.tickAsync(4000)
-			await sandbox.clock.tickAsync(3000)
-			await process
+			assert.equal((await rejected).execution.state, "not_started")
+			assert.equal(send.called, false)
+			assert.equal(TerminalRegistry.getTerminal(terminalInfo.id), undefined)
+			next = (await manager.getOrCreateTerminal("/tmp/cline-next-command")) as unknown as TerminalInfo
+			assert.equal(dispose.called, false)
+		} finally {
+			next?.terminal.dispose()
+			if (next) TerminalRegistry.removeTerminal(next.id)
+			terminalInfo.terminal.dispose()
+		}
+	})
 
-			assert.deepEqual(process.getCompletionDetails?.().unobservedCommand, {
-				source: "sendText",
-				ownership: "managed",
+	for (const ownership of ["managed", "detached", "continued"] as const) {
+		it(`preserves a legacy unobserved ${ownership} execution at the next acquisition`, async () => {
+			setVscodeHostProviderMock()
+			const terminalInfo = TerminalRegistry.createTerminal()
+			sandbox.stub(terminalInfo.terminal, "shellIntegration").get(() => ({ executeCommand() {} }))
+			sandbox.stub(VscodeTerminalProcess.prototype, "run").callsFake(async function (this: VscodeTerminalProcess) {
+				this.emit("unobserved_command", { source: "sendText", ownership })
+				this.emit("continue")
 			})
-			assert.equal(disposeSpy.called, false, "the command must not be killed when the fallback result resolves")
-			assert.equal(TerminalRegistry.getTerminal(terminalInfo.id), undefined, "the terminal must be evicted from reuse")
-
-			nextManager = new VscodeTerminalManager()
-			nextTerminal = (await nextManager.getOrCreateTerminal("/tmp/cline-next-command")) as unknown as TerminalInfo
-			assert.equal(disposeSpy.calledOnce, true, "the next acquisition must reclaim the fallback terminal")
-		} finally {
-			nextManager?.disposeAll()
-			nextTerminal?.terminal.dispose()
-			if (nextTerminal) {
-				TerminalRegistry.removeTerminal(nextTerminal.id)
-			}
-			if (!disposeSpy.called) {
+			const dispose = sandbox.spy(terminalInfo.terminal, "dispose")
+			let next: TerminalInfo | undefined
+			try {
+				await manager.runCommand(terminalInfo as any, "legacy execution")
+				next = (await manager.getOrCreateTerminal("/tmp/cline-next-command")) as unknown as TerminalInfo
+				assert.equal(dispose.called, false)
+				assert.equal(TerminalRegistry.getTerminal(terminalInfo.id), undefined)
+			} finally {
+				next?.terminal.dispose()
+				if (next) TerminalRegistry.removeTerminal(next.id)
 				terminalInfo.terminal.dispose()
-				TerminalRegistry.removeTerminal(terminalInfo.id)
 			}
-		}
-	})
-
-	it("preserves a detached fallback terminal across the next terminal acquisition", async () => {
-		setVscodeHostProviderMock()
-		const terminalInfo = TerminalRegistry.createTerminal()
-		sandbox.stub(terminalInfo.terminal, "shellIntegration").get(() => undefined)
-		sandbox.stub(terminalInfo.terminal, "sendText")
-		const disposeSpy = sandbox.spy(terminalInfo.terminal, "dispose")
-		let nextTerminal: TerminalInfo | undefined
-
-		try {
-			const process = manager.runCommand(
-				terminalInfo as unknown as Parameters<VscodeTerminalManager["runCommand"]>[0],
-				"sleep 999",
-			)
-			const unobservedCommand = new Promise<void>((resolve) => process.once("unobserved_command", () => resolve()))
-			process.detach()
-			await sandbox.clock.tickAsync(4000)
-			await sandbox.clock.tickAsync(3000)
-			await unobservedCommand
-
-			nextTerminal = (await manager.getOrCreateTerminal("/tmp/cline-next-command")) as unknown as TerminalInfo
-			assert.equal(disposeSpy.called, false, "Proceed While Running transfers terminal ownership to the user")
-			assert.equal(TerminalRegistry.getTerminal(terminalInfo.id), undefined, "detached terminals must not be reused")
-		} finally {
-			nextTerminal?.terminal.dispose()
-			if (nextTerminal) {
-				TerminalRegistry.removeTerminal(nextTerminal.id)
-			}
-			terminalInfo.terminal.dispose()
-			TerminalRegistry.removeTerminal(terminalInfo.id)
-		}
-	})
-
-	it("preserves a continued fallback terminal across the next terminal acquisition", async () => {
-		setVscodeHostProviderMock()
-		const terminalInfo = TerminalRegistry.createTerminal()
-		sandbox.stub(terminalInfo.terminal, "shellIntegration").get(() => undefined)
-		sandbox.stub(terminalInfo.terminal, "sendText")
-		const disposeSpy = sandbox.spy(terminalInfo.terminal, "dispose")
-		let nextTerminal: TerminalInfo | undefined
-
-		try {
-			const process = manager.runCommand(
-				terminalInfo as unknown as Parameters<VscodeTerminalManager["runCommand"]>[0],
-				"sleep 999",
-			)
-			const unobservedCommand = new Promise<void>((resolve) => process.once("unobserved_command", () => resolve()))
-			process.continue()
-			await sandbox.clock.tickAsync(4000)
-			await sandbox.clock.tickAsync(3000)
-			await unobservedCommand
-
-			nextTerminal = (await manager.getOrCreateTerminal("/tmp/cline-next-command")) as unknown as TerminalInfo
-			assert.equal(disposeSpy.called, false, "stopping the wait relinquishes cleanup ownership")
-			assert.equal(TerminalRegistry.getTerminal(terminalInfo.id), undefined, "continued terminals must not be reused")
-		} finally {
-			nextTerminal?.terminal.dispose()
-			if (nextTerminal) {
-				TerminalRegistry.removeTerminal(nextTerminal.id)
-			}
-			terminalInfo.terminal.dispose()
-			TerminalRegistry.removeTerminal(terminalInfo.id)
-		}
-	})
+		})
+	}
 
 	it("preserves a markerless shell-integration terminal across the next terminal acquisition", async () => {
 		setVscodeHostProviderMock()
 		const terminalInfo = TerminalRegistry.createTerminal()
-		sandbox.stub(terminalInfo.terminal, "shellIntegration").get(() => ({
-			executeCommand: () => ({ read: createMarkerlessStream }),
-		}))
+		const execution = { read: createMarkerlessStream }
+		let end: ((event: vscode.TerminalShellExecutionEndEvent) => unknown) | undefined
+		sandbox.stub(vscode.window, "onDidEndTerminalShellExecution").callsFake((listener) => {
+			end = listener
+			return { dispose() {} }
+		})
+		sandbox.stub(terminalInfo.terminal, "shellIntegration").get(() => ({ executeCommand: () => execution }))
 		const disposeSpy = sandbox.spy(terminalInfo.terminal, "dispose")
 		let nextTerminal: TerminalInfo | undefined
 
@@ -502,6 +455,9 @@ describe("VscodeTerminalManager", () => {
 				"remote-command",
 			)
 			await sandbox.clock.tickAsync(15_000)
+			assert.equal(terminalInfo.busy, true)
+			end?.({ terminal: terminalInfo.terminal, execution, exitCode: undefined } as vscode.TerminalShellExecutionEndEvent)
+			await sandbox.clock.tickAsync(250)
 			await process
 
 			assert.deepEqual(process.getCompletionDetails?.().unobservedCommand, {

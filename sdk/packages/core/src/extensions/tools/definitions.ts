@@ -19,6 +19,7 @@ import { captureRunCommandsTimeout } from "../../services/telemetry/core-events"
 import {
 	CommandAbortError,
 	CommandCompletionUnknownError,
+	CommandNotStartedError,
 	CommandExitError,
 	CommandTerminationError,
 	CommandTimeoutError,
@@ -337,7 +338,8 @@ async function executeShellCommands(
 						error instanceof CommandTerminationError ||
 						error instanceof CommandAbortError ||
 						error instanceof CommandTimeoutError ||
-						error instanceof CommandCompletionUnknownError
+						error instanceof CommandCompletionUnknownError ||
+						error instanceof CommandNotStartedError
 					) {
 						return {
 							query,

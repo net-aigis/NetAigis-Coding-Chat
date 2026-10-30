@@ -142,3 +142,8 @@ Abschluss der ersten Korrektur: `p1-core-final` 138/138 ausführbar, 14 überspr
 ### Phase 4 — Schleifenschutz
 
 `p1-wait-red`: 2 Fehler vor Korrektur. `p1-loop-final`: 98/98 erfolgreich; `p1-wait-build` und `p1-loop-types` Exit 0. Die Batch-Prüfung bestand bereits vor der zusätzlichen Wartegruppierung und wird als Bestätigung, nicht als behobener Fehler geführt.
+
+
+### Phase 4 — Terminalbeobachtung und tatsächliche Laufzeiten
+
+`terminal-host-probe/measurement.json` belegt 3,117s-Werkzeugrückgabe bei fünf noch aktiven Prozessen ohne Shell-Integration, danach Verlust beim Folgeaufruf; kein erfundener Exitcode. `terminal-host-contract-final/measurement.json`: alle fünf tatsächlichen Laufzeiten 30/40/45/60/90s und API-/Shell-Code 0, Folgeaufruf überlebt. `p1-terminal-host-contract-final` Exit 0, 46/46 Mocha; `p1-terminal-final-corrected` 95/95; `p1-core-observation-final` 138 bestanden/14 Skips; `p1-background-deadline-fixed` 6/6. Rote Tests und fehlgeschlagene Testumgebungen bleiben erhalten. SDK-Build sowie Core-/VS-Code-Typprüfung erfolgreich. Geprüftes Manifest `SHA256SUMS.p1-terminal-observation`: 82 Einträge, SHA256 `b0e2f609c686e183c96b8076af236bf08d26e2a6de7d2d8d58179d00fb3c0451`. Details im Phase-4-Bericht.

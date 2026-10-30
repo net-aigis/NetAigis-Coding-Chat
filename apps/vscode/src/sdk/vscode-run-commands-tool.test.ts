@@ -247,8 +247,8 @@ function createControllableTerminalProcess() {
 	return {
 		process: fakeProcess as unknown as ReturnType<VscodeTerminalManager["runCommand"]>,
 		emitLine: (line: string) => emitter.emit("line", line),
-		complete: (details?: TerminalCompletionDetails) => {
-			completionDetails = details ?? {}
+		complete: (details: TerminalCompletionDetails = { exitCode: 0 }) => {
+			completionDetails = details
 			emitter.emit("completed", details)
 			emitter.emit("continue")
 			resolvePromise()
@@ -261,7 +261,10 @@ function createControllableUnobservedTerminalProcess() {
 	const controlled = createControllableTerminalProcess()
 	return {
 		...controlled,
-		completeUnobserved: () => controlled.complete({ unobservedCommand: { source: "sendText", ownership: "detached" } }),
+		completeUnobserved: () => {
+			// Loss of observation no longer emits the process-completed event.
+			controlled.process.emit("unobserved_command", { source: "sendText", ownership: "detached" })
+		},
 	}
 }
 
@@ -350,6 +353,13 @@ describe("executeForeground", () => {
 		await expect(executeForeground("fixture", "/workspace", createFakeTerminalManager(process), 1000)).rejects.toBeInstanceOf(
 			CommandCompletionUnknownError,
 		)
+	})
+
+	it("distinguishes an observation failure from an unconfirmed process exit", async () => {
+		const process = createRejectedTerminalProcess(new Error("stream failed"))
+		await expect(executeForeground("fixture", "/workspace", createFakeTerminalManager(process), 1000)).rejects.toMatchObject({
+			execution: { state: "unknown", observationFailed: true },
+		})
 	})
 
 	it.each([Number.NaN, Number.POSITIVE_INFINITY])("does not report %s as a real exit code", async (exitCode) => {
@@ -516,7 +526,7 @@ describe("executeForeground", () => {
 				"must not be assumed to have succeeded",
 			)
 			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain(
-				"The terminal remains open for now, but starting another foreground command will attempt to close it",
+				"The terminal has been left open and will not be closed automatically",
 			)
 			expect((error as InstanceType<typeof CommandCompletionUnknownError>).output).toContain("partial output")
 		}
@@ -791,7 +801,9 @@ describe("executeForeground — Proceed While Running", () => {
 		fail(new Error("stream failed"))
 		await waitFor(() => {
 			try {
-				return fs.readFileSync(logFilePath!, "utf8").includes("[Command failed after detaching: stream failed]")
+				return fs
+					.readFileSync(logFilePath!, "utf8")
+					.includes("[Terminal observation failed; process outcome is unknown: stream failed]")
 			} catch {
 				return false
 			}
@@ -822,7 +834,9 @@ describe("executeForeground — Proceed While Running", () => {
 		fail(new Error("stream failed after cap"))
 		await waitFor(() => {
 			try {
-				return fs.readFileSync(logFilePath!, "utf8").includes("[Command failed after detaching: stream failed after cap]")
+				return fs
+					.readFileSync(logFilePath!, "utf8")
+					.includes("[Terminal observation failed; process outcome is unknown: stream failed after cap]")
 			} catch {
 				return false
 			}
@@ -872,8 +886,8 @@ describe("executeForeground — Proceed While Running", () => {
 		await waitFor(() => {
 			try {
 				return (
-					fs.readFileSync(firstLog!, "utf8").includes("[Command completed]") &&
-					fs.readFileSync(secondLog!, "utf8").includes("[Command completed]")
+					fs.readFileSync(firstLog!, "utf8").includes("[Command completed with exit code 0]") &&
+					fs.readFileSync(secondLog!, "utf8").includes("[Command completed with exit code 0]")
 				)
 			} catch {
 				return false
@@ -1173,7 +1187,7 @@ describe("executeForeground — Proceed While Running", () => {
 		await waitFor(() =>
 			logFilePaths.every((logFilePath) => {
 				try {
-					return fs.readFileSync(logFilePath!, "utf8").includes("[Command completed]")
+					return fs.readFileSync(logFilePath!, "utf8").includes("[Command completed with exit code 0]")
 				} catch {
 					return false
 				}

@@ -74,6 +74,8 @@ export enum TerminalOutputFailureReason {
 	NO_SHELL_INTEGRATION = "no_shell_integration",
 	/** The terminal was closed while the command was still running. */
 	TERMINAL_CLOSED = "terminal_closed",
+	/** Observation ended without an authoritative command exit code. */
+	OBSERVATION_ENDED = "observation_ended",
 }
 
 /**

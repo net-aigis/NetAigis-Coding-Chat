@@ -473,16 +473,30 @@ list of rejections; host-specific failures may still reject with other errors.
   The same termination confirmation rule applies.
 - `CommandCompletionUnknownError` — a host cannot confirm completion, such as
   when terminal observation is lost. It retains `output` and has no exit code.
+  `execution.observationFailed` distinguishes a failed observer from an end
+  event that simply did not provide a confirmed exit code.
+- `CommandNotStartedError` — dispatch was refused before starting any command,
+  for example because a foreground terminal has no completion channel.
 
 The public `run_commands` tool catches executor failures and resolves with
 per-command results containing `success: false`, rather than propagating these
 errors as rejected tool calls. Output-bearing errors retain `output` in `result`.
 The optional `execution` field preserves `state` (`failed`, `terminated`,
-`aborted`, `timed_out`, or `unknown`) and observed exit/signal or termination
+`aborted`, `timed_out`, `unknown`, or `not_started`) and observed exit/signal or termination
 confirmation metadata. For `CommandSpawnError`, `result` is empty and `error`
 includes the spawn failure message. Successful results retain `success: true`.
 Deadlines propagate cancellation to the executor; an executor that ignores it
 is released after a bounded cleanup interval with termination unconfirmed.
+
+VS Code foreground completion requires the matching shell-execution end event
+and a valid numeric exit code. Prompt text, silence, stream exhaustion and raw
+D markers do not establish completion. Unknown commands are evicted from reuse
+but their terminals are preserved. Without shell integration the foreground
+adapter refuses dispatch; users can select the existing direct-process
+background mode. Both VS Code modes share the existing one-hour command budget,
+including the background executor's own deadline. Explicit shorter deadlines
+are honored. A 250ms output-drain grace starts only after the end event; it
+cannot turn a running command into a completed one.
 
 Hosts that record command telemetry should label a `CommandSpawnError` by its
 `code` (and `missing`) rather than inventing an exit code. The VS Code and

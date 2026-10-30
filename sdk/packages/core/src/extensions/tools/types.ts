@@ -35,7 +35,14 @@ export interface ToolOperationResult {
 	success: boolean;
 	/** Observed command outcome. Missing exit events must never invent a code. */
 	execution?: {
-		state: "failed" | "terminated" | "aborted" | "timed_out" | "unknown";
+		state:
+			| "failed"
+			| "terminated"
+			| "aborted"
+			| "timed_out"
+			| "unknown"
+			| "not_started";
+		observationFailed?: boolean;
 		exitCode?: number;
 		signal?: NodeJS.Signals | null;
 		terminationConfirmed?: boolean;

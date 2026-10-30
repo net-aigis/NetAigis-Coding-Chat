@@ -15,6 +15,7 @@ import {
 	CommandExitError,
 	CommandAbortError,
 	CommandCompletionUnknownError,
+	CommandNotStartedError,
 	CommandTerminationError,
 	createShellExecutor,
 	createShellTool,
@@ -48,8 +49,10 @@ import { isStandaloneHost } from "./vscode-terminal-execution-mode"
 type ShellCommand = string | StructuredCommandInput
 type VscodeTerminalExecutionMode = "vscodeTerminal" | "backgroundExec"
 
-/** Foreground VS Code terminals cannot be forcibly terminated; give long-running commands room to finish. */
-export const VSCODE_FOREGROUND_RUN_COMMANDS_TIMEOUT_MS = 60 * 60 * 1000
+/** One command budget for the wrapper and either execution mode. */
+export const VSCODE_RUN_COMMANDS_TIMEOUT_MS = 60 * 60 * 1000
+/** Existing callers may continue using the foreground-specific name. */
+export const VSCODE_FOREGROUND_RUN_COMMANDS_TIMEOUT_MS = VSCODE_RUN_COMMANDS_TIMEOUT_MS
 
 /** Release the agent turn if a foreground command is still running after 300 seconds. */
 export const FOREGROUND_COMMAND_AUTO_PROCEED_MS = 300 * 1000
@@ -69,7 +72,7 @@ export interface VscodeRunCommandsToolOptions {
 	cwd: string
 	/** Lazy factory for the VscodeTerminalManager. Called once on first foreground use. */
 	getTerminalManager: () => VscodeTerminalManager
-	/** Timeout passed to the SDK shell tool wrapper and timeout telemetry. */
+	/** Shared deadline for the SDK wrapper, direct child executor and telemetry. */
 	bashTimeoutMs?: number
 	/** Terminal execution mode captured when this session's tool set is built. */
 	vscodeTerminalExecutionMode?: VscodeTerminalExecutionMode
@@ -181,16 +184,23 @@ function createDetachedCommandLog(terminalCommand: string, existingLines: string
 						? "[Terminal closed while the command was running; output may be incomplete]"
 						: details?.unobservedCommand
 							? "[Command completion could not be observed; the command may still be running]"
-							: exitCode !== undefined && exitCode !== null
+							: typeof exitCode === "number" && Number.isSafeInteger(exitCode)
 								? `[Command completed with exit code ${exitCode}]`
-								: "[Command completed]",
+								: "[Command completion unconfirmed; no exit code was reported]",
 				)
 			}
-			const onError = (error: Error): void => end(`[Command failed after detaching: ${error.message}]`)
+			const onError = (error: Error): void =>
+				end(
+					error instanceof CommandNotStartedError
+						? `[Command not started: ${error.message}]`
+						: `[Terminal observation failed; process outcome is unknown: ${error.message}]`,
+				)
+			const onUnobserved = (): void => end("[Command completion could not be observed; the command may still be running]")
 			removeAttachedListeners = () => {
 				process.removeListener("line", onLine)
 				process.removeListener("completed", onCompleted)
 				process.removeListener("error", onError)
+				process.removeListener("unobserved_command", onUnobserved)
 			}
 			if (sizeCapReached) {
 				tryWriteLine(sizeCapMessage)
@@ -199,6 +209,7 @@ function createDetachedCommandLog(terminalCommand: string, existingLines: string
 			}
 			process.once("completed", onCompleted)
 			process.once("error", onError)
+			process.once("unobserved_command", onUnobserved)
 		},
 		fail: (error) => {
 			const message = error instanceof Error ? error.message : String(error)
@@ -445,9 +456,11 @@ export async function executeForeground(
 				throw new CommandAbortError(output)
 			}
 			if (processRejected) {
+				if (processError instanceof CommandNotStartedError) throw processError
 				throw new CommandCompletionUnknownError(
 					processError instanceof Error ? processError.message : String(processError),
 					output,
+					true,
 				)
 			}
 
@@ -491,9 +504,7 @@ export async function executeForeground(
 				throw new CommandTerminationError(completionDetails.signal, output)
 			}
 			if (typeof exitCode !== "number" || !Number.isSafeInteger(exitCode)) {
-				// Completion was reported by the read loop but no exit code ever
-				// arrived: VS Code fired neither a CommandFinished (D) marker nor
-				// onDidEndTerminalShellExecution within EXIT_CODE_EVENT_TIMEOUT_MS.
+				// Observation ended without a confirmed numeric exit code.
 				// Whether the command succeeded is unknown, and an empty output in
 				// particular must never be read as "the file exists" / "the tests
 				// passed". Preserve the unknown state without inventing an exit code.
@@ -563,6 +574,7 @@ function takeShellSnapshot(): ShellSnapshot {
  * one carrying these tool results) and used by the commands it produces.
  */
 export function createVscodeRunCommandsTool(options: VscodeRunCommandsToolOptions): AgentTool {
+	options = { ...options, bashTimeoutMs: options.bashTimeoutMs ?? VSCODE_RUN_COMMANDS_TIMEOUT_MS }
 	const state = { snapshot: takeShellSnapshot() }
 	return createShellTool(createVscodeShellExecutor(options, state), {
 		cwd: options.cwd,
@@ -600,6 +612,7 @@ function createVscodeShellExecutor(options: VscodeRunCommandsToolOptions, state:
 				bgExecutorShell = shell
 				bgExecutor = createShellExecutor({
 					shell,
+					timeoutMs: options.bashTimeoutMs,
 					// Set SHELL env to match the shell we're spawning so child
 					// processes see the correct value instead of the inherited parent's.
 					env: { SHELL: shell },

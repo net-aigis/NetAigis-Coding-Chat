@@ -98,3 +98,97 @@ getrennt von Coding-Agent und Learning-Agent. Cline erhält keine zusätzliche
 KI-Überwachungsarchitektur. Originalbranch, produktive Erweiterung und Dienste
 dürfen nicht verändert werden. Eigene produktive Installation bleibt das
 spätere Endziel nach Abnahme, Rückfallvorbereitung und echten Funktionstests.
+
+
+## Ergänzende Priorität 1: gemessene vorzeitige Rückgabe
+
+Die spätere Benutzerbeobachtung erweitert den zuvor abgeschlossenen gezielten
+Befund; die Commits `1c5db6c56` und `6b098bcff` bleiben erhalten.
+Die echte VS-Code-Vorhermessung nutzt **keine Shell-Integration**:
+`VscodeTerminalProcess.run` startet über `sendText`, wartet 3000ms und emittiert
+fälschlich `completed`. Alle fünf Aufrufe kehren nach 3,117s ab Werkzeugaufruf
+zurück (3,139–3,142s auf der gemeinsamen Messuhr). Die fünf Prozesse leben
+zu diesem Zeitpunkt noch. Nach der nächsten Terminalakquisition sind sie
+spätestens bei der Kontrolle 500ms später verschwunden; kein Enddatensatz und
+kein bestätigter Exitcode liegen vor. Der genaue Todeszeitpunkt und ein
+Signal/Exitcode dürfen daraus nicht erfunden werden. Dank der früheren
+Korrektur sind die Werkzeugergebnisse bereits `success: false`, obwohl das
+interne Completed-Ereignis noch falsch war.
+
+Der Markerless-Prompt-Pfad ist als zweiter Quellcodefehler abgesichert, aber
+nicht als Ursache dieser Vorhermessung ausgegeben. Weder Prompt-Klassifikation
+noch Leerlauf oder Stream-Ende bestätigen jetzt den Prozessabschluss. Nur
+das passende Shell-Execution-Endereignis mit gültigem numerischem Exitcode
+führt zu `completed`. Fehlender Code bleibt unbekannt; ein D-Marker wird nicht
+als Ersatz befördert. Ein Stream-Fehler trägt zusätzlich
+`execution.observationFailed`. Terminals unbekannter Ausführungen werden aus
+der Wiederverwendung entfernt und beim Folgeaufruf nicht zerstört.
+
+Ohne verfügbaren Abschlusskanal wird **vor dem Start** mit `not_started`
+abgewiesen. Es erfolgt kein stiller Wechsel vom möglicherweise entfernten
+Terminal auf einen lokalen Prozess. Der vorhandene Background-Exec-Modus
+bleibt ausdrücklich auswählbar. Beide VS-Code-Modi und ihr innerer Executor
+verwenden dasselbe bestehende Stundenbudget; explizite kürzere Budgets gelten
+weiter. Der neue echte Background-Rotlauf `sleep 40` scheitert am alten
+30-Sekunden-Limit; danach bestehen alle fünf Laufzeiten sowie ein kurzer
+Timeout mit erhaltener Ausgabe (6/6). Der erste Rotlauf nutzte versehentlich
+den No-op-Testadapter und belegt keinen Prozessfehler; sein Protokoll bleibt
+erhalten, der korrigierte Rotlauf heißt `p1-background-deadline-red-real`.
+
+Zwei zusätzliche rote Tests belegen verlorene spät auslaufende Ausgabe und
+einen fälschlich übernommenen D-Code. Eine 250ms-Auslaufgrenze startet nun erst
+**nach** dem wirklichen Endereignis und beendet keinen laufenden Prozess.
+Abgetrennte Ausgaben enden auch bei `unobserved_command` mit einem ausdrücklich
+unbekannten Status statt mit Completed. Dieser neue Ereignisvertrag wurde
+separat rot und grün getestet.
+
+### Echte abschließende VS-Code-Messung
+
+Private Test-Erweiterung und Profile, eigener Xvfb, keine Installation oder
+Änderung produktiver Dienste/Benutzerprofile. Echter Terminal-Manager,
+TerminalProcess und öffentlicher Foreground-Executor; Telemetrie, Clipboard
+und fachfremde Speicherinitialisierung im Test isoliert. Prozessstart und
+-ende stammen aus geschützten Messdateien des tatsächlich gestarteten
+`/bin/sleep`-Kindes; API-Exitcodes werden unabhängig erfasst.
+Der Folgeaufruf erfolgt nach 4,506s, während alle fünf Prozesse laufen.
+Alle bleiben danach aktiv. Bei Werkzeugrückgabe sind alle beendet, API und
+Shell-Wait bestätigen jeweils Code 0. Werkzeugzeit enthält Terminalstart.
+
+| sleep s | Start Unix-ns | Ende Unix-ns | echte Laufzeit s | Werkzeugrückgabe nach s | API-Code | Folgeaufruf überlebt |
+|---|---|---|---|---|---|---|
+| 30 | 1793389589141534821 | 1793389619143878150 | 30.002343 | 31.678921 | 0 | ja |
+| 40 | 1793389589155120068 | 1793389629157215653 | 40.002096 | 41.689871 | 0 | ja |
+| 45 | 1793389589218062787 | 1793389634219487305 | 45.001425 | 46.749772 | 0 | ja |
+| 60 | 1793389589190191446 | 1793389649197989571 | 60.007798 | 61.734609 | 0 | ja |
+| 90 | 1793389589238794787 | 1793389679245230590 | 90.006436 | 91.780496 | 0 | ja |
+
+Nachweis: `terminal-host-contract-final/measurement.json`;
+`p1-terminal-host-contract-final` Exit 0. Zusätzlich 46/46 bestehende
+Mocha-Terminal-/Managerprüfungen, 95/95 gezielte Adapterprüfungen,
+138/138 Coreprüfungen mit 14 Windows-/PowerShell-Skips. Der zuvor ausgeführte
+SDK-Gesamtbuild und die VS-Code-Typprüfung sind erfolgreich. Frühere
+Host-Prüfversuche bleiben nachvollziehbar: zunächst falscher Default-Import im
+privaten Transpile-Adapter; danach fehlte dessen realen Einzelprozess-Tests
+der tatsächliche Start-Leseaufruf des Managers (44/46). Mit diesem Bestandteil
+bestehen 46/46. Keine Fehlversuche wurden gelöscht oder als Erfolg gewertet.
+
+Bei einem Prüfaufruf wurde irrtümlich das übergeordnete `build`-Skript statt
+`build:sdk` gestartet. Es entfernte generierte dist-/node_modules-Verzeichnisse
+im Reparatur-Worktree; danach scheiterte die Installation an der Sandbox.
+Die Entwicklungsabhängigkeiten wurden mit unverändertem Lockfile,
+`--ignore-scripts` und einer lokalen Kopie des vorhandenen Phase-3-Caches
+wiederhergestellt; `build:sdk` besteht erneut. Git zeigt keine dadurch gelöschten
+versionierten Dateien. Original-Arbeitsverzeichnis und produktive Installation
+sind nicht Ziel dieses Skripts gewesen und wurden nicht verändert.
+
+Ablageprüfung: Ergebnisse zuerst direkt im Chat, keine Bereinigung.
+217343 Verzeichnisse / 1783987 Dateien über Metadaten; 15700 ausgewählte
+Textdateien inhaltlich; 42 Git-Markierungen, 33 Statusabfragen erfolgreich.
+Grenzen und ungeklärte Herkunft sind im Chat ausdrücklich benannt.
+Keine Namen/Zeitstempel als KI-Beweis. Keine neue Sicherung angelegt.
+
+Prüfmanifest: `SHA256SUMS.p1-terminal-observation`, SHA256 `b0e2f609c686e183c96b8076af236bf08d26e2a6de7d2d8d58179d00fb3c0451`.
+Die weitere Core-Typprüfung wird mit ihrem tatsächlichen Ergebnis ergänzt.
+Priorität 2–5 und die produktive Abnahme sind hiermit nicht als erledigt erklärt.
+
+Ergänzung nach Prüfabschluss: `p1-core-observation-types` Exit 0. Das obige Manifest mit 82 Einträgen wurde mit `sha256sum -c --quiet` tatsächlich geprüft (Exit 0). Der auf den echten Executor umgestellte Testadapter wurde nach seiner Typkorrektur zusätzlich durch den kurzen Timeout-Fall geprüft. Priorität 1 ist mit den oben genannten begrenzten Prüfungen abgeschlossen; keine produktive Abnahme.

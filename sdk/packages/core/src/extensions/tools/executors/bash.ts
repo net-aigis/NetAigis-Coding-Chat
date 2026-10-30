@@ -384,13 +384,30 @@ export class CommandTimeoutError extends TimeoutError {
 
 /** No exit event is available; never fabricate exit code 1 for this state. */
 export class CommandCompletionUnknownError extends Error {
-	readonly execution = { state: "unknown" as const };
+	readonly execution: { state: "unknown"; observationFailed?: true };
 	constructor(
 		message: string,
 		readonly output: string,
+		observationFailed = false,
 	) {
 		super(message);
 		this.name = "CommandCompletionUnknownError";
+		this.execution = {
+			state: "unknown",
+			...(observationFailed ? { observationFailed: true as const } : {}),
+		};
+	}
+}
+
+/** Dispatch was refused before any command was launched. */
+export class CommandNotStartedError extends Error {
+	readonly execution = { state: "not_started" as const };
+	constructor(
+		message: string,
+		readonly output = "",
+	) {
+		super(message);
+		this.name = "CommandNotStartedError";
 	}
 }
 

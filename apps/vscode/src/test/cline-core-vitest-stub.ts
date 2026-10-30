@@ -122,6 +122,7 @@ export {
 	CommandExitError,
 	CommandAbortError,
 	CommandCompletionUnknownError,
+	CommandNotStartedError,
 	CommandTimeoutError,
 	CommandSpawnError,
 	CommandTerminationError,
@@ -130,6 +131,8 @@ export {
 export function createShellExecutor() {
 	return async () => ""
 }
+// Opt-in for integration regressions that must observe real child processes.
+export { createShellExecutor as createProcessShellExecutor } from "../../../../sdk/packages/core/src/extensions/tools/executors/bash"
 
 export { augmentMcpTimeoutError } from "../../../../sdk/packages/core/src/extensions/mcp/timeout"
 // The real createShellTool, so tests exercise the actual description

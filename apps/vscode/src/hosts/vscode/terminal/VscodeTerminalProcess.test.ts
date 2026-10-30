@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, it } from "mocha"
-import { EXIT_CODE_EVENT_TIMEOUT_MS } from "@/integrations/terminal/constants"
+import pWaitFor from "p-wait-for"
 import { setVscodeHostProviderMock } from "@/test/host-provider-test-utils"
 import "should"
 import * as sinon from "sinon"
 import * as vscode from "vscode"
 import * as getLatestOutputModule from "./get-latest-output"
 import { VscodeTerminalProcess } from "./VscodeTerminalProcess"
+import { VscodeTerminalManager } from "./VscodeTerminalManager"
 import { TerminalRegistry } from "./VscodeTerminalRegistry"
 
 // Create a mock stream for simulating terminal output - this is only used for tests
@@ -58,14 +59,30 @@ describe("TerminalProcess (Integration Tests)", () => {
 	let process: VscodeTerminalProcess
 	let sandbox: sinon.SinonSandbox
 	let createdTerminals: vscode.Terminal[] = []
+	let endListener: ((event: vscode.TerminalShellExecutionEndEvent) => unknown) | undefined
+
+	function stubEndEvent() {
+		sandbox.stub(vscode.window, "onDidEndTerminalShellExecution").callsFake((listener) => {
+			endListener = listener
+			return { dispose: () => {} }
+		})
+	}
+
+	async function completeMockExecution(terminal: vscode.Terminal, exitCode: number | undefined) {
+		await sandbox.clock.tickAsync(0)
+		const execute = terminal.shellIntegration!.executeCommand as sinon.SinonStub
+		endListener?.({ terminal, execution: execute.lastCall.returnValue, exitCode } as vscode.TerminalShellExecutionEndEvent)
+		await sandbox.clock.tickAsync(250)
+	}
 
 	beforeEach(() => {
-		sandbox = sinon.createSandbox({ useFakeTimers: true })
+		sandbox = sinon.createSandbox()
 		setVscodeHostProviderMock()
 		process = new VscodeTerminalProcess()
 	})
 
 	afterEach(() => {
+		process.releaseActiveExecutionResources()
 		// Restore sandbox, which restores timers and all Sinon fakes
 		sandbox.restore()
 		// Remove any event listeners left on the TerminalProcess
@@ -78,22 +95,25 @@ describe("TerminalProcess (Integration Tests)", () => {
 	})
 
 	describe("Real terminal tests", () => {
-		// This test works with or without shell integration
+		let observer: VscodeTerminalManager
+		beforeEach(() => {
+			observer = new VscodeTerminalManager()
+		})
+		afterEach(() => {
+			observer.disposeAll()
+		})
+		// These commands require an authoritative shell-integration channel.
 		it("should create and run a command in a real terminal", async () => {
 			// Create a real VS Code terminal for testing
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
+			await pWaitFor(() => Boolean(terminal.shellIntegration), { interval: 50, timeout: 15_000 })
 
 			// Spy on emit to verify behavior
 			const emitSpy = sandbox.spy(process, "emit")
 
 			// Run a simple command
 			const runPromise = process.run(terminal, "echo test")
-
-			// If terminal doesn't have shell integration, advance timer
-			if (!terminal.shellIntegration) {
-				await sandbox.clock.tickAsync(3000)
-			}
 
 			await runPromise
 
@@ -106,17 +126,13 @@ describe("TerminalProcess (Integration Tests)", () => {
 			// Create a real VS Code terminal
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
+			await pWaitFor(() => Boolean(terminal.shellIntegration), { interval: 50, timeout: 15_000 })
 
 			// Spy on emit to verify line events
 			const emitSpy = sandbox.spy(process, "emit")
 
 			// Run a command that produces predictable output
 			const runPromise = process.run(terminal, "echo 'Line 1' && echo 'Line 2'")
-
-			// If terminal doesn't have shell integration, advance timer
-			if (!terminal.shellIntegration) {
-				await sandbox.clock.tickAsync(3000)
-			}
 
 			await runPromise
 
@@ -129,17 +145,13 @@ describe("TerminalProcess (Integration Tests)", () => {
 			// Create a real VS Code terminal
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
+			await pWaitFor(() => Boolean(terminal.shellIntegration), { interval: 50, timeout: 15_000 })
 
 			// Spy on emit to verify behavior
 			const emitSpy = sandbox.spy(process, "emit")
 
 			// Run a command that lists files
 			const runPromise = process.run(terminal, "ls -la")
-
-			// If terminal doesn't have shell integration, advance timer
-			if (!terminal.shellIntegration) {
-				await sandbox.clock.tickAsync(3000)
-			}
 
 			await runPromise
 
@@ -152,12 +164,10 @@ describe("TerminalProcess (Integration Tests)", () => {
 			// Create a real terminal
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
+			await pWaitFor(() => Boolean(terminal.shellIntegration), { interval: 50, timeout: 15_000 })
 
 			// Spy on emit to verify behavior
 			const emitSpy = sandbox.spy(process, "emit")
-
-			// Un-fake timers temporarily for this test since we need real timing
-			sandbox.clock.restore()
 
 			// Run a command that sleeps for a short period
 			await process.run(terminal, "sleep 0.5 && echo 'Done sleeping'")
@@ -165,26 +175,19 @@ describe("TerminalProcess (Integration Tests)", () => {
 			// Verify that the continue and completed events were emitted
 			;(emitSpy as sinon.SinonSpy).calledWith("continue").should.be.true()
 			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-
-			// Restore fake timers for other tests
-			sandbox.useFakeTimers()
 		})
 
 		it("should execute a command with arguments", async () => {
 			// Create a real VS Code terminal
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
+			await pWaitFor(() => Boolean(terminal.shellIntegration), { interval: 50, timeout: 15_000 })
 
 			// Spy on emit to verify line events
 			const emitSpy = sandbox.spy(process, "emit")
 
 			// Run a command that produces predictable output
 			const runPromise = process.run(terminal, "echo 'Line 1' 'Line 2'")
-
-			// If terminal doesn't have shell integration, advance timer
-			if (!terminal.shellIntegration) {
-				await sandbox.clock.tickAsync(3000)
-			}
 
 			await runPromise
 
@@ -197,17 +200,13 @@ describe("TerminalProcess (Integration Tests)", () => {
 			// Create a real VS Code terminal
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
+			await pWaitFor(() => Boolean(terminal.shellIntegration), { interval: 50, timeout: 15_000 })
 
 			// Spy on emit to verify line events
 			const emitSpy = sandbox.spy(process, "emit")
 
 			// Run a command that produces predictable output
 			const runPromise = process.run(terminal, "echo \"Line 1\" && echo 'Line 2'")
-
-			// If terminal doesn't have shell integration, advance timer
-			if (!terminal.shellIntegration) {
-				await sandbox.clock.tickAsync(3000)
-			}
 
 			await runPromise
 
@@ -217,43 +216,27 @@ describe("TerminalProcess (Integration Tests)", () => {
 		})
 	})
 
-	// Test that specifically checks for no shell integration
-	it("should handle terminals without shell integration", async () => {
-		// Create a real terminal without explicitly providing shell integration
+	it("refuses dispatch when shell integration cannot observe completion", async () => {
 		const terminal = vscode.window.createTerminal({ name: "Test Terminal" })
 		createdTerminals.push(terminal)
-
-		// Stub the shellIntegration getter to return undefined for this test
 		sandbox.stub(terminal, "shellIntegration").get(() => undefined)
-
-		// Stub the sendText method to verify it's called
 		const sendTextStub = sandbox.stub(terminal, "sendText")
-
-		// Spy on the emit function to verify events
+		const errors: Error[] = []
+		process.on("error", (error) => errors.push(error))
 		const emitSpy = sandbox.spy(process, "emit")
-
-		// Run the command - this returns a promise
-		const runPromise = process.run(terminal, "test-command")
-
-		// Advance the fake timer by 3 seconds to trigger the setTimeout
-		await sandbox.clock.tickAsync(3000)
-
-		// Now wait for the promise to resolve
-		await runPromise
-
-		// Check that the correct methods were called and events emitted
-		sendTextStub.calledWith("test-command", true).should.be.true()
-		;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-		;(emitSpy as sinon.SinonSpy).calledWith("continue").should.be.true()
-
-		;(emitSpy as sinon.SinonSpy)
-			.calledWith("unobserved_command", { source: "sendText", ownership: "managed" })
-			.should.be.true()
-		process.getCompletionDetails().unobservedCommand?.should.eql({ source: "sendText", ownership: "managed" })
+		await process.run(terminal, "test-command")
+		sendTextStub.called.should.be.false()
+		errors.length.should.equal(1)
+		;(errors[0] as any).execution.state.should.equal("not_started")
+		;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
 	})
 
 	// The following tests require shell integration and controlled terminal output
 	describe("Shell integration tests", () => {
+		beforeEach(() => {
+			sandbox.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"], shouldClearNativeTimers: true })
+			stubEndEvent()
+		})
 		// We'll mock the terminal run process and TerminalProcess for these tests
 		it("should emit completed and continue events when command finishes", async () => {
 			// Create a terminal to ensure proper interface, but we'll use mocking under the hood
@@ -278,7 +261,7 @@ describe("TerminalProcess (Integration Tests)", () => {
 
 			// Run the command
 			const runPromise = process.run(terminal, "echo test")
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise
 
 			// Verify the executeCommand was called with the right command
@@ -299,18 +282,12 @@ describe("TerminalProcess (Integration Tests)", () => {
 			const mockExecuteCommand = sandbox.stub().returns(mockExecution)
 			sandbox.stub(terminal, "shellIntegration").get(() => ({ executeCommand: mockExecuteCommand }))
 
-			let endListener: ((e: vscode.TerminalShellExecutionEndEvent) => unknown) | undefined
-			sandbox.stub(vscode.window, "onDidEndTerminalShellExecution").callsFake((listener) => {
-				endListener = listener
-				return { dispose: () => {} }
-			})
-
 			const runPromise = process.run(terminal, "echo test")
 			// Fire the end event with a conflicting exit code before the stream
 			// finishes draining — the process must still prefer it over the D
 			// marker's exitCode: 0 once the stream completes.
 			endListener?.({ terminal, execution: mockExecution, exitCode: 1 } as unknown as vscode.TerminalShellExecutionEndEvent)
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise
 
 			process.getCompletionDetails().exitCode?.should.equal(1)
@@ -324,18 +301,13 @@ describe("TerminalProcess (Integration Tests)", () => {
 			const mockExecuteCommand = sandbox.stub().returns(mockExecution)
 			sandbox.stub(terminal, "shellIntegration").get(() => ({ executeCommand: mockExecuteCommand }))
 
-			let endListener: ((e: vscode.TerminalShellExecutionEndEvent) => unknown) | undefined
-			sandbox.stub(vscode.window, "onDidEndTerminalShellExecution").callsFake((listener) => {
-				endListener = listener
-				return { dispose: () => {} }
-			})
-
 			const emitSpy = sandbox.spy(process, "emit")
 			const runPromise = process.run(terminal, "echo test")
 			await sandbox.clock.tickAsync(0)
 
 			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
 			endListener?.({ terminal, execution: mockExecution, exitCode: 0 } as unknown as vscode.TerminalShellExecutionEndEvent)
+			await sandbox.clock.tickAsync(250)
 			await runPromise
 
 			;(emitSpy as sinon.SinonSpy).calledWith("line", "test output").should.be.true()
@@ -344,31 +316,29 @@ describe("TerminalProcess (Integration Tests)", () => {
 			process.getCompletionDetails().exitCode?.should.equal(0)
 		})
 
-		it("falls back to no exit code when onDidEndTerminalShellExecution never fires", async () => {
+		it("keeps a finished stream unconfirmed until its end event, without trusting a raw D code", async () => {
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
-
-			const mockExecution = { read: () => createMockStreamWithMarkers(["test output"], "echo test") }
-			const mockExecuteCommand = sandbox.stub().returns(mockExecution)
-			sandbox.stub(terminal, "shellIntegration").get(() => ({ executeCommand: mockExecuteCommand }))
-
-			// Event is registered but deliberately never invoked, simulating
-			// shell integration that is present but not reporting completion
-			// for this execution (e.g. a command run inside an ssh session).
-			sandbox.stub(vscode.window, "onDidEndTerminalShellExecution").callsFake(() => ({ dispose: () => {} }))
-
-			const runPromise = process.run(terminal, "echo test")
-			await sandbox.clock.tickAsync(EXIT_CODE_EVENT_TIMEOUT_MS + 1000)
-			await runPromise
-
-			// D marker in createMockStreamWithMarkers reports exit code 0, and
-			// with no competing event, that D-marker value is used.
-			process.getCompletionDetails().exitCode?.should.equal(0)
+			const execution = { read: () => createMockStreamWithMarkers(["test output"]) }
+			sandbox.stub(terminal, "shellIntegration").get(() => ({ executeCommand: sandbox.stub().returns(execution) }))
+			const emitSpy = sandbox.spy(process, "emit")
+			const running = process.run(terminal, "echo test")
+			await sandbox.clock.tickAsync(10_000)
+			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
+			endListener?.({ terminal, execution, exitCode: undefined } as unknown as vscode.TerminalShellExecutionEndEvent)
+			await sandbox.clock.tickAsync(250)
+			await running
+			;(process.getCompletionDetails().exitCode === undefined).should.be.true()
+			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
 		})
 	})
 
 	// Tests with controlled output
 	describe("Controlled output tests", () => {
+		beforeEach(() => {
+			sandbox.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"], shouldClearNativeTimers: true })
+			stubEndEvent()
+		})
 		it("should emit line events for each line of output", async () => {
 			// Create a terminal
 			const terminal = TerminalRegistry.createTerminal().terminal
@@ -387,7 +357,7 @@ describe("TerminalProcess (Integration Tests)", () => {
 			const emitSpy = sandbox.spy(process, "emit")
 
 			const runPromise = process.run(terminal, "test-command")
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise
 
 			// Check that line events were emitted for each line
@@ -415,7 +385,7 @@ describe("TerminalProcess (Integration Tests)", () => {
 			const setTimeoutSpy = sandbox.spy(global, "setTimeout")
 
 			const runPromise = process.run(terminal, "build command")
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise
 
 			// Move time forward enough to schedule
@@ -444,7 +414,7 @@ describe("TerminalProcess (Integration Tests)", () => {
 			const setTimeoutSpy = sandbox.spy(global, "setTimeout")
 
 			const runPromise = process.run(terminal, "standard command")
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise
 			sandbox.clock.tick(100)
 
@@ -454,7 +424,7 @@ describe("TerminalProcess (Integration Tests)", () => {
 
 			const emitSpy = sandbox.spy(process, "emit")
 			const runPromise2 = process.run(terminal, "another command")
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise2
 			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
 		})
@@ -483,7 +453,7 @@ describe("TerminalProcess (Integration Tests)", () => {
 			const emitSpy = sandbox.spy(process, "emit")
 
 			const runPromise = process.run(terminal, "test-command")
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise
 
 			// Output after C should be emitted
@@ -516,7 +486,7 @@ describe("TerminalProcess (Integration Tests)", () => {
 			const emitSpy = sandbox.spy(process, "emit")
 
 			const runPromise = process.run(terminal, "npm run build")
-			await sandbox.clock.tickAsync(3000)
+			await completeMockExecution(terminal, 0)
 			await runPromise
 
 			// The command echo should be excluded; the rest (after C) should be emitted
@@ -526,215 +496,94 @@ describe("TerminalProcess (Integration Tests)", () => {
 		})
 	})
 
-	// Markerless fallback: shell integration is attached but not emitting OSC 633
-	// markers, e.g. because the user ssh'd from this terminal so commands execute
-	// in a remote shell. The read() stream never ends on its own; the process
-	// must complete via the idle/prompt heuristics instead of hanging.
+	// Quiet streams and prompt-shaped output are never proof of process exit.
 	describe("Markerless shell integration (ssh) tests", () => {
-		function stubHangingShellIntegration(terminal: vscode.Terminal, chunks: string[]) {
-			const mockExecuteCommand = sandbox.stub().returns({
-				read: () => createHangingStream(chunks),
-			})
-			sandbox.stub(terminal, "shellIntegration").get(() => ({
-				executeCommand: mockExecuteCommand,
-			}))
+		beforeEach(() => {
+			sandbox.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"], shouldClearNativeTimers: true })
+			stubEndEvent()
+		})
+		function stubExecution(terminal: vscode.Terminal, stream: AsyncIterable<string>) {
+			const execute = sandbox.stub().returns({ read: () => stream })
+			sandbox.stub(terminal, "shellIntegration").get(() => ({ executeCommand: execute }))
 		}
 
-		it("should complete when output goes quiet on a shell prompt", async () => {
-			const terminal = TerminalRegistry.createTerminal().terminal
-			createdTerminals.push(terminal)
-
-			// Remote output ending with a prompt line; no C/D markers anywhere.
-			stubHangingShellIntegration(terminal, ["remote output\n", "user@remote:~$ "])
-
-			const emitSpy = sandbox.spy(process, "emit")
-			const runPromise = process.run(terminal, "ls")
-
-			// First idle check happens after the post-data idle timeout (3s);
-			// the buffered text ends with a prompt so the process completes.
-			// Add slack for the exit-code race (EXIT_CODE_EVENT_TIMEOUT_MS) that
-			// follows the loop.
-			await sandbox.clock.tickAsync(15_000)
-			await runPromise
-			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-			;(emitSpy as sinon.SinonSpy).calledWith("continue").should.be.true()
-			// The buffered pre-C output is emitted as fallback output
-			;(emitSpy as sinon.SinonSpy).calledWith("line", "remote output").should.be.true()
-			// The terminal must be evicted from the reuse pool
-			;(emitSpy as sinon.SinonSpy)
-				.calledWith("unobserved_command", { source: "markerlessShellIntegration", ownership: "managed" })
-				.should.be.true()
-		})
-
-		it("should complete after the max quiet time even without a prompt", async () => {
-			const terminal = TerminalRegistry.createTerminal().terminal
-			createdTerminals.push(terminal)
-
-			// Output that never looks like a prompt.
-			stubHangingShellIntegration(terminal, ["output without prompt\n"])
-
-			const emitSpy = sandbox.spy(process, "emit")
-			const runPromise = process.run(terminal, "some-command")
-
-			// 30s max quiet time in 3s idle increments, plus the exit-code race
-			// (EXIT_CODE_EVENT_TIMEOUT_MS) after the loop.
-			await sandbox.clock.tickAsync(45_000)
-			await runPromise
-			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-			;(emitSpy as sinon.SinonSpy).calledWith("continue").should.be.true()
-			;(emitSpy as sinon.SinonSpy)
-				.calledWith("unobserved_command", { source: "markerlessShellIntegration", ownership: "managed" })
-				.should.be.true()
-		})
-
-		it("should complete when no data ever arrives", async () => {
-			const terminal = TerminalRegistry.createTerminal().terminal
-			createdTerminals.push(terminal)
-
-			// Stream that yields nothing at all.
-			stubHangingShellIntegration(terminal, [])
-
-			const emitSpy = sandbox.spy(process, "emit")
-			const runPromise = process.run(terminal, "some-command")
-
-			// First-data timeout is 10s; quiet time then accumulates in 10s
-			// steps up to the 30s cap. Add slack for the exit-code race.
-			await sandbox.clock.tickAsync(60_000)
-			await runPromise
-			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-			;(emitSpy as sinon.SinonSpy).calledWith("continue").should.be.true()
-		})
-
-		it("should not apply idle completion once the C marker is seen", async () => {
-			const terminal = TerminalRegistry.createTerminal().terminal
-			createdTerminals.push(terminal)
-
-			// C marker arrives, then output, then a long silence before the
-			// command finishes — a long-running command with working shell
-			// integration. The idle fallback must NOT fire during the silence.
-			const mockExecuteCommand = sandbox.stub().returns({
-				read: () => ({
-					async *[Symbol.asyncIterator]() {
-						yield OSC633_C
-						yield "build started\n"
-						await new Promise((resolve) => setTimeout(resolve, 120_000))
-						yield "build finished\n"
-						yield OSC633_D
-					},
-				}),
+		for (const chunks of [["remote output\n", "user@remote:~$ "], ["output without prompt\n"], []]) {
+			it(`keeps ${JSON.stringify(chunks)} pending through prolonged silence`, async () => {
+				const terminal = TerminalRegistry.createTerminal().terminal
+				createdTerminals.push(terminal)
+				stubExecution(terminal, createHangingStream(chunks))
+				const emitSpy = sandbox.spy(process, "emit")
+				const running = process.run(terminal, "remote command")
+				await sandbox.clock.tickAsync(90_000)
+				;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
+				await completeMockExecution(terminal, undefined)
+				await running
+				;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
+				process.getCompletionDetails().unobservedCommand?.ownership.should.equal("managed")
 			})
-			sandbox.stub(terminal, "shellIntegration").get(() => ({
-				executeCommand: mockExecuteCommand,
-			}))
+		}
 
+		it("retains output across a long silent interval after the C marker", async () => {
+			const terminal = TerminalRegistry.createTerminal().terminal
+			createdTerminals.push(terminal)
+			stubExecution(terminal, {
+				async *[Symbol.asyncIterator]() {
+					yield OSC633_C + "build started\n"
+					await new Promise((resolve) => setTimeout(resolve, 120_000))
+					yield "build finished\n" + OSC633_D
+				},
+			})
 			const emitSpy = sandbox.spy(process, "emit")
-			const runPromise = process.run(terminal, "slow-build")
-
-			// 120s internal sleep, plus the exit-code race (EXIT_CODE_EVENT_TIMEOUT_MS)
-			// after the stream ends — this test's mock never fires
-			// onDidEndTerminalShellExecution, so the race always times out.
-			await sandbox.clock.tickAsync(120_000 + EXIT_CODE_EVENT_TIMEOUT_MS + 1_000)
-			await runPromise
+			const running = process.run(terminal, "slow-build")
+			await sandbox.clock.tickAsync(120_000)
+			await completeMockExecution(terminal, 0)
+			await running
 			;(emitSpy as sinon.SinonSpy).calledWith("line", "build started").should.be.true()
 			;(emitSpy as sinon.SinonSpy).calledWith("line", "build finished").should.be.true()
 			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-			// Shell integration worked — the terminal stays reusable
-			;(emitSpy as sinon.SinonSpy).calledWith("unobserved_command").should.be.false()
 		})
 
-		it("should report a silent command with the C marker as a success, not a capture failure", async () => {
+		it("accepts a confirmed silent success without clipboard fallback", async () => {
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
-
-			// A command that completes with exit 0 and no output — $null,
-			// git add -A on a clean tree. The C marker proves the read() stream
-			// worked, so the emptiness is genuine (GitHub #13272).
-			const mockExecuteCommand = sandbox.stub().returns({
-				read: () => createMockStream([OSC633_C, OSC633_D]),
-			})
-			sandbox.stub(terminal, "shellIntegration").get(() => ({
-				executeCommand: mockExecuteCommand,
-			}))
-
-			// If the capture-failure fallback fired, it would read the terminal
-			// snapshot and emit a "could not be captured" line.
-			const snapshotStub = sandbox.stub(getLatestOutputModule, "getLatestTerminalOutput").resolves("should-not-be-used")
+			stubExecution(terminal, createMockStream([OSC633_C, OSC633_D]))
+			const snapshotStub = sandbox.stub(getLatestOutputModule, "getLatestTerminalOutput").resolves("unrelated")
 			const emitSpy = sandbox.spy(process, "emit")
-			const runPromise = process.run(terminal, "$null")
-
-			// The mock never fires onDidEndTerminalShellExecution, so the
-			// exit-code race after the stream ends always times out.
-			await sandbox.clock.tickAsync(EXIT_CODE_EVENT_TIMEOUT_MS + 1_000)
-			await runPromise
-
+			const running = process.run(terminal, "$null")
+			await completeMockExecution(terminal, 0)
+			await running
 			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-			;(emitSpy as sinon.SinonSpy).calledWith("continue").should.be.true()
-			// The only permitted "line" event is the empty start-of-output
-			// notification the UI spinner relies on — no content, and critically
-			// no "could not be captured" fallback message, may be emitted.
-			const lineEvents = (emitSpy as sinon.SinonSpy).args
-				.filter(([event]) => event === "line")
-				.map(([, line]) => String(line ?? ""))
-			lineEvents.every((line) => line === "").should.be.true()
-			;(emitSpy as sinon.SinonSpy).calledWith("unobserved_command").should.be.false()
-			;(snapshotStub as sinon.SinonStub).called.should.be.false()
+			snapshotStub.called.should.be.false()
 		})
 
-		it("should still use the terminal snapshot fallback when neither markers nor output arrive", async () => {
+		it("does not read a terminal snapshot merely because no data arrives", async () => {
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
-
-			// No C marker ever arrives, so an empty output cannot be trusted as
-			// a silent success — the capture-failure fallback must still fire.
-			stubHangingShellIntegration(terminal, [])
-
-			const snapshotStub = sandbox
-				.stub(getLatestOutputModule, "getLatestTerminalOutput")
-				.resolves("terminal snapshot content")
+			stubExecution(terminal, createHangingStream([]))
+			const snapshotStub = sandbox.stub(getLatestOutputModule, "getLatestTerminalOutput").resolves("snapshot")
 			const emitSpy = sandbox.spy(process, "emit")
-			const runPromise = process.run(terminal, "some-command")
-
-			// No data ever: the first idle timeout (10s) with prompt-stepped
-			// idle checks up to the 30s cap. Add slack for the exit-code race.
-			await sandbox.clock.tickAsync(60_000)
-			await runPromise
-
-			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
-			// The fallback message must reach the agent with the snapshot.
-			const fallbackLines = (emitSpy as sinon.SinonSpy).args
-				.filter(([event]) => event === "line")
-				.map(([, line]) => String(line))
-			fallbackLines.should.matchAny(/could not be captured through shell integration/)
-			fallbackLines.should.matchAny(/terminal snapshot content/)
-			;(snapshotStub as sinon.SinonStub).called.should.be.true()
+			const running = process.run(terminal, "remote command")
+			await sandbox.clock.tickAsync(90_000)
+			snapshotStub.called.should.be.false()
+			await completeMockExecution(terminal, undefined)
+			await running
+			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
+			snapshotStub.called.should.be.true()
 		})
 
-		it("should complete when the terminal closes mid-command", async () => {
+		it("ends observation on terminal closure without reporting process completion", async () => {
 			const terminal = TerminalRegistry.createTerminal().terminal
 			createdTerminals.push(terminal)
-
-			stubHangingShellIntegration(terminal, ["partial output\n"])
-
-			// onDidCloseTerminal is driven by real pty shutdown IO, which fake
-			// timers cannot advance — use real timers for this test.
+			stubExecution(terminal, createHangingStream(["partial output\n"]))
 			sandbox.clock.restore()
-
 			const emitSpy = sandbox.spy(process, "emit")
-			const runPromise = process.run(terminal, "some-command")
-
-			// Let the first chunk arrive, then close the terminal. The close
-			// event must interrupt the (otherwise never-ending) stream read.
+			const running = process.run(terminal, "remote command")
 			await new Promise((resolve) => setTimeout(resolve, 100))
 			terminal.dispose()
-			await runPromise
-			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.true()
+			await running
+			;(emitSpy as sinon.SinonSpy).calledWith("completed").should.be.false()
 			;(emitSpy as sinon.SinonSpy).calledWith("continue").should.be.true()
-			// A terminal closed mid-command must be distinguishable from a normal
-			// completion — callers must not treat this as command success.
 			process.getCompletionDetails().terminalClosed?.should.be.true()
-
-			// Restore fake timers for other tests
-			sandbox.useFakeTimers()
 		})
 	})
 

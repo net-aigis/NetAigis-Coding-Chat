@@ -31,6 +31,7 @@ export {
 	type ApplyPatchExecutorOptions,
 	CommandAbortError,
 	CommandCompletionUnknownError,
+	CommandNotStartedError,
 	CommandTimeoutError,
 	CommandExitError,
 	CommandSpawnError,

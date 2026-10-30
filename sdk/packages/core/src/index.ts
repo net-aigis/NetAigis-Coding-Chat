@@ -1002,6 +1002,7 @@ export {
 	type BuiltinToolAvailabilityContext,
 	CommandAbortError,
 	CommandCompletionUnknownError,
+	CommandNotStartedError,
 	CommandTimeoutError,
 	CommandExitError,
 	CommandSpawnError,

@@ -237,10 +237,8 @@ export class VscodeTerminalManager {
 		process.once("unobserved_command", (outcome) => {
 			Logger.log(`unobserved_command (${outcome.source}) received for terminal ${vscodeTerminalInfo.id}`)
 			this.evictTerminal(vscodeTerminalInfo)
-			// Markerless streams (for example, an SSH session) and commands Cline no
-			// longer owns remain open. Ordinary managed sendText fallbacks are
-			// reclaimed at the next acquisition, after this tool result can report
-			// that their completion is indeterminate.
+			// Every unobserved execution is preserved, including legacy sendText
+			// outcomes. A later acquisition is not permission to destroy it.
 			if (getUnobservedTerminalCommandDisposition(outcome) === "disposeBeforeNextTerminalAcquisition") {
 				TerminalRegistry.queueTerminalForCleanup(vscodeTerminalInfo)
 			}

@@ -123,3 +123,25 @@ Frühere Einträge bleiben unverändert als historische Aufträge erhalten.
 ## Phase 4 — Benutzerauftrag vom 30.10.2026, erfasst 2026-10-30T19:47:50+01:00
 
 Phase 4 ist freigegeben: Priorität 1 Terminal/Signal/Timeout/Exitcodes/Ausgabe/Schleifenschutz; danach Priorität 2 Kontext, Originalauftrag und Sitzungsfortsetzung; Priorität 3 vorhandenes TOTAL RECALL mit Retry-Outbox, Browser, echter Wiederherstellung, Friseer/jimmi und Schreibzuständigkeit; Priorität 4 Schnittstellen der getrennten Acer-Dienste; Priorität 5 Android auf derselben laufenden Sitzung. Gezielte Regression nach jeder Korrektur und eigenständige Commits. Keine Wiederholung der Phasen 1–3, kein Eingriff in Originalbranch, Installation oder produktive Dienste. Watchdog separat außerhalb Cline. Vollständige fortgeltende Grenzen und Nachweise: [phase4-reparatur.md](phase4-reparatur.md).
+
+
+## Phase 4 — weitere verbindliche Benutzerkorrekturen vom 30.10.2026
+
+Die beobachteten 3–4 Sekunden betreffen `sleep 30`, `40`, `45`, `60` und
+`90`. Für alle Laufzeiten tatsächlichen Start, Werkzeugrückgabe, Ende,
+Prozessstatus und bestätigten Exitcode erfassen; einen Folgeaufruf auf
+Prozessabbruch prüfen. Beobachtungsfrist und Prozessende trennen. Ohne
+Bestätigung weder Completed noch künstlicher Exitcode, weder Wiederverwendung
+noch automatische Zerstörung des möglicherweise aktiven Terminals. Beide
+3000-ms-Pfade prüfen; den benutzten Pfad anhand echter Protokolle belegen.
+Background-Exec darf nicht durch ein zweites kurzes Zeitbudget abgeschnitten
+werden. Kein bloßes Verlängern des 3-Sekunden-Timers. Commit `1c5db6c56` erhalten.
+
+Zusatzauftrag Ablageprüfung: alle relevanten und versteckten Verzeichnisse
+unter `/home/friseer`, Git-Zustände, Sicherungsmanifeste und belegbare
+KI-Entstehungsprotokolle lesen. Keine Herkunft aus Namen/Zeitstempeln erfinden.
+Vier Klassen mit Nachweisen und vorgeschlagenem Ziel direkt im Chat ausgeben;
+Grenzen und fehlende Berechtigungen nennen. Keine Bereinigung oder neuen
+Sicherungsordner. Prüfung im zugänglichen Bereich durchgeführt und Ergebnisse
+zuerst im Chat ausgegeben; keine Bereinigung vorgenommen oder freigegeben.
+Phase 4 und sämtliche bisherigen Arbeiten bleiben erhalten.
