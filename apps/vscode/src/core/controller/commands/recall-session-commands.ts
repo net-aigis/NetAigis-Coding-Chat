@@ -1,193 +1,139 @@
-/**
- * TotalRecallSessionCommands - VS Code Command Palette integration for TOTAL RECALL session discovery and restore
- */
-
-// biome-ignore-all plugin: direct vscode usage acceptable for TOTAL RECALL new feature
+/** VS Code entry points for the existing TOTAL RECALL journal. */
+// biome-ignore-all plugin: VS Code owns command registration and browser panels.
 import * as vscode from "vscode"
+import { getRecallConfigManager, getRecallConfiguration } from "@/sdk/recall-config-manager"
+import { drainRecallOutbox } from "@/sdk/recall-outbox"
+import { renderRecallSessionBrowser } from "@/sdk/recall-session-browser"
+import { TotalRecallSessionHost } from "@/sdk/recall-session-host"
 import { Logger } from "@/shared/services/Logger"
-import type { RecallConfiguration } from "@/sdk/recall-outbox"
 
-export interface RecallSessionInfo {
-	conversationId: string
-	title?: string
-	projectId: string
-	actorId: string
-	lastUpdated?: string
-	sessionCount?: number
-	lockedBy?: string
-	lockExpiresAt?: string
-}
-
-const RECALL_VIEW_ID = "recall-session-view"
 let recallPanel: vscode.WebviewPanel | undefined
-let recallViewProvider: RecallSessionViewProvider | undefined
-
-export class RecallSessionViewProvider implements vscode.WebviewViewProvider {
-	constructor(private readonly extensionUri: vscode.Uri) {}
-
-	async resolveWebviewView(
-		webviewView: vscode.WebviewView,
-		context: vscode.WebviewViewResolveContext,
-		_token: vscode.CancellationToken,
-	): Promise<void> {
-		this._view = webviewView
-		webviewView.webview.options = { enableScripts: true }
-		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview)
-
-		webviewView.webview.onDidReceiveMessage(async (message) => {
-			switch (message.command) {
-				case "list-sessions":
-					await listTotalRecallSessions()
-					break
-				case "restore-session":
-					await restoreTotalRecallSession(message.conversationId)
-					break
-				case "takeover-session":
-					await takeOverSession(message.conversationId)
-					break
-				case "refresh-config":
-					await handleRefreshConfig()
-					break
-			}
-		}, undefined)
-	}
-
-	private _view?: vscode.WebviewView
-	protected get view(): vscode.WebviewView | undefined {
-		return this._view
-	}
-
-	private _getHtmlForWebview(webview: vscode.Webview): string {
-		return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><title>TOTAL RECALL</title>
-<style>body{font-family:var(--vscode-font-family);padding:10px;background:var(--vscode-editor-background);color:var(--vscode-foreground)}h1{border-bottom:1px solid var(--vscode-panel-border);padding-bottom:5px}.list{list-style:none;padding:0}.item{margin:8px 0;padding:10px;background:var(--vscode-editor-inactiveSelectionBackground);border-radius:4px;cursor:pointer}.meta{font-size:12px;color:var(--vscode-descriptionForeground)}.badge{display:inline-block;padding:2px 6px;background:#c95a5a;border-radius:3px;margin-left:8px;font-size:10px;color:white}.buttons{margin-top:8px}button{padding:4px 8px;margin-right:4px;cursor:pointer;background:var(--vscode-button-background);color:var(--vscode-button-foreground);border:none;border-radius:2px;font-size:12px}</style>
-</head><body><h1>TOTAL RECALL - Session Browser</h1><ul class="list" id="list"></ul>
-<script>const vscode=acquireVsCodeApi();function render(data){const l=document.getElementById('list');l.innerHTML='';if(!data||!data.length){l.innerHTML='<li>No sessions found</li>';return}data.forEach(s=>{const li=document.createElement('li');li.className='item';const title=s.title||s.conversationId;const locked=s.lockedBy?' (LOCKED)':'';const meta='<span class="meta">ID:'+s.conversationId+'|'+s.projectId+'</span>';const btns='<div class="buttons"><button onclick="vscode.postMessage({command:\'restore\',id:\''+s.conversationId+'\'})">Restore</button><button onclick="vscode.postMessage({command:\'takeover\',id:\''+s.conversationId+'\'})">Take Over</button></div>';li.innerHTML='<div><b>'+title+locked+'</b><br/>'+meta+btns+'</div>';l.appendChild(li)})}window.addEventListener('message',e=>{const d=e.data;if(d.cmd==='render'){render(d.sessions);status('OK','success')}else if(d.cmd==='msg'){status(d.msg,d.type||'info');}})function status(m,t){setTimeout(()=>{},1000)};window.refresh=()=>vscode.postMessage({command:'list'})</script></body></html>`
-	}
+async function host(): Promise<TotalRecallSessionHost> {
+	const config = await getRecallConfiguration()
+	if (!config?.enabled) throw new Error("TOTAL RECALL ist nicht konfiguriert oder deaktiviert")
+	const client = new TotalRecallSessionHost(getRecallConfiguration)
+	await client.initialize(config)
+	return client
 }
-
-export function registerTotalRecallCommands(context: vscode.ExtensionContext): vscode.Disposable[] {
-	const disposables: vscode.Disposable[] = []
-	recallViewProvider = new RecallSessionViewProvider(context.extensionUri)
-	context.subscriptions.push(vscode.window.registerWebviewViewProvider(RECALL_VIEW_ID, recallViewProvider))
-	disposables.push(vscode.commands.registerCommand("cline.recall.listSessions", openRecallSessionView))
-	disposables.push(vscode.commands.registerCommand("cline.recall.quickPick", quickPickRecallSession))
-	Logger.info("[TOTAL RECALL] Commands registered")
+async function showError(): Promise<void> {
+	Logger.error("[TOTAL RECALL] Browser operation failed; no successful restore or takeover was reported")
+	const message = "TOTAL RECALL konnte die Aktion nicht bestätigen. Konfiguration, Verbindung und geschützte Outbox prüfen."
+	await recallPanel?.webview.postMessage({ cmd: "msg", msg: message })
+	await vscode.window.showErrorMessage(message)
+}
+export function registerTotalRecallCommands(_context: vscode.ExtensionContext): vscode.Disposable[] {
+	const disposables = [
+		vscode.commands.registerCommand("cline.recall.listSessions", openRecallSessionView),
+		vscode.commands.registerCommand("cline.recall.quickPick", quickPickRecallSession),
+		vscode.commands.registerCommand("cline.recall.configure", configureTotalRecall),
+		{ dispose: () => recallPanel?.dispose() },
+	]
 	return disposables
 }
-
 export async function openRecallSessionView(): Promise<void> {
 	if (!recallPanel) {
-		recallPanel = vscode.window.createWebviewPanel(
-			RECALL_VIEW_ID,
-			"TOTAL RECALL - Session Browser",
-			vscode.ViewColumn.Beside,
-			{ enableScripts: true },
-		)
-		recallPanel.onDidChangeViewState((e) => {
-			if (e.webviewPanel.visible && recallPanel) void listTotalRecallSessions()
+		const panel = vscode.window.createWebviewPanel("recall-session-view", "TOTAL RECALL", vscode.ViewColumn.Beside, {
+			enableScripts: true,
+			localResourceRoots: [],
 		})
-		recallPanel.onDidDispose(() => {
-			recallPanel = undefined
+		recallPanel = panel
+		panel.webview.html = renderRecallSessionBrowser()
+		const messages = panel.webview.onDidReceiveMessage(async (message: unknown) => {
+			if (!message || typeof message !== "object") return
+			const input = message as Record<string, unknown>
+			try {
+				if (input.command === "list-sessions") await listTotalRecallSessions()
+				else if (input.command === "configure") await configureTotalRecall()
+				else if (
+					input.command === "read-session" &&
+					typeof input.conversationId === "string" &&
+					input.conversationId.length > 0
+				)
+					await readTotalRecallSession(input.conversationId)
+				else if (input.command === "restore-session" || input.command === "takeover-session") {
+					await panel.webview.postMessage({
+						cmd: "msg",
+						msg: "Keine bestätigte Schreibübergabe verfügbar. Keine laufende Aufgabe wurde übernommen.",
+					})
+				}
+			} catch {
+				await showError()
+			}
+		})
+		panel.onDidDispose(() => {
+			messages.dispose()
+			if (recallPanel === panel) recallPanel = undefined
 		})
 	}
 	recallPanel.reveal(vscode.ViewColumn.Beside)
-	await listTotalRecallSessions()
+	try {
+		await listTotalRecallSessions()
+	} catch {
+		await showError()
+	}
 }
-
 async function listTotalRecallSessions(): Promise<void> {
-	const { getRecallConfiguration } = await import("@/sdk/recall-config-manager")
-	const config = await getRecallConfiguration()
-	if (!config) {
-		vscode.window.showErrorMessage("TOTAL RECALL not configured")
-		return
-	}
-	try {
-		const { TotalRecallSessionHost } = await import("@/sdk/recall-session-host")
-		const sessionHost = new TotalRecallSessionHost(async () => config)
-		await sessionHost.initialize(config as RecallConfiguration)
-		const conversations = await sessionHost.listConversations()
-		if (recallPanel?.webview) recallPanel.webview.postMessage({ cmd: "render", sessions: conversations })
-	} catch (e) {
-		Logger.error("[TOTAL RECALL] Failed to list:", e)
-		vscode.window.showErrorMessage(String(e))
-	}
+	const sessions = await (await host()).listConversations()
+	await recallPanel?.webview.postMessage({ cmd: "render", sessions })
 }
-
-async function restoreTotalRecallSession(conversationId: string): Promise<void> {
-	const { getRecallConfiguration } = await import("@/sdk/recall-config-manager")
-	const config = await getRecallConfiguration()
-	if (!config) {
-		vscode.window.showErrorMessage("TOTAL RECALL not configured")
-		return
-	}
-	try {
-		const { TotalRecallSessionHost } = await import("@/sdk/recall-session-host")
-		const sessionHost = new TotalRecallSessionHost(async () => config)
-		await sessionHost.initialize(config as RecallConfiguration)
-		const snapshot = await sessionHost.getSessionSnapshot(conversationId)
-		Logger.info(`[TOTAL RECALL] Session ${conversationId} restored, ${snapshot.messages.length} messages`)
-		vscode.window.showInformationMessage(`Session ${conversationId}: ${snapshot.messages.length} events`)
-	} catch (e) {
-		Logger.error("[TOTAL RECALL] Restore failed:", e)
-		vscode.window.showErrorMessage(String(e))
-	}
+async function readTotalRecallSession(conversationId: string): Promise<void> {
+	const snapshot = await (await host()).getSessionSnapshot(conversationId)
+	await recallPanel?.webview.postMessage({ cmd: "snapshot", snapshot })
 }
-
-async function takeOverSession(conversationId: string): Promise<void> {
-	const { getRecallConfiguration } = await import("@/sdk/recall-config-manager")
-	const config = await getRecallConfiguration()
-	if (!config) {
-		vscode.window.showErrorMessage("TOTAL RECALL not configured")
-		return
-	}
-	try {
-		const { TotalRecallSessionHost } = await import("@/sdk/recall-session-host")
-		const sessionHost = new TotalRecallSessionHost(async () => config)
-		await sessionHost.initialize(config as RecallConfiguration)
-		const currentActor = config.actor
-		const result = await sessionHost.takeOverSession(conversationId, currentActor)
-		if (result.success) {
-			vscode.window.showInformationMessage(`Session ${conversationId} taken over`)
-		} else {
-			vscode.window.showErrorMessage(`Takeover failed: ${result.error}`)
-		}
-	} catch (e) {
-		Logger.error("[TOTAL RECALL] Takeover failed:", e)
-		vscode.window.showErrorMessage(String(e))
-	}
-}
-
-async function handleRefreshConfig(): Promise<void> {
-	const { refreshRecallConfiguration, clearRecallConfigurationCache } = await import("@/sdk/recall-config-manager")
-	await refreshRecallConfiguration()
-	clearRecallConfigurationCache()
-	vscode.window.showInformationMessage("TOTAL RECALL config refreshed")
-}
-
 async function quickPickRecallSession(): Promise<void> {
-	const { getRecallConfiguration } = await import("@/sdk/recall-config-manager")
-	const config = await getRecallConfiguration()
-	if (!config) {
-		vscode.window.showErrorMessage("TOTAL RECALL not configured")
-		return
-	}
 	try {
-		const { TotalRecallSessionHost } = await import("@/sdk/recall-session-host")
-		const sessionHost = new TotalRecallSessionHost(async () => config)
-		await sessionHost.initialize(config as RecallConfiguration)
-		const conversations = await sessionHost.listConversations()
-		const items: vscode.QuickPickItem[] = conversations.map((s) => ({
-			label: s.title || s.conversationId,
-			description: `Actor: ${s.actorId}`,
+		const sessions = await (await host()).listConversations()
+		const items = sessions.map((session) => ({
+			label: session.title || session.conversationId,
+			description: session.projectId,
+			detail: session.conversationId,
+			conversationId: session.conversationId,
 		}))
-		const selected = await vscode.window.showQuickPick(items, { title: "TOTAL RECALL Sessions" })
-		if (selected) {
-			const conv = conversations.find((c) => c.title === selected.label || c.conversationId === selected.label)
-			if (conv) restoreTotalRecallSession(conv.conversationId)
+		const selection = await vscode.window.showQuickPick(items, { title: "TOTAL RECALL – gemeinsamen Verlauf lesen" })
+		if (selection) {
+			await openRecallSessionView()
+			await readTotalRecallSession(selection.conversationId)
 		}
-	} catch (e) {
-		Logger.error("[TOTAL RECALL] Quick pick failed:", e)
+	} catch {
+		await showError()
+	}
+}
+export async function configureTotalRecall(): Promise<void> {
+	const existing = await getRecallConfiguration()
+	const baseUrl = await vscode.window.showInputBox({
+		title: "TOTAL RECALL – vorhandener API-Endpunkt",
+		value: existing?.baseUrl,
+		ignoreFocusOut: true,
+	})
+	if (baseUrl === undefined) return
+	const project = await vscode.window.showInputBox({
+		title: "TOTAL RECALL – Projekt-ID",
+		value: existing?.project,
+		ignoreFocusOut: true,
+	})
+	if (project === undefined) return
+	const actor = await vscode.window.showInputBox({
+		title: "TOTAL RECALL – eigene Akteur-ID",
+		value: existing?.actor,
+		ignoreFocusOut: true,
+	})
+	if (actor === undefined) return
+	const token = await vscode.window.showInputBox({
+		title: "TOTAL RECALL – zugehöriger API-Token",
+		password: true,
+		ignoreFocusOut: true,
+	})
+	if (token === undefined) return
+	try {
+		await getRecallConfigManager().configure({ baseUrl, project, actor, token })
+		const result = await drainRecallOutbox(await getRecallConfiguration())
+		await vscode.window.showInformationMessage(
+			result.blocked
+				? "TOTAL RECALL gespeichert; ausstehende Ereignisse bleiben geschützt in der Outbox."
+				: "TOTAL RECALL gespeichert.",
+		)
+		if (recallPanel) await listTotalRecallSessions()
+	} catch {
+		await showError()
 	}
 }

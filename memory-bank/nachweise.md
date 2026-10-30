@@ -157,3 +157,5 @@ Abschluss der ersten Korrektur: `p1-core-final` 138/138 ausführbar, 14 überspr
 ### Phase 4 — Komprimierung und Kontinuität
 
 Sechs echte rote Kontinuitätsfälle vor Korrektur; anschließend `p2-continuity-accepted` 338/338 und `p2-vscode-session-regression` 82/82. Build und Core-Typprüfung erfolgreich. Prüfmanifest `SHA256SUMS.p2-continuity`, 92 Einträge, SHA256 `a816004f36cb0e3b5ab13272f92cc5672c6ea1fb40a2934c34ffd8c426844a6b`. Keine Änderungen an Modellendpunkten oder produktiven Diensten.
+
+Priorität 3: `p3-recall-network-contract-accepted` 57/57, `p3-recall-state-isolation-accepted` Bun 2/2, `p3-recall-types-verified` Exit 0; rote Regressionen und alle Zwischenfehler unverändert im vorhandenen Phase-4-Prüfverzeichnis. Kein produktiver Takeover-/Android-Test behauptet. [Einordnung und verbleibender Vertrag](phase4-reparatur.md).

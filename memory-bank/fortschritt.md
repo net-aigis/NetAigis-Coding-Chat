@@ -123,3 +123,5 @@ Startfehler verlieren den Auftrag nicht mehr und sperren keine spätere Wiederau
 ### Phase 4 — Priorität 2 gezielt geprüft
 
 Originalaufträge/Korrekturen und gespeicherte Prozesszustände bleiben unabhängig von generierten Zusammenfassungen erhalten, einschließlich älterer Sidecars. Synthetische Wiederaufnahmehinweise werden nicht als Originalaufträge übernommen. 338 Core-/Runtime-/Persistenzprüfungen und 82 VS-Code-Sitzungsprüfungen erfolgreich; Build und Typprüfung bestanden. Keine produktive Abnahme. Priorität 3 TOTAL RECALL folgt.
+
+Phase 4, Priorität 3: geschützte Recall-Konfiguration, bestätigte Retry-Outbox, einzelne Host-Archivierung und realer API-Leser/Browser gezielt repariert. 59 unterschiedliche Tests bestanden; VS-Code-Typprüfung erfolgreich. Laufende Aufgabenwiederherstellung, kontrollierte Friseer/jimmi-Schreibübergabe und gemeinsame Android-Runtime weiterhin offen; kein Phasenabschluss. Details: [phase4-reparatur.md](phase4-reparatur.md).

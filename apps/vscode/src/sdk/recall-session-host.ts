@@ -1,176 +1,181 @@
-/**
- * TotalRecallSessionHost - Manages TOTAL RECALL session discovery and restoration
- */
-import { type ITelemetryService } from "@cline/core"
-import { Logger } from "@/shared/services/Logger"
+/** Reads the existing append-only TOTAL RECALL journal. No invented server routes. */
+import type { CoreSessionSnapshot, ITelemetryService } from "@cline/core"
+import { fetch } from "@/shared/net"
 import type { RecallConfiguration } from "./recall-outbox"
 
 export interface TotalRecallConversation {
-  conversationId: string
-  title?: string
-  projectId: string
-  actorId: string
-  lastUpdated?: string
-  sessionCount?: number
+	conversationId: string
+	title?: string
+	projectId: string
+	actorId?: string
+	lastUpdated?: string
+	sessionCount?: number
+	eventCount: number
+	lastSeq: number
 }
-
+export interface TotalRecallJournalEvent {
+	seq: number
+	event_id: string
+	project_id: string
+	conversation_id: string
+	actor_id: string
+	kind: string
+	payload: unknown
+	created_at: string
+}
 export interface TotalRecallSessionSnapshot {
-  conversationId: string
-  sessionId?: string
-  messages: Array<{
-    event_id: string
-    kind: string
-    payload: Record<string, unknown>
-    timestamp?: string
-  }>
-  metadata?: {
-    createdAt?: string
-    updatedAt?: string
-    actorId?: string
-    title?: string
-  }
-  checkpointRunCount?: number
-  currentActorId?: string
-  lockedBy?: string
-  lockExpiresAt?: string
+	conversationId: string
+	sessionId?: string
+	/** Original server events with immutable authorship, not reconstructed chat turns. */
+	messages: TotalRecallJournalEvent[]
+	recordedSnapshot?: CoreSessionSnapshot
+	recordedSnapshotSeq?: number
+	metadata?: { createdAt?: string; updatedAt?: string; actorId?: string; title?: string }
+	checkpointRunCount?: number
+	currentActorId?: string
+	lockedBy?: string
+	lockExpiresAt?: string
 }
-
 export interface SessionTakeoverResult {
-  success: boolean
-  sessionId?: string
-  error?: string
-  actorSwitched?: boolean
+	success: boolean
+	sessionId?: string
+	error?: string
+	actorSwitched?: boolean
 }
+function object(value: unknown): Record<string, unknown> {
+	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid TOTAL RECALL API response")
+	return value as Record<string, unknown>
+}
+function nonEmpty(value: unknown): value is string {
+	return typeof value === "string" && value.length > 0
+}
+const WRITER_COORDINATION_UNAVAILABLE =
+	"TOTAL RECALL has no verified writer-ownership/handover API. A running task cannot safely be taken over through the event journal."
 
 export class TotalRecallSessionHost {
-  private recallConfig: RecallConfiguration | undefined
-  private baseUrl: string = ""
-
-  constructor(
-    private readonly configManager: () => Promise<RecallConfiguration | undefined>,
-    private readonly telemetry?: ITelemetryService,
-  ) {}
-
-  async initialize(config: RecallConfiguration): Promise<void> {
-    this.recallConfig = config
-    this.baseUrl = config.baseUrl.replace(/\/+$/, "")
-    Logger.info(`[TOTAL RECALL] SessionHost initialized with base URL: ${this.baseUrl}`)
-  }
-
-  async listConversations(projectId?: string, actorId?: string): Promise<TotalRecallConversation[]> {
-    if (!this.recallConfig) throw new Error("TotalRecallSessionHost not initialized")
-    try {
-      const url = new URL(`${this.baseUrl}/internal/recall/conversations`)
-      if (projectId) url.searchParams.set("project_id", projectId)
-      if (actorId) url.searchParams.set("actor_id", actorId)
-      const response = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${this.recallConfig.token}` },
-        signal: AbortSignal.timeout(15000),
-      })
-      if (!response.ok) throw new Error(`TOTAL RECALL API error: ${response.status}`)
-      const data = await response.json()
-      const conversations = Array.isArray(data) ? data : (data as any).conversations || []
-      Logger.info(`[TOTAL RECALL] Retrieved ${conversations.length} conversations`)
-      return conversations.map((c: any) => ({
-        conversationId: c.conversation_id || c.conversationId,
-        title: c.title,
-        projectId: c.project_id || c.projectId,
-        actorId: c.actor_id || c.actorId,
-        lastUpdated: c.last_updated || c.lastUpdated,
-        sessionCount: c.session_count ?? c.sessionCount,
-      }))
-    } catch (error) {
-      Logger.error("[TOTAL RECALL] Failed to list conversations:", error)
-      throw error
-    }
-  }
-
-  async getSessionSnapshot(conversationId: string, actorId?: string): Promise<TotalRecallSessionSnapshot> {
-    if (!this.recallConfig) throw new Error("TotalRecallSessionHost not initialized")
-    try {
-      const url = new URL(`${this.baseUrl}/internal/recall/conversations/${encodeURIComponent(conversationId)}/snapshot`)
-      if (actorId) url.searchParams.set("actor_id", actorId)
-      const response = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${this.recallConfig.token}` },
-        signal: AbortSignal.timeout(30000),
-      })
-      if (!response.ok) throw new Error(`TOTAL RECALL API error ${response.status}`)
-      const snapshot = await response.json()
-      return {
-        conversationId,
-        sessionId: (snapshot as any).session_id || (snapshot as any).sessionId,
-        messages: Array.isArray((snapshot as any).events) ? (snapshot as any).events.map((e: any) => ({
-          event_id: e.event_id || e.eventId,
-          kind: e.kind,
-          payload: e.payload,
-          timestamp: e.timestamp || e.captured_at,
-        })) : [],
-        metadata: {
-          createdAt: (snapshot as any).created_at,
-          updatedAt: (snapshot as any).updated_at,
-          actorId: (snapshot as any).actor_id || (snapshot as any).actorId,
-          title: (snapshot as any).title,
-        },
-        checkpointRunCount: (snapshot as any).checkpoint_run_count ?? (snapshot as any).checkpointRunCount,
-        currentActorId: (snapshot as any).current_actor_id || (snapshot as any).currentActorId,
-        lockedBy: (snapshot as any).locked_by || (snapshot as any).lockedBy,
-        lockExpiresAt: (snapshot as any).lock_expires_at || (snapshot as any).lockExpiresAt,
-      }
-    } catch (error) {
-      Logger.error("[TOTAL RECALL] Failed to get session snapshot:", error)
-      throw error
-    }
-  }
-
-  async takeOverSession(conversationId: string, newActorId: string, checkpointRunCount?: number): Promise<SessionTakeoverResult> {
-    if (!this.recallConfig) return { success: false, error: "TotalRecallSessionHost not initialized" }
-    try {
-      const url = new URL(`${this.baseUrl}/internal/recall/conversations/${encodeURIComponent(conversationId)}/takeover`)
-      const response = await fetch(url.toString(), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${this.recallConfig.token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ actor_id: newActorId, checkpoint_run_count: checkpointRunCount }),
-        signal: AbortSignal.timeout(30000),
-      })
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        return { success: false, error: `Takeover failed: ${errorData.error || response.statusText}` }
-      }
-      const result = await response.json()
-      Logger.info(`[TOTAL RECALL] Session ${conversationId} taken over by actor ${newActorId}`)
-      return { success: true, sessionId: (result as any).session_id || (result as any).sessionId, actorSwitched: true }
-    } catch (error) {
-      Logger.error("[TOTAL RECALL] Failed to takeover session:", error)
-      return { success: false, error: String(error) }
-    }
-  }
-
-  async releaseSession(conversationId: string, currentActorId?: string): Promise<boolean> {
-    if (!this.recallConfig) return false
-    try {
-      const url = new URL(`${this.baseUrl}/internal/recall/conversations/${encodeURIComponent(conversationId)}/release`)
-      const response = await fetch(url.toString(), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${this.recallConfig.token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ actor_id: currentActorId }),
-        signal: AbortSignal.timeout(15000),
-      })
-      const success = response.ok
-      if (success) Logger.info(`[TOTAL RECALL] Session ${conversationId} released`)
-      return success
-    } catch (error) {
-      Logger.error("[TOTAL RECALL] Failed to release session:", error)
-      return false
-    }
-  }
-
-  async getSessionLockStatus(conversationId: string): Promise<{ locked: boolean; lockedBy?: string; lockExpiresAt?: string }> {
-    const snapshot = await this.getSessionSnapshot(conversationId)
-    return { locked: !!snapshot.lockedBy, lockedBy: snapshot.lockedBy, lockExpiresAt: snapshot.lockExpiresAt }
-  }
-
-  async getCurrentActorId(conversationId: string): Promise<string | undefined> {
-    const snapshot = await this.getSessionSnapshot(conversationId)
-    return snapshot.currentActorId || snapshot.metadata?.actorId
-  }
+	private initialized = false
+	constructor(
+		private readonly configManager: () => Promise<RecallConfiguration | undefined>,
+		_telemetry?: ITelemetryService,
+	) {}
+	async initialize(_config: RecallConfiguration): Promise<void> {
+		this.initialized = true
+	}
+	private async configuration(): Promise<RecallConfiguration> {
+		if (!this.initialized) throw new Error("TotalRecallSessionHost not initialized")
+		const config = await this.configManager()
+		if (!config?.enabled) throw new Error("TOTAL RECALL configuration unavailable or disabled")
+		return { ...config }
+	}
+	private async request(
+		route: "events" | "conversations",
+		parameters: Record<string, string>,
+		config: RecallConfiguration,
+	): Promise<Record<string, unknown>> {
+		const url = new URL(config.baseUrl.replace(/\/+$/, "") + "/internal/recall/" + route)
+		for (const [key, value] of Object.entries(parameters)) url.searchParams.set(key, value)
+		const response = await fetch(url.toString(), {
+			headers: { Authorization: "Bearer " + config.token },
+			signal: AbortSignal.timeout(15000),
+		})
+		if (!response.ok) throw new Error("TOTAL RECALL HTTP " + response.status)
+		return object(await response.json())
+	}
+	async listConversations(projectId?: string, actorId?: string): Promise<TotalRecallConversation[]> {
+		const config = await this.configuration()
+		if (projectId !== undefined && projectId !== config.project)
+			throw new Error("TOTAL RECALL project differs from configured project")
+		const data = await this.request("conversations", { project_id: config.project }, config)
+		if (!Array.isArray(data.conversations)) throw new Error("Invalid TOTAL RECALL conversation list")
+		const conversations = data.conversations.map((raw): TotalRecallConversation => {
+			const item = object(raw)
+			if (
+				!nonEmpty(item.conversation_id) ||
+				!Number.isSafeInteger(item.event_count) ||
+				Number(item.event_count) < 0 ||
+				!Number.isSafeInteger(item.last_seq) ||
+				Number(item.last_seq) < 0
+			)
+				throw new Error("Invalid TOTAL RECALL conversation record")
+			return {
+				conversationId: item.conversation_id,
+				projectId: config.project,
+				eventCount: Number(item.event_count),
+				lastSeq: Number(item.last_seq),
+			}
+		})
+		// Actor is not a server-side conversations query. Filter actual authors,
+		// never label the most recent author as an exclusive writer/owner.
+		if (actorId === undefined) return conversations
+		const selected: TotalRecallConversation[] = []
+		for (const conversation of conversations) {
+			const journal = await this.readEvents(conversation.conversationId, config)
+			if (journal.some((event) => event.actor_id === actorId)) selected.push(conversation)
+		}
+		return selected
+	}
+	private async readEvents(conversationId: string, config: RecallConfiguration): Promise<TotalRecallJournalEvent[]> {
+		if (!conversationId) throw new Error("TOTAL RECALL conversation ID required")
+		const data = await this.request("events", { project_id: config.project, conversation_id: conversationId }, config)
+		if (!Array.isArray(data.events)) throw new Error("Invalid TOTAL RECALL journal")
+		let previous = 0
+		return data.events.map((raw) => {
+			const event = object(raw)
+			if (
+				!Number.isSafeInteger(event.seq) ||
+				Number(event.seq) <= previous ||
+				event.project_id !== config.project ||
+				event.conversation_id !== conversationId ||
+				![event.event_id, event.actor_id, event.kind, event.created_at].every(nonEmpty) ||
+				!("payload" in event)
+			)
+				throw new Error("Invalid or mis-scoped TOTAL RECALL event")
+			previous = Number(event.seq)
+			return event as unknown as TotalRecallJournalEvent
+		})
+	}
+	async getSessionSnapshot(conversationId: string, _actorId?: string): Promise<TotalRecallSessionSnapshot> {
+		const events = await this.readEvents(conversationId, await this.configuration())
+		let recordedSnapshot: CoreSessionSnapshot | undefined
+		let recordedSnapshotSeq: number | undefined
+		for (const event of events) {
+			if (event.kind !== "cline.sdk.event" || !event.payload || typeof event.payload !== "object") continue
+			const sdkEvent = (event.payload as Record<string, unknown>).sdk_event as Record<string, unknown> | undefined
+			if (sdkEvent?.type !== "session_snapshot") continue
+			const payload = sdkEvent.payload as Record<string, unknown> | undefined
+			const snapshot = payload?.snapshot as CoreSessionSnapshot | undefined
+			if (payload?.sessionId !== conversationId || snapshot?.sessionId !== conversationId)
+				throw new Error("TOTAL RECALL snapshot session ID mismatch")
+			if (snapshot.version === 1 && Array.isArray(snapshot.messages)) {
+				recordedSnapshot = snapshot
+				recordedSnapshotSeq = event.seq
+			}
+		}
+		return {
+			conversationId,
+			sessionId: recordedSnapshot?.sessionId,
+			messages: events,
+			recordedSnapshot,
+			recordedSnapshotSeq,
+			metadata: { createdAt: events[0]?.created_at, updatedAt: events.at(-1)?.created_at, actorId: events[0]?.actor_id },
+		}
+	}
+	async takeOverSession(
+		_conversationId: string,
+		_newActorId: string,
+		_checkpointRunCount?: number,
+	): Promise<SessionTakeoverResult> {
+		return { success: false, error: WRITER_COORDINATION_UNAVAILABLE }
+	}
+	async releaseSession(_conversationId: string, _currentActorId?: string): Promise<boolean> {
+		return false
+	}
+	async getSessionLockStatus(
+		_conversationId: string,
+	): Promise<{ locked?: boolean; verified: false; reason: string; lockedBy?: string; lockExpiresAt?: string }> {
+		return { verified: false, reason: WRITER_COORDINATION_UNAVAILABLE }
+	}
+	async getCurrentActorId(_conversationId: string): Promise<string | undefined> {
+		return undefined
+	}
 }

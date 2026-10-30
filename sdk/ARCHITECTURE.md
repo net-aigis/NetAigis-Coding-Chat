@@ -1374,3 +1374,9 @@ their exact rendering survives. Synthetic resumption hints never become source
 user instructions. A mandatory notice that exceeds the known model input limit
 fails explicitly; canonical history remains available. No provider endpoint,
 model routing, database or independent supervisor is introduced.
+
+### Fork: TOTAL RECALL journal boundary
+
+The VS Code host owns one subscription to Core events, independent of UI subscribers. Snapshot notifications omit messages, so the journal adapter explicitly reads the existing canonical transcript and stages it into the existing durable outbox. It retains original message metadata, host session IDs and notification order, including final disposal state. No parallel transcript database is introduced.
+
+Recall credentials remain in the shared protected file-backed secret store, outside provider API configuration and generated wire Secrets. The existing append-only Acer API supports event append/read and project-scoped conversation lists; it does not implement the previously assumed snapshot, takeover or release routes. Reading historical events does not grant a writer lease or recover a running tool. Authenticated writer handover and attaching Android to the same runtime remain pending integration work; no client may claim success from a missing ownership contract. The external infrastructure watchdog remains outside Cline.
