@@ -137,3 +137,8 @@ Prüfpfad im Reparatur-Worktree: `tmp/phase4-checks-20261030T193507+0100`. Darin
 ### Phase 4 — geprüfte Terminalkorrektur
 
 Abschluss der ersten Korrektur: `p1-core-final` 138/138 ausführbar, 14 übersprungen; VS-Code zuletzt 54 Terminaltests plus 29 unveränderte erfolgreich geprüfte Adaptertests. Keine Fehler in diesen Prüfungen. Build/Typ-Exitcodes in `metadata/`.
+
+
+### Phase 4 — Schleifenschutz
+
+`p1-wait-red`: 2 Fehler vor Korrektur. `p1-loop-final`: 98/98 erfolgreich; `p1-wait-build` und `p1-loop-types` Exit 0. Die Batch-Prüfung bestand bereits vor der zusätzlichen Wartegruppierung und wird als Bestätigung, nicht als behobener Fehler geführt.

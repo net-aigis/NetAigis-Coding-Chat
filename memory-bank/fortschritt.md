@@ -103,3 +103,8 @@ Priorität 1 in Arbeit. Signalbefund als Sandbox-Effekt mit unverändert bestand
 ### Phase 4 — geprüfte Terminalkorrektur
 
 Terminal-/Abbruchkorrektur gezielt geprüft: 221 unterschiedliche Tests bestanden, 14 plattformbedingt übersprungen. SDK/Core-Build und Core-/VS-Code-Typprüfung erfolgreich. Priorität 1 bleibt bis zur nachfolgenden Schleifenschutzprüfung in Arbeit.
+
+
+### Phase 4 — Schleifenschutz
+
+Priorität 1 gezielt abgeschlossen: Terminal-/Abbruchkorrektur `1c5db6c56`, Wartebefehle nun auch bei wechselnder Dauer begrenzt. 98 Schleifen-/Runtime-Tests erfolgreich, insgesamt 319 unterschiedliche bestandene Tests, 14 plattformbedingt übersprungen. Priorität 2 beginnt anschließend.

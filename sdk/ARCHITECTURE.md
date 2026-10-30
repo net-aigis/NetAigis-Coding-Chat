@@ -37,6 +37,11 @@ remaining run; starting a fresh run resets the trackers. Session identity is
 propagated through model request metadata and the existing conversation header.
 An absent configured identity must not erase metadata supplied by a hook.
 
+The repeated-call guard groups standalone `sleep` calls as wait-only work even
+when their durations differ. A command that also performs another operation is
+not grouped into that class. The guard evaluates prepared tool input before
+execution, including batches, and does not run a monitoring model or service.
+
 Cline remains the client and tool execution environment. The independent
 watchdog belongs to a separate Acer infrastructure service, outside Cline and
 separate from Coding-Agent and Learning-Agent. Upstream run-health counters and

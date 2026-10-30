@@ -58,6 +58,33 @@ export function toolCallSignature(input: unknown): string {
 	}
 }
 
+/** Pure wait-only commands have no progress even when their duration changes. */
+function isWaitOnlyInput(input: unknown): boolean {
+	const duration = /^(?:\d+(?:\.\d+)?|\.\d+)[smhd]?$/u;
+	const sleepLine =
+		/^(?:\/[^\s;|&]+\/)?sleep\s+((?:\d+(?:\.\d+)?|\.\d+)[smhd]?)\s*$/u;
+	const isWait = (command: unknown): boolean => {
+		if (typeof command === "string") return sleepLine.test(command.trim());
+		if (!command || typeof command !== "object") return false;
+		const value = command as { command?: unknown; args?: unknown };
+		if (!Object.hasOwn(value, "args")) return isWait(value.command);
+		return (
+			typeof value.command === "string" &&
+			/(?:^|\/)sleep$/u.test(value.command) &&
+			Array.isArray(value.args) &&
+			value.args.length > 0 &&
+			value.args.every((arg) => typeof arg === "string" && duration.test(arg))
+		);
+	};
+	const commands =
+		input && typeof input === "object" && "commands" in input
+			? (input as { commands: unknown }).commands
+			: input;
+	return Array.isArray(commands)
+		? commands.length > 0 && commands.every(isWait)
+		: isWait(commands);
+}
+
 export interface LoopCheckResult {
 	softWarning: boolean;
 	hardEscalation: boolean;
@@ -152,7 +179,11 @@ export class LoopDetectionTracker {
 	}
 
 	inspect(call: LoopDetectionCall): LoopDetectionVerdict {
-		const signature = toolCallSignature(call.input);
+		const waitOnly =
+			call.name === "run_commands" && isWaitOnlyInput(call.input);
+		const signature = waitOnly
+			? "wait-only-sleep"
+			: `input:${toolCallSignature(call.input)}`;
 		const result = checkRepeatedToolCall(
 			this.state,
 			call.name,
@@ -162,14 +193,14 @@ export class LoopDetectionTracker {
 		if (result.hardEscalation) {
 			return {
 				kind: "hard",
-				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive identical calls to \`${call.name}\`; stopping to avoid a loop.`,
+				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive ${waitOnly ? "wait-only" : "identical"} calls to \`${call.name}\`; stopping to avoid a loop.`,
 				skip: result.skipCall,
 			};
 		}
 		if (result.softWarning) {
 			return {
 				kind: "soft",
-				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive identical calls to \`${call.name}\`; consider trying a different approach.`,
+				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive ${waitOnly ? "wait-only" : "identical"} calls to \`${call.name}\`; consider trying a different approach.`,
 				skip: false,
 			};
 		}

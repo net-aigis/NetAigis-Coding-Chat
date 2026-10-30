@@ -3,28 +3,39 @@ import type { AgentConfig, AgentModel } from "@cline/shared";
 import { describe, expect, it } from "vitest";
 import { SessionRuntime } from "./session-runtime-orchestrator";
 
-function fixture(options: {
-	calls?: number;
-	loopDetection?: false;
-	hooks?: AgentConfig["hooks"];
-} = {}) {
+function fixture(
+	options: {
+		calls?: number;
+		loopDetection?: false;
+		hooks?: AgentConfig["hooks"];
+		batchSize?: number;
+		toolName?: string;
+		inputForCall?: (call: number) => Record<string, unknown>;
+	} = {},
+) {
 	const executed: string[] = [];
 	const sessionIds: unknown[] = [];
 	let requests = 0;
 	const model: AgentModel = {
 		async stream(request) {
 			requests++;
-			const metadata = request.options?.metadata as Record<string, unknown> | undefined;
+			const metadata = request.options?.metadata as
+				| Record<string, unknown>
+				| undefined;
 			sessionIds.push(metadata?.sessionId);
 			const call = requests;
 			return (async function* () {
 				if (options.calls === undefined || call <= options.calls) {
-					yield {
-						type: "tool-call-delta" as const,
-						toolCallId: "call-" + call,
-						toolName: "probe",
-						inputText: JSON.stringify({ value: 1 }),
-					};
+					for (let index = 0; index < (options.batchSize ?? 1); index++) {
+						yield {
+							type: "tool-call-delta" as const,
+							toolCallId: `call-${call}-${index}`,
+							toolName: options.toolName ?? "probe",
+							inputText: JSON.stringify(
+								options.inputForCall?.(call) ?? { value: 1 },
+							),
+						};
+					}
 					yield { type: "finish" as const, reason: "tool-calls" as const };
 				} else {
 					yield { type: "text-delta" as const, text: "done" };
@@ -42,7 +53,7 @@ function fixture(options: {
 			systemPrompt: "Use the fixture tool.",
 			tools: [
 				{
-					name: "probe",
+					name: options.toolName ?? "probe",
 					description: "Count executions without external effects",
 					inputSchema: {
 						type: "object",
@@ -72,6 +83,23 @@ function fixture(options: {
 }
 
 describe("fork guard composed with the v4.1.26 runtime", () => {
+	it("refuses the rest of a prepared batch after the hard stop", async () => {
+		const f = fixture({ batchSize: 6 });
+		await f.session.run("start");
+		expect(f.executed).toHaveLength(0);
+		expect(f.requests()).toBe(1);
+	});
+
+	it("stops changing sleep durations before another wait executes", async () => {
+		const f = fixture({
+			toolName: "run_commands",
+			inputForCall: (call) => ({ commands: [`sleep ${call}`] }),
+		});
+		await f.session.run("start");
+		expect(f.executed).toHaveLength(2);
+		expect(f.requests()).toBe(3);
+	});
+
 	it("stops before a repeated tool can execute at the hard threshold", async () => {
 		const f = fixture();
 		await f.session.run("start");

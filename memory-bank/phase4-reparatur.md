@@ -10,7 +10,8 @@ einem zunächst außerhalb angelegten Prüfverzeichnis übernommen;
 
 ## Priorität 1: Terminal und Werkzeugausführung
 
-Status: in Arbeit. Noch keine produktive Abnahme und keine Installation.
+Status: gezielte Reparatur abgeschlossen. Noch keine produktive Abnahme und
+keine Installation; die vollständige Regression bleibt Phase 5 zugeordnet.
 
 ### Präzisierung des Phase-3-Signalbefunds
 
@@ -68,8 +69,24 @@ Abschließender Lauf dieser Korrektur: `p1-core-final` erfolgreich, 138 bestande
 Rejection und ungültige Exitcodes besteht die betroffene Terminaldatei mit
 54/54 (`p1-vscode-terminal-final`). Insgesamt damit 221 unterschiedliche
 erfolgreiche Prüfungen, 14 plattformbedingt übersprungen. SDK/Core-Build,
-Core-Typprüfung und VS-Code-Typprüfung erfolgreich. Wiederholte Wartebefehle
-und die verbleibende Schleifenschutzprüfung folgen als getrennte Korrektur.
+Core-Typprüfung und VS-Code-Typprüfung erfolgreich. Commit `1c5db6c56`.
+
+### Warte- und Werkzeugschleifen
+
+Zwei neue Tests reproduzieren die Umgehung mit unterschiedlichen `sleep`-
+Dauern (`p1-wait-red`: 1 bestanden, 2 fehlgeschlagen). Der vorhandene Tracker
+gruppiert jetzt ausschließlich eigenständige reine Schlafbefehle, auch in
+strukturierter argv-Form, unabhängig von ihrer Dauer. Befehle mit zusätzlicher
+Arbeit bleiben getrennt. Tests führen dafür keinen echten Sleep aus.
+
+Die echte AgentRuntime prüft außerdem eine Charge aus sechs identischen
+Aufrufen: bereits bestehendes korrektes Verhalten, null Ausführungen nach
+der Stop-Entscheidung. Dafür wird keine neue Behebung behauptet.
+`p1-loop-final`: 98/98 bestanden, einschließlich bisherigem Orchestrator,
+isolierten Trackerprüfungen und sechs echten Runtime-Integrationsfällen.
+Core-Build und Core-Typprüfung erfolgreich. Priorität 1 damit gezielt mit
+319 unterschiedlichen bestandenen Tests und 14 plattformbedingten Skips
+geprüft; keine Behauptung einer produktiven oder plattformübergreifenden Abnahme.
 
 ## Verbindliche Fortsetzung
 
