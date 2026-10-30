@@ -70,3 +70,26 @@
 | 27. Okt | 19:xx | #2 TEILWEISE ERLEDIGT markiert | System |
 
 **Letzte Aktualisierung:** 27. Okt 2026 19:xx
+
+
+---
+
+## 30.10.2026 — Phase 3, Stand 2026-10-30T19:29:14+01:00
+
+Die vorstehenden Einträge vom 27.10. bleiben historische Aussagen. Der
+aktuelle, belegte Stand steht in [phase3-upstream-v4.1.26.md](phase3-upstream-v4.1.26.md).
+
+- Phase 1 und Phase 2 abgeschlossen; Sicherungen beibehalten.
+- Phase 3: Upstream v4.1.26 kontrolliert integriert, eigene Geschichte und
+  Arbeiten erhalten; bestehende Provider-Defaults und API-Konfigurationen
+  unverändert. SDK/Extension-Build und geprüfte Typkonfigurationen erfolgreich.
+- Begrenzte Tests: 778 bestanden, ein offener Shell-Signal-/Ausgabefehler.
+  Keine produktive Abnahme.
+- TOTAL RECALL: vorhandene Eigenentwicklungen erhalten, drei isolierte
+  Vertragstests bestanden. Konfigurationsverdrahtung und echte Runtime-
+  Wiederherstellung/Sitzungsübernahme sind weiter offen.
+- Phase 4 noch nicht begonnen. Externer Acer-Watchdog ist eine separate
+  Infrastrukturaufgabe; keine Eigenüberwachung von Cline.
+- Gesamtauftrag bleibt bis zur geprüften produktiven Installation und den
+  echten Funktionstests offen; Android, Learning-Agent, Coding-Agent, Recall,
+  Friseer/jimmi und Originalauftragstreue bleiben verbindlich.

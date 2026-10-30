@@ -34,6 +34,7 @@ import {
 } from "@cline/shared";
 import { describe, expect, it, vi } from "vitest";
 import { createContextCompactionPrepareTurn } from "../../extensions/context/compaction";
+import { createDefaultTools } from "../../extensions/tools/definitions";
 import { MESSAGE_BUILDER_LIMIT_ENV } from "../../session/services/message-builder";
 import type { CoreCompactionContext } from "../../types/config";
 import {
@@ -2882,7 +2883,7 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 		expect(events[0].properties.agentId).toMatch(/^agent_/);
 	});
 
-	it("aborts on hard-threshold loop detection through the beforeTool guard", async () => {
+	it("refuses the configured hard-threshold call through the beforeTool guard", async () => {
 		const identicalCall = { commands: ["grep -rn same ."] };
 		const { deps, abortCalls } = makeScriptedRuntime({ events: [] });
 		const session = new SessionRuntime(
@@ -2904,16 +2905,23 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 			toolCall: { type: "tool-call", toolCallId: "tc1", toolName: "run_commands", input: identicalCall },
 			input: identicalCall,
 		});
-		const refused = await beforeTool?.({
+		const second = await beforeTool?.({
 			snapshot: makeSnapshot(),
 			tool: { name: "run_commands" } as never,
 			toolCall: { type: "tool-call", toolCallId: "tc2", toolName: "run_commands", input: identicalCall },
 			input: identicalCall,
 		});
+		expect(second).toBeUndefined();
+		const refused = await beforeTool?.({
+			snapshot: makeSnapshot(),
+			tool: { name: "run_commands" } as never,
+			toolCall: { type: "tool-call", toolCallId: "tc3", toolName: "run_commands", input: identicalCall },
+			input: identicalCall,
+		});
 		expect(refused).toMatchObject({ skip: true, stop: true });
-
-		await session.run("loop-me");
-		expect(abortCalls.length).toBeGreaterThanOrEqual(1);
+		// No agent run is active in this hook unit test. Physical refusal during
+		// a real run is covered by fork-integration.test.ts.
+		expect(abortCalls).toHaveLength(0);
 	});
 
 	it("resets loop detection when run() starts a fresh conversation", async () => {
@@ -2934,7 +2942,7 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 		const context = () => ({
 			snapshot: makeSnapshot(),
 			tool: { name: "same" } as never,
-			toolCall: { type: "tool-call", toolCallId: "tc", toolName: "same", input: identicalCall },
+			toolCall: { type: "tool-call" as const, toolCallId: "tc", toolName: "same", input: identicalCall },
 			input: identicalCall,
 		});
 
@@ -2945,6 +2953,8 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 		expect(abortCalls).toHaveLength(0);
 		// The streak restarts with the new conversation, so the same call is
 		// still refused only once it reaches the hard threshold again.
+		const first = await beforeTool?.(context());
+		expect(first).toBeUndefined();
 		const second = await beforeTool?.(context());
 		expect(second).toBeUndefined();
 		const third = await beforeTool?.(context());
@@ -2964,7 +2974,7 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 		const context = () => ({
 			snapshot: makeSnapshot(),
 			tool: { name: "same" } as never,
-			toolCall: { type: "tool-call", toolCallId: "tc", toolName: "same", input },
+			toolCall: { type: "tool-call" as const, toolCallId: "tc", toolName: "same", input },
 			input,
 		});
 
@@ -2973,6 +2983,124 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 		}
 		await session.run("many-identical");
 		expect(abortCalls).toHaveLength(0);
+	});
+
+	it("holds model and tool boundaries until the mistake-limit decision settles", async () => {
+		let decide!: (decision: { action: "continue" }) => void;
+		const decision = new Promise<{ action: "continue" }>((resolve) => {
+			decide = resolve;
+		});
+		const order: string[] = [];
+		let listener: ((e: AgentRuntimeEvent) => void) | undefined;
+		let hooks: AgentRuntimeConfig["hooks"];
+		const runtime = {
+			async run() {
+				for (const e of failedToolTurnEvents()) listener?.(e);
+				// The next boundary after the failed turn must wait for the user.
+				await hooks?.beforeTool?.({
+					snapshot: makeSnapshot(),
+					tool: { name: "run_commands" } as never,
+					toolCall: { type: "tool-call", toolCallId: "next", toolName: "run_commands", input: { commands: ["echo next"] } },
+					input: { commands: ["echo next"] },
+				});
+				order.push("next tool");
+				return {
+					agentId: "agent_fake",
+					runId: "run_fake",
+					status: "completed",
+					iterations: 1,
+					outputText: "",
+					messages: [],
+					usage: {
+						inputTokens: 0,
+						outputTokens: 0,
+						cacheReadTokens: 0,
+						cacheWriteTokens: 0,
+						totalCost: 0,
+					},
+				} satisfies AgentRunResult;
+			},
+			abort() {},
+			subscribe(l: (e: AgentRuntimeEvent) => void) {
+				listener = l;
+				return () => {
+					listener = undefined;
+				};
+			},
+			snapshot: makeSnapshot,
+		} as unknown as AgentRuntime;
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: { maxConsecutiveMistakes: 1 },
+				onConsecutiveMistakeLimitReached: () => decision,
+			}),
+			{
+				createAgentRuntimeImpl: (config) => {
+					hooks = config.hooks;
+					return runtime;
+				},
+			},
+		);
+		const running = session.run("go");
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(order).toEqual([]);
+		order.push("user decided");
+		decide({ action: "continue" });
+		await running;
+		expect(order).toEqual(["user decided", "next tool"]);
+	});
+
+	it("returns stop control to the rest of a tool batch once the decision is Stop", async () => {
+		let listener: ((e: AgentRuntimeEvent) => void) | undefined;
+		let hooks: AgentRuntimeConfig["hooks"];
+		let nextToolControl: unknown;
+		const runtime = {
+			async run() {
+				for (const e of failedToolTurnEvents()) listener?.(e);
+				// A later tool in the same batch must not run after Stop.
+				nextToolControl = await hooks?.afterTool?.({} as never);
+				return {
+					agentId: "agent_fake",
+					runId: "run_fake",
+					status: "aborted",
+					iterations: 1,
+					outputText: "",
+					messages: [],
+					usage: {
+						inputTokens: 0,
+						outputTokens: 0,
+						cacheReadTokens: 0,
+						cacheWriteTokens: 0,
+						totalCost: 0,
+					},
+				} satisfies AgentRunResult;
+			},
+			abort() {},
+			subscribe(l: (e: AgentRuntimeEvent) => void) {
+				listener = l;
+				return () => {
+					listener = undefined;
+				};
+			},
+			snapshot: makeSnapshot,
+		} as unknown as AgentRuntime;
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: { maxConsecutiveMistakes: 1 },
+				onConsecutiveMistakeLimitReached: async () => ({
+					action: "stop",
+					reason: "User chose Stop",
+				}),
+			}),
+			{
+				createAgentRuntimeImpl: (config) => {
+					hooks = config.hooks;
+					return runtime;
+				},
+			},
+		);
+		await session.run("go");
+		expect(nextToolControl).toMatchObject({ stop: true });
 	});
 
 	it("does not abort on productive turns (successful tool calls)", async () => {
@@ -3046,7 +3174,7 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 		).createRuntimeHooks()?.beforeTool;
 	}
 
-	function toolCallContext(toolName: string, input: unknown): Parameters<NonNullable<AgentRuntimeConfig["hooks"]>["beforeTool"]>[0] {
+	function toolCallContext(toolName: string, input: unknown): Parameters<NonNullable<NonNullable<AgentRuntimeConfig["hooks"]>["beforeTool"]>>[0] {
 		return {
 			snapshot: makeSnapshot(),
 			tool: { name: toolName } as never,
@@ -3076,11 +3204,13 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 		expect(control).toMatchObject({ skip: true, stop: true });
 		expect(control?.reason).toContain("3 consecutive identical calls");
 
-		// The refusal is not a one-off: every further identical call is refused too.
+		// Upstream's stop decision is sticky for the whole run. Later boundaries
+		// remain stopped without incrementing the loop counter again. The queued
+		// mistake-limit decision supplies the subsequent stop reason.
 		for (let count = 4; count <= 6; count++) {
 			const again = await beforeTool?.(toolCallContext("run_commands", input));
-			expect(again).toMatchObject({ skip: true, stop: true });
-			expect(again?.reason).toContain(`${count} consecutive identical calls`);
+			expect(again).toMatchObject({ stop: true });
+			expect(again?.reason).toBe("maximum consecutive mistakes reached (6)");
 		}
 
 		const conversation = (session as unknown as { conversation: { getMessages(): readonly AgentMessage[] } })
@@ -3092,16 +3222,11 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 					)
 				: [],
 		);
-		expect(
-			texts.some(
-				(text) =>
-					text.includes("2 consecutive identical calls") &&
-					text.includes("3 consecutive identical calls"),
-			),
-		).toBe(true);
+		expect(texts.some((text) => text.includes("2 consecutive identical calls"))).toBe(true);
+		expect(texts.some((text) => text.includes("3 consecutive identical calls"))).toBe(true);
 	});
 
-	it("lets a different call through after a refusal", async () => {
+	it("keeps a different call stopped after the run was refused", async () => {
 		const { deps, abortCalls } = makeScriptedRuntime({ events: [] });
 		const session = new SessionRuntime(
 			makeAgentConfig({ execution: { loopDetection: { softThreshold: 1, hardThreshold: 2 } } }),
@@ -3115,7 +3240,7 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 
 		await expect(
 			beforeTool?.(toolCallContext("read_files", { files: [{ path: "/tmp/a" }] })),
-		).resolves.toBeUndefined();
+		).resolves.toMatchObject({ stop: true, reason: "maximum consecutive mistakes reached (6)" });
 	});
 
 	it("does not guard when execution.loopDetection is false", async () => {
@@ -3330,5 +3455,108 @@ describe("SessionRuntime auth retry", () => {
 		expect(onAuthError).not.toHaveBeenCalled();
 		expect(createdCount()).toBe(1);
 		expect(result.finishReason).toBe("error");
+	});
+});
+
+describe("question continuation context", () => {
+	it.each([
+		{ toolName: "ask_question", fails: false, shouldContinue: true },
+		{ toolName: "ask_question", fails: true, shouldContinue: false },
+		{ toolName: "other_tool", fails: false, shouldContinue: false },
+	])("separates the answer and context for $toolName (fails: $fails)", async ({
+		toolName,
+		fails,
+		shouldContinue,
+	}) => {
+		const requests: AgentMessage[][] = [];
+		const answer = 'use $& and "$1"';
+		const reminder =
+			"The user has answered the question. Continue working on their task using that answer.";
+		const model: AgentModel = {
+			async stream(request) {
+				requests.push(structuredClone([...request.messages]));
+				const first = requests.length === 1;
+				return (async function* () {
+					if (first) {
+						yield {
+							type: "tool-call-delta" as const,
+							toolCallId: "question-1",
+							toolName,
+							inputText: JSON.stringify({
+								question: "Which?",
+								options: ["a", "b"],
+							}),
+						};
+						yield { type: "finish" as const, reason: "tool-calls" as const };
+					} else {
+						yield { type: "text-delta" as const, text: "Done." };
+						yield { type: "finish" as const, reason: "stop" as const };
+					}
+				})();
+			},
+		};
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				tools:
+					toolName === "ask_question"
+						? createDefaultTools({
+								executors: {
+									askQuestion: async () => {
+										if (fails) throw new Error("No answer");
+										return answer;
+									},
+								},
+								enableAskQuestion: true,
+							})
+						: [
+								{
+									name: toolName,
+									description: "Other",
+									inputSchema: { type: "object" },
+									execute: async () => answer,
+								},
+							],
+				hooks: {
+					afterTool: () => ({ appendContext: "Existing hook context" }),
+				},
+			}),
+			{
+				createAgentRuntimeImpl: (config) =>
+					createAgentRuntime({ ...config, model }),
+			},
+		);
+		const events: AgentEvent[] = [];
+		session.subscribeEvents((event) => events.push(event));
+		await session.run("Work on the task");
+
+		expect(requests).toHaveLength(2);
+		const next = requests[1] ?? [];
+		const resultIndex = next.findIndex((message) =>
+			message.content.some((part) => part.type === "tool-result"),
+		);
+		expect(resultIndex).toBeGreaterThan(0);
+		const result = next[resultIndex]?.content.find(
+			(part) => part.type === "tool-result",
+		);
+		if (!fails) expect(result).toMatchObject({ output: answer });
+		expect(JSON.stringify(next.slice(resultIndex + 1))).toContain(
+			"Existing hook context",
+		);
+		expect(JSON.stringify(next).includes(reminder)).toBe(shouldContinue);
+		const history = session.getMessages();
+		const context = history.find((message) =>
+			JSON.stringify(message.content).includes("Existing hook context"),
+		);
+		expect(context).toMatchObject({ metadata: { displayRole: "system" } });
+		expect(JSON.stringify(context).includes(reminder)).toBe(shouldContinue);
+		if (!fails) {
+			expect(events).toContainEqual(
+				expect.objectContaining({
+					type: "content_end",
+					contentType: "tool",
+					output: answer,
+				}),
+			);
+		}
 	});
 });

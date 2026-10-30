@@ -469,10 +469,8 @@ export async function executeForeground(
 			// CommandExitError so the SDK's shell tool wrapper marks the result as
 			// `success: false` and includes the exit code in the error message —
 			// matching the background (child_process) executor's behavior.
-			const completionObserved =
-				completionDetails?.exitCode !== undefined &&
-				completionDetails?.exitCode !== null;
-			if (!completionObserved) {
+			const exitCode = completionDetails?.exitCode
+			if (exitCode === undefined || exitCode === null) {
 				// Completion was reported by the read loop but no exit code ever
 				// arrived: VS Code fired neither a CommandFinished (D) marker nor
 				// onDidEndTerminalShellExecution within EXIT_CODE_EVENT_TIMEOUT_MS.
@@ -492,7 +490,6 @@ export async function executeForeground(
 				throw new CommandExitError(1, result);
 			}
 
-			const exitCode = completionDetails?.exitCode
 			if (exitCode !== 0) {
 				const result =
 					output.length > 0

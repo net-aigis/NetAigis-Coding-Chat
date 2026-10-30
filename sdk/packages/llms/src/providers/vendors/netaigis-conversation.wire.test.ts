@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { streamText } from "ai";
 import { netaigisConversation } from "../netaigis-conversation";
 import { createOpenAICompatibleProviderModule } from "./openai-compatible";
@@ -33,8 +33,8 @@ test("NetAigis session context survives real provider streaming", async () => {
         ];
 
         return new Response(
-            chunks.map(chunk => `data: ${JSON.stringify(chunk)}\\n\\n`).join("") +
-                "data: [DONE]\\n\\n",
+            chunks.map(chunk => `data: ${JSON.stringify(chunk)}\n\n`).join("") +
+                "data: [DONE]\n\n",
             {
                 status: 200,
                 headers: { "content-type": "text/event-stream" },
@@ -67,9 +67,9 @@ test("NetAigis session context survives real provider streaming", async () => {
             );
 
             // Start the lazy AI SDK request and inspect the actual HTTP call.
-            await response.consumeStream({
-                onError: () => undefined,
-            });
+            // A header alone is insufficient: the complete mocked provider
+            // stream must parse successfully on the upgraded AI SDK as well.
+            expect(await response.text).toBe("OK");
 
             expect(seen.at(-1)).toBe(id ?? null);
         }

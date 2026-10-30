@@ -100,3 +100,30 @@ $ grep -c "_getHtmlForWebview" apps/vscode/src/core/controller/commands/recall-s
 ---
 
 **Letzte Aktualisierung:** 27. Okt 2026 19:xx
+
+---
+
+## 30.10.2026 — tatsächliche Phase-3-Nachweise, 2026-10-30T19:29:14+01:00
+
+Die früheren Aussagen über fehlende Testinfrastruktur oder ungeprüfte
+Build-Ergebnisse gelten nicht als aktueller Nachweis. Verbindlicher Bericht:
+[phase3-upstream-v4.1.26.md](phase3-upstream-v4.1.26.md).
+
+Prüfprotokolle: `/home/friseer/MyContainer/cline-phase3-checks-20261030T183655+0100`.
+Dort enthalten `metadata/*.json` Befehle/Exitcodes, `logs/` echte Ausgaben und
+Vitest-Ergebnisse; `SHA256SUMS.phase3` prüft die abschließenden Nachweise.
+
+Verifizierter Upstream-Tag: `v4.1.26`, SHA
+`a459f1d04dea030833b558be645011ab739c463b`. Eigene lokale Arbeiten vor der
+Integration: Commit `abdf9c2372db3530598b81fbdf3a95d0e209fe16`.
+
+SDK-Build einschließlich Plugin-Runtime, Extension-Bundle, vollständige
+VS-Code-Typprüfung und geprüfte SDK-Typkonfigurationen erfolgreich.
+Fokussierte Tests konsolidiert: 778/779 bestanden. Der verbleibende Fehler
+betrifft verloren gehende Teilausgabe bei SIGTERM; Einzeltest und Fehlerausgabe
+bleiben dokumentiert. Keine Live-Modell-/Acer-/Android-Abnahme behauptet.
+
+Erhaltungscheck: Originalbranch weiterhin `coding-agent-v4` auf `624c2cd66`,
+alle acht geänderten und 19 unversionierten Originaldateien SHA256-identisch
+zum vorhandenen Phase-2-Manifest. Zwölf historische Arbeitsartefakte im
+Reparatur-Worktree unverändert erhalten. Keine erneute Sicherung erstellt.

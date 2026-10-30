@@ -187,7 +187,7 @@ function createFakeTerminalProcess(options: { lines?: string[]; completionDetail
 		then: promise.then.bind(promise),
 		catch: promise.catch.bind(promise),
 		finally: promise.finally.bind(promise),
-		getCompletionDetails: () => options.completionDetails ?? {},
+		getCompletionDetails: () => options.completionDetails ?? { exitCode: 0 },
 		detach: () => {
 			emitter.emit("continue")
 			resolvePromise()
@@ -223,6 +223,7 @@ function createFakeTerminalManager(process: ReturnType<VscodeTerminalManager["ru
  */
 function createControllableTerminalProcess() {
 	const emitter = new EventEmitter()
+	let completionDetails: TerminalCompletionDetails = {}
 	let resolvePromise!: () => void
 	const promise = new Promise<void>((resolve) => {
 		resolvePromise = resolve
@@ -231,7 +232,7 @@ function createControllableTerminalProcess() {
 		then: promise.then.bind(promise),
 		catch: promise.catch.bind(promise),
 		finally: promise.finally.bind(promise),
-		getCompletionDetails: () => ({}),
+		getCompletionDetails: () => completionDetails,
 		detach: () => {
 			emitter.emit("continue")
 			resolvePromise()
@@ -247,6 +248,7 @@ function createControllableTerminalProcess() {
 		process: fakeProcess as unknown as ReturnType<VscodeTerminalManager["runCommand"]>,
 		emitLine: (line: string) => emitter.emit("line", line),
 		complete: (details?: TerminalCompletionDetails) => {
+			completionDetails = details ?? {}
 			emitter.emit("completed", details)
 			emitter.emit("continue")
 			resolvePromise()
@@ -344,7 +346,7 @@ describe("formatCommandForTerminal", () => {
 
 describe("executeForeground", () => {
 	it("rejects an unconfirmed completion when no exit code was captured", async () => {
-		const process = createFakeTerminalProcess({ lines: ["hello"] })
+		const process = createFakeTerminalProcess({ lines: ["hello"], completionDetails: {} })
 		const terminalManager = createFakeTerminalManager(process)
 
 		try {
@@ -361,7 +363,7 @@ describe("executeForeground", () => {
 	})
 
 	it("rejects a silent completion with no output and no exit code", async () => {
-		const terminalManager = createFakeTerminalManager(createFakeTerminalProcess({ lines: [] }))
+		const terminalManager = createFakeTerminalManager(createFakeTerminalProcess({ lines: [], completionDetails: {} }))
 
 		try {
 			await executeForeground("touch /tmp/marker", "/workspace", terminalManager, 1000)

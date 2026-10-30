@@ -1,0 +1,19 @@
+{
+	"repository": "https://git.wittmer.software/AIGIS/cline.git",
+	"developmentBranch": "coding-agent-v4",
+	"preservedBaseCommit": "624c2cd6661e100680d8b61daa3a3447f4708536",
+	"upstream": {
+		"repository": "https://github.com/cline/cline.git",
+		"tag": "v4.1.26",
+		"commit": "a459f1d04dea030833b558be645011ab739c463b",
+		"catalogPolicy": "Retain the fork's v4.1.25 catalog, provider defaults and API endpoints."
+	},
+	"forkReleaseVersion": null,
+	"releaseState": "development; separate fork release identity and version await approval",
+	"monitoring": {
+		"watchdogLocation": "separate Acer infrastructure service",
+		"insideCline": false,
+		"separateFromCodingAgentAndLearningAgent": true,
+		"clineRole": "client, tool execution and observable tool state"
+	}
+}

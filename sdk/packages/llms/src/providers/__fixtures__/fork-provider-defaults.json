@@ -1,0 +1,938 @@
+{
+  "openai-native": {
+    "defaultModelId": "gpt-5.4",
+    "api": "https://api.openai.com/v1"
+  },
+  "openai-codex": {
+    "defaultModelId": "gpt-5.6-terra",
+    "api": "https://chatgpt.com/backend-api/codex"
+  },
+  "openai-codex-cli": {
+    "defaultModelId": "gpt-5.6-sol",
+    "api": "https://chatgpt.com/backend-api/codex"
+  },
+  "elevenlabs": {
+    "defaultModelId": "scribe_v2",
+    "api": "https://api.elevenlabs.io/v1"
+  },
+  "anthropic": {
+    "defaultModelId": "claude-sonnet-5",
+    "api": "https://api.anthropic.com/v1"
+  },
+  "claude-code": {
+    "defaultModelId": "sonnet",
+    "api": ""
+  },
+  "gemini": {
+    "defaultModelId": "gemini-4-argon",
+    "api": "https://generativelanguage.googleapis.com/v1beta"
+  },
+  "vertex": {
+    "defaultModelId": "gemini-4-argon",
+    "api": null
+  },
+  "bedrock": {
+    "defaultModelId": "minimax.minimax-m2.5",
+    "api": null
+  },
+  "mistral": {
+    "defaultModelId": "mistral-large-4",
+    "api": "https://api.mistral.ai/v1"
+  },
+  "minimax": {
+    "defaultModelId": "MiniMax-M3",
+    "api": "https://api.minimax.io/anthropic/v1"
+  },
+  "opencode": {
+    "defaultModelId": "openai/gpt-5.6-sol",
+    "api": ""
+  },
+  "dify": {
+    "defaultModelId": "default",
+    "api": null
+  },
+  "sapaicore": {
+    "defaultModelId": "anthropic--claude-3.5-sonnet",
+    "api": null
+  },
+  "wandb": {
+    "defaultModelId": "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B",
+    "api": "https://api.inference.wandb.ai/v1"
+  },
+  "opencode-go": {
+    "defaultModelId": "gemini-4-argon-contributor",
+    "api": "https://opencode.ai/inference/go/v1"
+  },
+  "openai-compatible": {
+    "defaultModelId": "gpt-4o",
+    "api": "https://api.openai.com/v1"
+  },
+  "cline": {
+    "defaultModelId": "google/gemini-4-argon",
+    "api": "https://api.cline.bot/api/v1"
+  },
+  "cline-pass": {
+    "defaultModelId": "cline-pass/mimo-v2.6-flash",
+    "api": "https://api.cline.bot/api/v1"
+  },
+  "deepseek": {
+    "defaultModelId": "deepseek-v4-flash",
+    "api": "https://api.deepseek.com/v1"
+  },
+  "xai": {
+    "defaultModelId": "grok-4.20-0309-non-reasoning",
+    "api": "https://api.x.ai/v1"
+  },
+  "together": {
+    "defaultModelId": "Qwen/Qwen3.5-397B-A17B",
+    "api": "https://api.together.xyz/v1"
+  },
+  "groq": {
+    "defaultModelId": "moonshotai/kimi-k2-instruct-0905",
+    "api": "https://api.groq.com/openai/v1"
+  },
+  "cerebras": {
+    "defaultModelId": "zai-glm-4.7",
+    "api": "https://api.cerebras.ai/v1"
+  },
+  "sambanova": {
+    "defaultModelId": "MiniMax-M3",
+    "api": "https://api.sambanova.ai/v1"
+  },
+  "crusoe": {
+    "defaultModelId": "zai/GLM-5.2",
+    "api": "https://api.inference.crusoecloud.com/v1"
+  },
+  "litellm": {
+    "defaultModelId": "gpt-5.4",
+    "api": "http://localhost:4000/v1"
+  },
+  "vercel-ai-gateway": {
+    "defaultModelId": "alibaba/qwen3.6-plus",
+    "api": "https://ai-gateway.vercel.sh/v1"
+  },
+  "v0": {
+    "defaultModelId": "v0-1.5-md",
+    "api": "https://api.v0.dev/v1"
+  },
+  "aiand": {
+    "defaultModelId": "zai-org/glm-5.3",
+    "api": "https://api.aiand.com/v1"
+  },
+  "aihubmix": {
+    "defaultModelId": "gpt-4o",
+    "api": "https://api.aihubmix.com/v1"
+  },
+  "hicap": {
+    "defaultModelId": "hicap-pro",
+    "api": "https://api.hicap.ai/v1"
+  },
+  "nousResearch": {
+    "defaultModelId": "DeepHermes-3-Llama-3-3-70B-Preview",
+    "api": "https://inference-api.nousresearch.com/v1"
+  },
+  "huawei-cloud-maas": {
+    "defaultModelId": "DeepSeek-R1",
+    "api": "https://infer-modelarts.cn-southwest-2.myhuaweicloud.com/v1"
+  },
+  "qwen": {
+    "defaultModelId": "qwen-plus-latest",
+    "api": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  },
+  "qwen-code": {
+    "defaultModelId": "qwen3-coder-plus",
+    "api": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  },
+  "moonshot": {
+    "defaultModelId": "kimi-k3",
+    "api": "https://api.moonshot.ai/v1"
+  },
+  "doubao": {
+    "defaultModelId": "doubao-1-5-pro-256k-250115",
+    "api": "https://ark.cn-beijing.volces.com/api/v3"
+  },
+  "zai": {
+    "defaultModelId": "glm-5v-turbo",
+    "api": "https://api.z.ai/api/paas/v4"
+  },
+  "zai-coding-plan": {
+    "defaultModelId": "glm-5.2",
+    "api": "https://api.z.ai/api/coding/paas/v4"
+  },
+  "kilo": {
+    "defaultModelId": "gpt-4o",
+    "api": "https://api.kilo.ai/api/gateway"
+  },
+  "openrouter": {
+    "defaultModelId": "anthropic/claude-sonnet-5.5",
+    "api": "https://openrouter.ai/api/v1"
+  },
+  "ollama": {
+    "defaultModelId": "default",
+    "api": "http://localhost:11434"
+  },
+  "lmstudio": {
+    "defaultModelId": "openai/gpt-oss-20b",
+    "api": "http://localhost:1234/v1"
+  },
+  "oca": {
+    "defaultModelId": "anthropic/claude-3-7-sonnet-20250219",
+    "api": "https://code.aiservice.us-chicago-1.oci.oraclecloud.com/20250206/app/litellm"
+  },
+  "asksage": {
+    "defaultModelId": "gpt-4o",
+    "api": "https://api.asksage.ai/server"
+  },
+  "302ai": {
+    "defaultModelId": "claude-haiku-5-5",
+    "api": "https://api.302.ai/v1"
+  },
+  "abacus": {
+    "defaultModelId": "gemini-3.7-flash",
+    "api": "https://routellm.abacus.ai/v1"
+  },
+  "abliteration-ai": {
+    "defaultModelId": "abliterated-model-large-v2",
+    "api": "https://api.abliteration.ai/v1"
+  },
+  "above": {
+    "defaultModelId": "mimo-v2.6-flash",
+    "api": "https://api.above.dev/v1"
+  },
+  "agentrouter": {
+    "defaultModelId": "glm-5.3",
+    "api": "https://agentrouter.org/v1"
+  },
+  "agnes": {
+    "defaultModelId": "agnes-3.0-flash",
+    "api": "https://apihub.agnes-ai.com/v1"
+  },
+  "ai-router": {
+    "defaultModelId": "gpt-5.6-luna",
+    "api": "https://api.ai-router.dev/v1"
+  },
+  "ai21": {
+    "defaultModelId": "jamba-mini",
+    "api": "https://api.ai21.com/studio/v1"
+  },
+  "aimlapi": {
+    "defaultModelId": "anthropic/claude-haiku-5.5",
+    "api": "https://api.aimlapi.com/v1"
+  },
+  "ainetcafe": {
+    "defaultModelId": "Kimi-K3",
+    "api": "https://microquickjs.com/v1"
+  },
+  "aixy": {
+    "defaultModelId": "anthropic/claude-haiku-5-5",
+    "api": "https://api.aixy-gateway.com/v1"
+  },
+  "aki-io": {
+    "defaultModelId": "deepseek-v4.1-flash-552b",
+    "api": "https://aki.io/v1"
+  },
+  "alibaba": {
+    "defaultModelId": "qwen3.8-omni-flash",
+    "api": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+  },
+  "alibaba-cn": {
+    "defaultModelId": "qwen3.8-omni-flash",
+    "api": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  },
+  "alibaba-coding-plan": {
+    "defaultModelId": "qwen3.7-plus",
+    "api": "https://coding-intl.dashscope.aliyuncs.com/v1"
+  },
+  "alibaba-coding-plan-cn": {
+    "defaultModelId": "qwen3.7-plus",
+    "api": "https://coding.dashscope.aliyuncs.com/v1"
+  },
+  "alibaba-token-plan": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+  },
+  "alibaba-token-plan-cn": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+  },
+  "ambient": {
+    "defaultModelId": "ambient/small",
+    "api": "https://api.ambient.xyz/v1"
+  },
+  "amd": {
+    "defaultModelId": "DeepSeek-V4.1-Flash",
+    "api": "https://developer.amd.com.cn/radeon/api/v1"
+  },
+  "anyapi": {
+    "defaultModelId": "deepseek/deepseek-v4-flash",
+    "api": "https://api.anyapi.ai/v1"
+  },
+  "arcee": {
+    "defaultModelId": "deepseek/deepseek-v4-pro-0813",
+    "api": "https://api.arcee.ai/api/v1"
+  },
+  "atomic-chat": {
+    "defaultModelId": "Qwen3_5-9B-MLX-4bit",
+    "api": "http://127.0.0.1:1337/v1"
+  },
+  "auriko": {
+    "defaultModelId": "deepseek-v4-flash",
+    "api": "https://api.auriko.ai/v1"
+  },
+  "bailing": {
+    "defaultModelId": "Ling-1T",
+    "api": "https://api.tbox.cn/api/llm/v1"
+  },
+  "baseten": {
+    "defaultModelId": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "api": "https://inference.baseten.co/v1"
+  },
+  "bee": {
+    "defaultModelId": "bee-brood",
+    "api": "https://api.bee.heossi.com/bee"
+  },
+  "berget": {
+    "defaultModelId": "zai-org/GLM-5.3-Flash",
+    "api": "https://api.berget.ai/v1"
+  },
+  "blueclaw": {
+    "defaultModelId": "Qwen3.8-27B",
+    "api": "https://openai.blueclaw.network/v1"
+  },
+  "bothub": {
+    "defaultModelId": "muse-spark-1.3-contributor",
+    "api": "https://openai.bothub.ru/v1"
+  },
+  "boundless": {
+    "defaultModelId": "claude-opus-5.5",
+    "api": "https://api.inference.boundless.network/v1"
+  },
+  "chutes": {
+    "defaultModelId": "Qwen/Qwen3.8-27B-TEE",
+    "api": "https://llm.chutes.ai/v1"
+  },
+  "clarifai": {
+    "defaultModelId": "moonshotai/chat-completion/models/Kimi-K2_6",
+    "api": "https://api.clarifai.com/v2/ext/openai/v1"
+  },
+  "claudinio": {
+    "defaultModelId": "claudinio",
+    "api": "https://api.claudin.io/v1"
+  },
+  "cloudferro-sherlock": {
+    "defaultModelId": "zai-org/GLM-5.3",
+    "api": "https://api-sherlock.cloudferro.com/openai/v1"
+  },
+  "cloudflare-workers-ai": {
+    "defaultModelId": "@cf/zai-org/glm-5.3-flash",
+    "api": "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1"
+  },
+  "coralbricks": {
+    "defaultModelId": "deepseek-v4.1-flash-fast",
+    "api": "https://inference.coralbricks.ai/v1"
+  },
+  "cortecs": {
+    "defaultModelId": "gemini-4-argon",
+    "api": "https://api.cortecs.ai/v1"
+  },
+  "crof": {
+    "defaultModelId": "glm-5.3-flash",
+    "api": "https://crof.ai/v1"
+  },
+  "crossmodel": {
+    "defaultModelId": "gemini/gemini-4-argon",
+    "api": "https://api.crossmodel.ai/v1"
+  },
+  "daoxe": {
+    "defaultModelId": "grok-4.5",
+    "api": "https://daoxe.com/v1"
+  },
+  "databricks": {
+    "defaultModelId": "databricks-gpt-5-6-luna",
+    "api": "https://${DATABRICKS_HOST}/ai-gateway/mlflow/v1"
+  },
+  "digitalocean": {
+    "defaultModelId": "nemotron-3.5-super-vl",
+    "api": "https://inference.do-ai.run/v1"
+  },
+  "dinference": {
+    "defaultModelId": "glm-5.2",
+    "api": "https://api.dinference.com/v1"
+  },
+  "drun": {
+    "defaultModelId": "public/minimax-m25",
+    "api": "https://chat.d.run/v1"
+  },
+  "ebcloud": {
+    "defaultModelId": "DeepSeek-V4-Flash",
+    "api": "https://maas-api.ebcloud.com/v1"
+  },
+  "echo": {
+    "defaultModelId": "echo",
+    "api": "https://echo.tracerml.ai/v1"
+  },
+  "edenai": {
+    "defaultModelId": "google/gemini-4-argon",
+    "api": "https://api.edenai.run/v3"
+  },
+  "empiriolabs": {
+    "defaultModelId": "mimo-v2-6-flash",
+    "api": "https://api.empiriolabs.ai/v1"
+  },
+  "engy": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://api.engy.ai/v1"
+  },
+  "evroc": {
+    "defaultModelId": "Qwen/Qwen3.8-27B",
+    "api": "https://models.think.evroc.com/v1"
+  },
+  "fastrouter": {
+    "defaultModelId": "anthropic/claude-opus-4.8",
+    "api": "https://go.fastrouter.ai/api/v1"
+  },
+  "fireworks": {
+    "defaultModelId": "accounts/fireworks/models/muse-spark-open",
+    "api": "https://api.fireworks.ai/inference/v1"
+  },
+  "freemodel": {
+    "defaultModelId": "claude-fable-5",
+    "api": "https://cc.freemodel.dev/v1"
+  },
+  "friendli": {
+    "defaultModelId": "zai-org/GLM-5.3-Flash",
+    "api": "https://api.friendli.ai/serverless/v1"
+  },
+  "frogbot": {
+    "defaultModelId": "grok-4-3",
+    "api": "https://app.frogbot.ai/api/v1"
+  },
+  "github-copilot": {
+    "defaultModelId": "gemini-4-argon",
+    "api": "https://api.githubcopilot.com"
+  },
+  "gmicloud": {
+    "defaultModelId": "Qwen/Qwen3.8-Flash",
+    "api": "https://api.gmi-serving.com/v1"
+  },
+  "greenpt": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://api.greenpt.ai/v1"
+  },
+  "helicone": {
+    "defaultModelId": "claude-4.5-opus",
+    "api": "https://ai-gateway.helicone.ai/v1"
+  },
+  "hetzner": {
+    "defaultModelId": "Qwen3.8-27B",
+    "api": "https://inference.hetzner.com/api/v1"
+  },
+  "hpc-ai": {
+    "defaultModelId": "zai-org/glm-5.2",
+    "api": "https://api.hpc-ai.com/inference/v1"
+  },
+  "huggingface": {
+    "defaultModelId": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "api": "https://router.huggingface.co/v1"
+  },
+  "hyper": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://hyper.charm.land/v1"
+  },
+  "iflowcn": {
+    "defaultModelId": "kimi-k2-0905",
+    "api": "https://apis.iflow.cn/v1"
+  },
+  "impossibl": {
+    "defaultModelId": "google/gemini-3.5-flash-lite",
+    "api": "https://api.impossibl.com/v1"
+  },
+  "inception": {
+    "defaultModelId": "mercury-2.5",
+    "api": "https://api.inceptionlabs.ai/v1"
+  },
+  "inceptron": {
+    "defaultModelId": "deepseek-ai/DeepSeek-V4-Flash-0731",
+    "api": "https://api.inceptron.io/v1"
+  },
+  "inco": {
+    "defaultModelId": "deepseek-v4.1-flash:fast",
+    "api": "https://api.inco.ai/v1"
+  },
+  "infer": {
+    "defaultModelId": "infer/gpt-6-astra:official",
+    "api": "https://infer.flow7.org/v1"
+  },
+  "inference": {
+    "defaultModelId": "google/gemma-3",
+    "api": "https://inference.net/v1"
+  },
+  "inferx": {
+    "defaultModelId": "Agents-A1",
+    "api": "https://model.inferx.net/endpoints/v1"
+  },
+  "infomaniak": {
+    "defaultModelId": "swiss-ai/Apertus-v1.5-70B",
+    "api": "https://api.infomaniak.com/2/ai/${INFOMANIAK_PRODUCT_ID}/openai/v1"
+  },
+  "io-net": {
+    "defaultModelId": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+    "api": "https://api.intelligence.io.solutions/api/v1"
+  },
+  "iteracompute": {
+    "defaultModelId": "deepseek/deepseek-v4-flash-0731",
+    "api": "https://api.iteracompute.com/v1"
+  },
+  "jalapeno": {
+    "defaultModelId": "Kimi-K3",
+    "api": "https://api.jalapeno-cloud.ai/v1"
+  },
+  "jiekou": {
+    "defaultModelId": "claude-opus-4-6",
+    "api": "https://api.jiekou.ai/openai"
+  },
+  "kenari": {
+    "defaultModelId": "deepseek-v4-1-flash",
+    "api": "https://kenari.id/v1"
+  },
+  "kimi-code-plan-cn": {
+    "defaultModelId": "kimi-for-coding",
+    "api": "https://api.kimi.com/coding/v1"
+  },
+  "kimi-code-plan-global": {
+    "defaultModelId": "kimi-for-coding",
+    "api": "https://api.kimi.ai/coding/v1"
+  },
+  "klokintegration": {
+    "defaultModelId": "Kloker",
+    "api": "https://api-gw.klok.ipaas.se/proxy/kloker-key/v1"
+  },
+  "kosmik": {
+    "defaultModelId": "qwen/qwen3.8-27b",
+    "api": "https://api.koscompute.com/v1"
+  },
+  "kuae-cloud-coding-plan": {
+    "defaultModelId": "GLM-4.7",
+    "api": "https://coding-plan-endpoint.kuaecloud.net/v1"
+  },
+  "lilac": {
+    "defaultModelId": "zai-org/glm-5.2",
+    "api": "https://api.getlilac.com/v1"
+  },
+  "llama": {
+    "defaultModelId": "cerebras-llama-4-maverick-17b-128e-instruct",
+    "api": "https://api.llama.com/compat/v1"
+  },
+  "llmgateway": {
+    "defaultModelId": "muse-wonder-1.0",
+    "api": "https://api.llmgateway.io/v1"
+  },
+  "llmgateway-providers": {
+    "defaultModelId": "google-ai-studio/gemini-4-argon",
+    "api": "https://api.llmgateway.io/v1"
+  },
+  "llmtech": {
+    "defaultModelId": "nvidia/Qwen3.8-27B-NVFP4",
+    "api": "https://api.llmtech.eu/v1"
+  },
+  "llmtr": {
+    "defaultModelId": "muse-glimmer-30b-tr",
+    "api": "https://llmtr.com/v1"
+  },
+  "longcat": {
+    "defaultModelId": "LongCat-2.0",
+    "api": "https://api.longcat.chat/openai"
+  },
+  "lowrouter": {
+    "defaultModelId": "auto/mistralai/mistral-large-4",
+    "api": "https://api.lowrouter.ai/v1"
+  },
+  "lucidquery": {
+    "defaultModelId": "lucidquery-agi-01-frontier",
+    "api": "https://api.lucidquery.com/v1"
+  },
+  "lynkr": {
+    "defaultModelId": "lynkr-auto",
+    "api": "http://127.0.0.1:8081/v1"
+  },
+  "meganova": {
+    "defaultModelId": "MiniMaxAI/MiniMax-M2.5",
+    "api": "https://api.meganova.ai/v1"
+  },
+  "melious": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://api.melious.ai/v1"
+  },
+  "meta": {
+    "defaultModelId": "muse-wonder-1.0",
+    "api": "https://api.meta.ai/v1"
+  },
+  "minimax-cn": {
+    "defaultModelId": "MiniMax-M3",
+    "api": "https://api.minimax.cn/anthropic/v1"
+  },
+  "minimax-cn-coding-plan": {
+    "defaultModelId": "MiniMax-M3.1-Flash-Preview",
+    "api": "https://api.minimax.cn/anthropic/v1"
+  },
+  "minimax-coding-plan": {
+    "defaultModelId": "MiniMax-M3.1-Flash-Preview",
+    "api": "https://api.minimax.io/anthropic/v1"
+  },
+  "mixlayer": {
+    "defaultModelId": "qwen/qwen3.5-122b-a10b",
+    "api": "https://models.mixlayer.ai/v1"
+  },
+  "moark": {
+    "defaultModelId": "GLM-5.3",
+    "api": "https://moark.com/v1"
+  },
+  "modal": {
+    "defaultModelId": "zai-org/GLM-5.3-Flash",
+    "api": "https://inference.us-west.modal.direct/v1"
+  },
+  "model-oracle-ai": {
+    "defaultModelId": "claude-sonnet-5",
+    "api": "https://api.modeloracle.com/api/v1"
+  },
+  "modelis": {
+    "defaultModelId": "claude-fable-5",
+    "api": "https://modelishub.com/v1"
+  },
+  "modelscope": {
+    "defaultModelId": "ZhipuAI/GLM-4.6",
+    "api": "https://api-inference.modelscope.cn/v1"
+  },
+  "moonshotai-cn": {
+    "defaultModelId": "kimi-k3",
+    "api": "https://api.moonshot.cn/v1"
+  },
+  "morph": {
+    "defaultModelId": "default",
+    "api": "https://api.morphllm.com/v1"
+  },
+  "nan": {
+    "defaultModelId": "mimo-v2.6-flash",
+    "api": "https://api.nan.builders/v1"
+  },
+  "nano-gpt": {
+    "defaultModelId": "nvidia/nemotron-3.5-super-vl",
+    "api": "https://nano-gpt.com/api/v1"
+  },
+  "nearai": {
+    "defaultModelId": "anthropic/claude-haiku-5-5",
+    "api": "https://cloud-api.near.ai/v1"
+  },
+  "nebius": {
+    "defaultModelId": "meta-models/muse-spark-open",
+    "api": "https://api.tokenfactory.nebius.com/v1"
+  },
+  "neon": {
+    "defaultModelId": "claude-haiku-5-5",
+    "api": "${NEON_AI_GATEWAY_BASE_URL}/v1"
+  },
+  "neosmith": {
+    "defaultModelId": "neosmith.intelligent-maestro",
+    "api": "https://router.neosmith.ai/v1"
+  },
+  "neuralwatt": {
+    "defaultModelId": "mimo-v2.6-pro",
+    "api": "https://api.neuralwatt.com/v1"
+  },
+  "nova": {
+    "defaultModelId": "nova-2-pro-v1",
+    "api": "https://api.nova.amazon.com/v1"
+  },
+  "novita-ai": {
+    "defaultModelId": "inclusionai/ling-3.1-flash",
+    "api": "https://api.novita.ai/openai"
+  },
+  "nvidia": {
+    "defaultModelId": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "api": "https://integrate.api.nvidia.com/v1"
+  },
+  "oci": {
+    "defaultModelId": "xai.grok-4.6",
+    "api": "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/openai/v1"
+  },
+  "ofox": {
+    "defaultModelId": "google/gemini-4-argon",
+    "api": "https://api.ofox.ai/v1"
+  },
+  "openreason": {
+    "defaultModelId": "deepseek-ai/deepseek-v4-flash-0731",
+    "api": "https://api.openreason.app/v1"
+  },
+  "opper": {
+    "defaultModelId": "gpt-6-astra",
+    "api": "https://api.opper.ai/v3/compat"
+  },
+  "orcarouter": {
+    "defaultModelId": "orcarouter/free",
+    "api": "https://api.orcarouter.ai/v1"
+  },
+  "ovhcloud": {
+    "defaultModelId": "qwen3.8-27b",
+    "api": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"
+  },
+  "pareto": {
+    "defaultModelId": "z-ai/glm-5.3-flash",
+    "api": "https://api.paretoinference.com/v1"
+  },
+  "pendra": {
+    "defaultModelId": "deepseek-v4-flash",
+    "api": "https://api.pendra.ai/api/v1"
+  },
+  "perplexity-agent": {
+    "defaultModelId": "xai/grok-4.6",
+    "api": "https://api.perplexity.ai/v1"
+  },
+  "pioneer": {
+    "defaultModelId": "fastino/GLiNER-2.5-Decide",
+    "api": "https://api.fastino.ai/v1"
+  },
+  "poe": {
+    "defaultModelId": "google/gemini-3.8-flash",
+    "api": "https://api.poe.com/v1"
+  },
+  "poolside": {
+    "defaultModelId": "poolside/laguna-s-2.1",
+    "api": "https://inference.poolside.ai/v1"
+  },
+  "prime": {
+    "defaultModelId": "google/gemini-4-argon",
+    "api": "https://api.pinference.ai/api/v1"
+  },
+  "privatemode-ai": {
+    "defaultModelId": "glm-5.3-flash",
+    "api": "http://localhost:8080/v1"
+  },
+  "qihang-ai": {
+    "defaultModelId": "gemini-2.5-flash",
+    "api": "https://api.qhaigc.net/v1"
+  },
+  "qiniu-ai": {
+    "defaultModelId": "qwen3.5-397b-a17b",
+    "api": "https://api.qnaigc.com/v1"
+  },
+  "regolo-ai": {
+    "defaultModelId": "qwen3.8-27b",
+    "api": "https://api.regolo.ai/v1"
+  },
+  "requesty": {
+    "defaultModelId": "muse-spark-open",
+    "api": "https://router.requesty.ai/v1"
+  },
+  "routing-run": {
+    "defaultModelId": "gpt-5.6-luna",
+    "api": "https://api.routing.run/v1"
+  },
+  "runinfra": {
+    "defaultModelId": "zai-org/GLM-5.3-Flash",
+    "api": "https://api.runinfra.ai/v1"
+  },
+  "sakana": {
+    "defaultModelId": "sakana-namazu",
+    "api": "https://api.sakana.ai/v1"
+  },
+  "sarvam": {
+    "defaultModelId": "sarvam-105b",
+    "api": "https://api.sarvam.ai/v1"
+  },
+  "scaleway": {
+    "defaultModelId": "glm-5.3",
+    "api": "https://api.scaleway.ai/v1"
+  },
+  "scnet-token-plan": {
+    "defaultModelId": "DeepSeek-V4.1-Flash",
+    "api": "https://api.scnet.cn/api/llm/v1"
+  },
+  "scx-ai": {
+    "defaultModelId": "Qwen3.8-Max",
+    "api": "https://api.scx.ai/v1"
+  },
+  "sensenova": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://token.sensenova.cn/v1"
+  },
+  "siliconflow": {
+    "defaultModelId": "zai-org/GLM-5.3-Flash",
+    "api": "https://api.siliconflow.com/v1"
+  },
+  "siliconflow-cn": {
+    "defaultModelId": "zai-org/GLM-5.2",
+    "api": "https://api.siliconflow.cn/v1"
+  },
+  "snowflake-cortex": {
+    "defaultModelId": "claude-opus-5",
+    "api": "https://${SNOWFLAKE_ACCOUNT}.snowflakecomputing.com/api/v2/cortex/v1"
+  },
+  "stackit": {
+    "defaultModelId": "Qwen/Qwen3.6-27B",
+    "api": "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1"
+  },
+  "standardcompute": {
+    "defaultModelId": "standardcompute",
+    "api": "https://api.stdcmpt.com/v1"
+  },
+  "stepfun": {
+    "defaultModelId": "step-5-preview",
+    "api": "https://api.stepfun.com/v1"
+  },
+  "stepfun-ai": {
+    "defaultModelId": "step-5-preview",
+    "api": "https://api.stepfun.ai/v1"
+  },
+  "stepfun-ai-step-plan": {
+    "defaultModelId": "step-5-preview",
+    "api": "https://api.stepfun.ai/step_plan/v1"
+  },
+  "stepfun-step-plan": {
+    "defaultModelId": "step-5-preview",
+    "api": "https://api.stepfun.com/step_plan/v1"
+  },
+  "subconscious": {
+    "defaultModelId": "subconscious/deepseek-v4.1-flash-marathon",
+    "api": "https://api.subconscious.dev/v1"
+  },
+  "submodel": {
+    "defaultModelId": "deepseek-ai/DeepSeek-R1-0528",
+    "api": "https://llm.submodel.ai/v1"
+  },
+  "synthetic": {
+    "defaultModelId": "hf:deepseek-ai/DeepSeek-V4.1-Flash",
+    "api": "https://api.synthetic.new/openai/v1"
+  },
+  "tempr": {
+    "defaultModelId": "xiaomi-mimo/mimo-v2.6-flash",
+    "api": "https://api.temprhq.io/v1"
+  },
+  "tencent-coding-plan": {
+    "defaultModelId": "hunyuan-2.0-instruct",
+    "api": "https://api.lkeap.cloud.tencent.com/coding/v3"
+  },
+  "tencent-token-plan": {
+    "defaultModelId": "hy4-preview",
+    "api": "https://api.lkeap.cloud.tencent.com/plan/v3"
+  },
+  "tencent-tokenhub": {
+    "defaultModelId": "hy4-preview",
+    "api": "https://tokenhub.tencentmaas.com/v1"
+  },
+  "tensorx": {
+    "defaultModelId": "deepseek/deepseek-v4.1-flash",
+    "api": "https://api.tensorx.ai/v1"
+  },
+  "the-grid-ai": {
+    "defaultModelId": "bytedance-pro-latest",
+    "api": "https://api.thegrid.ai/v1"
+  },
+  "thinkingmachines": {
+    "defaultModelId": "thinkingmachines/Inkling",
+    "api": "https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api/v1"
+  },
+  "tinfoil": {
+    "defaultModelId": "deepseek-v4-1-flash",
+    "api": "https://inference.tinfoil.sh/v1"
+  },
+  "tokengo": {
+    "defaultModelId": "z-ai/glm-5.3-flash",
+    "api": "https://api.tokengo.com/v1"
+  },
+  "tokenrouter": {
+    "defaultModelId": "z-ai/glm-5.3-free",
+    "api": "https://api.tokenrouter.com/v1"
+  },
+  "trustedrouter": {
+    "defaultModelId": "trustedrouter/synth",
+    "api": "https://api.trustedrouter.com/v1"
+  },
+  "umans-ai": {
+    "defaultModelId": "umans-deepseek-v4.1-flash",
+    "api": "https://api.code.umans.ai/v1"
+  },
+  "umans-ai-coding-plan": {
+    "defaultModelId": "umans-deepseek-v4.1-flash",
+    "api": "https://api.code.umans.ai/v1"
+  },
+  "unorouter": {
+    "defaultModelId": "claude-sonnet-5",
+    "api": "https://api.unorouter.com/v1"
+  },
+  "upstage": {
+    "defaultModelId": "solar-pro4",
+    "api": "https://api.upstage.ai/v1/solar"
+  },
+  "vancine": {
+    "defaultModelId": "deepseek-v4.1-flash",
+    "api": "https://vancine.com/v1"
+  },
+  "vispark": {
+    "defaultModelId": "vispark/vision-large",
+    "api": "https://api.lab.vispark.in/v1"
+  },
+  "vivgrid": {
+    "defaultModelId": "claude-haiku-5-5",
+    "api": "https://api.vivgrid.com/v1"
+  },
+  "volcengine": {
+    "defaultModelId": "glm-5-3-flash-260828",
+    "api": "https://ark.cn-beijing.volces.com/api/v3"
+  },
+  "volcengine-coding-plan": {
+    "defaultModelId": "glm-5.3-flash",
+    "api": "https://ark.cn-beijing.volces.com/api/coding/v3"
+  },
+  "vultr": {
+    "defaultModelId": "mimo-v2.6-flash-rl",
+    "api": "https://api.vultrinference.com/v1"
+  },
+  "wafer.ai": {
+    "defaultModelId": "GLM-5.2",
+    "api": "https://pass.wafer.ai/v1"
+  },
+  "wallaby": {
+    "defaultModelId": "moonshotai/kimi-k3",
+    "api": "https://api.wallabytoken.com/v1"
+  },
+  "xiaomi": {
+    "defaultModelId": "mimo-v2.6-flash",
+    "api": "https://api.xiaomimimo.com/v1"
+  },
+  "xiaomi-token-plan-ams": {
+    "defaultModelId": "mimo-v2.6-flash",
+    "api": "https://token-plan-ams.xiaomimimo.com/v1"
+  },
+  "xiaomi-token-plan-cn": {
+    "defaultModelId": "mimo-v2.6-flash",
+    "api": "https://token-plan-cn.xiaomimimo.com/v1"
+  },
+  "xiaomi-token-plan-sgp": {
+    "defaultModelId": "mimo-v2.6-flash",
+    "api": "https://token-plan-sgp.xiaomimimo.com/v1"
+  },
+  "xpersona": {
+    "defaultModelId": "gpt-5.6",
+    "api": "https://www.xpersona.co/v1"
+  },
+  "zeldoc": {
+    "defaultModelId": "zdev",
+    "api": "https://api.zeldoc.ai/v1"
+  },
+  "zenifra": {
+    "defaultModelId": "alibaba/qwen3.6-35b-a3b",
+    "api": "https://ai.zenifra.com/v1"
+  },
+  "zenmux": {
+    "defaultModelId": "anthropic/claude-opus-5.5",
+    "api": "https://zenmux.ai/api/v1"
+  },
+  "zhipuai": {
+    "defaultModelId": "glm-5.3-flashx",
+    "api": "https://open.bigmodel.cn/api/paas/v4"
+  },
+  "zhipuai-coding-plan": {
+    "defaultModelId": "glm-5.3-flash",
+    "api": "https://open.bigmodel.cn/api/coding/paas/v4"
+  }
+}

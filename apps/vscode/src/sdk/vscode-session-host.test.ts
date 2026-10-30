@@ -66,6 +66,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 		const host = await VscodeSessionHost.create({ mcpHub: {} as never, telemetry })
 		await host.start(gitStartInput)
 		expect(mockClineCoreCreate).toHaveBeenCalledWith(expect.objectContaining({ telemetry }))
+		expect(mockClineCoreCreate.mock.calls[0][0].backendMode).toBe("local")
 		expect(mockClineCoreCreate.mock.calls[0][0].prepare).toBeUndefined()
 		expect(mockInnerStart.mock.calls[0][0]).toMatchObject({ source: "vscode", config: { telemetry } })
 		await host.dispose()
