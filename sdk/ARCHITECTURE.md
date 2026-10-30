@@ -1348,3 +1348,14 @@ session’s tool approval policies or approval callback, matching generic subage
 and teammates. The parent’s `subagent_<name>` delegation call still follows the
 parent’s approval policy. Tool allowlists and disabled-tool filtering remain in
 effect when constructing child tools. Inherited runtime hooks are unchanged.
+
+
+### Fork: recovery admission and persisted loop continuity
+
+`SessionRuntime` records the incoming user turn before extension initialization
+and releases admission even when startup fails before a runtime exists. A failed
+attachment load retains the literal request; it does not fabricate attachment
+contents. Reconstructing or restoring a session replays canonical recorded tool
+calls into the existing loop tracker without executing them. Fresh-conversation
+boundaries still reset it. This uses the existing transcript and tracker, with
+no extra storage or independent monitoring service inside Cline.

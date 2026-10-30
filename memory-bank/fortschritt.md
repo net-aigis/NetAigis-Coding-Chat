@@ -113,3 +113,8 @@ Priorität 1 gezielt abgeschlossen: Terminal-/Abbruchkorrektur `1c5db6c56`, Wart
 ### Phase 4 — belegte vorzeitige Terminalrückgabe korrigiert
 
 Der gemessene 3000-ms-sendText-Pfad und der zweite Markerless-Fristpfad erzeugen keinen künstlichen Abschluss mehr. Kein Start ohne Abschlusskanal; unbekannte Terminals bleiben erhalten. Background-Deadline mit Wrapper vereinheitlicht. Echte VS-Code-Nachmessung aller fünf Laufzeiten erfolgreich, 46 Host- und 95 Adapterprüfungen, 138 Coreprüfungen bestanden (14 plattformbedingte Skips). Build und Typprüfungen erfolgreich. Priorität 2 wird am vorhandenen begonnenen Stand fortgesetzt. Ablageprüfung lesend abgeschlossen und zuerst im Chat ausgegeben; keine Bereinigung.
+
+
+### Phase 4 — Priorität 2 teilweise repariert
+
+Startfehler verlieren den Auftrag nicht mehr und sperren keine spätere Wiederaufnahme. Gespeicherte Werkzeugaufrufe erhalten den Schleifenzähler über Restore/Neukonstruktion. 102 gezielte Tests bestanden, Core-Build und Typprüfung erfolgreich. Komprimierung und vollständige Fortsetzung sind weiter offen.

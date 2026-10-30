@@ -192,3 +192,35 @@ Die weitere Core-Typprüfung wird mit ihrem tatsächlichen Ergebnis ergänzt.
 Priorität 2–5 und die produktive Abnahme sind hiermit nicht als erledigt erklärt.
 
 Ergänzung nach Prüfabschluss: `p1-core-observation-types` Exit 0. Das obige Manifest mit 82 Einträgen wurde mit `sha256sum -c --quiet` tatsächlich geprüft (Exit 0). Der auf den echten Executor umgestellte Testadapter wurde nach seiner Typkorrektur zusätzlich durch den kurzen Timeout-Fall geprüft. Priorität 1 ist mit den oben genannten begrenzten Prüfungen abgeschlossen; keine produktive Abnahme.
+
+
+## Priorität 2 — Startfehler und Wiederholungsabbruch über Wiederaufnahme
+
+Teilkorrektur, noch kein Abschluss der gesamten Priorität 2. Ein fehlgeschlagener
+Runtime-Aufbau ließ die Sitzungszulassung gesperrt; ein Extension-Startfehler
+trat vor dem Speichern des aktuellen Nutzerauftrags auf. Die äußere Run-Finally
+bereinigt nun jeden Endpfad; der ursprüngliche Auftrag wird vor Extension-Setup
+gespeichert. Bei einem Fehler beim Anhängeladen bleibt wenigstens der wörtliche
+Nutzertext erhalten. Ein vor der Runtime-Erstellung angelegter RunHealth wird
+bei einem Fehler freigegeben; keine unabhängige Überwachung wurde hinzugefügt.
+
+`p2-startup-confirmed-red` prüft beide Fehler gegen eine per `git show` gelesene
+Baseline aus `b052f263a`: 2/2 fehlgeschlagen. Der aktuelle Quellstand wurde für
+diese Gegenprobe nicht zurückgesetzt. Vorherige Versuche sind keine gültigen
+Rotbelege: der erste Extension-Test hatte ein ungültiges Manifest, zwei private
+Baseline-Konfigurationen konnten ihre Workspace-Imports nicht auflösen. Diese
+Protokolle bleiben erhalten; der validierte Gegenversuch nennt den tatsächlichen
+Fehler. Nach Korrektur bestehen beide Fälle.
+
+Zwei weitere rote Tests belegen den verlorenen Warteaufruf-Zähler bei
+`initialMessages` und `restore()` (`p2-resumed-loop-red`: 2/2 fehlgeschlagen).
+Wiederaufnahme spielt jetzt ausschließlich die gespeicherten `tool_use`-Einträge
+in den vorhandenen Tracker ein. Es werden keine Werkzeuge ausgeführt, keine
+Warnungen erfunden und keine Nebenablage angelegt. Eine echte neue Unterhaltung
+über `run()` bzw. `clearHistory()` beginnt weiter mit einem leeren Zähler.
+
+`p2-startup-and-loop-green`: 102/102 erfolgreich einschließlich echter
+Runtime-Integrationsfälle. `p2-recovery-build` und `p2-recovery-types`: Exit 0.
+Kontextkomprimierung und vollständige persistierte Fortsetzung werden im
+nächsten Teil dieser Priorität geprüft. TOTAL RECALL/Agenten/Android wurden
+noch nicht produktiv geprüft oder als fertig bezeichnet.

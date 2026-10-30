@@ -512,6 +512,7 @@ export class SessionRuntime {
 				? undefined
 				: loopDetectionInput;
 		this.loopTracker = new LoopDetectionTracker(loopConfig);
+		this.restoreRecordedToolStreak(this.conversation.getMessages());
 	}
 
 	// -------------------------------------------------------------------
@@ -603,6 +604,23 @@ export class SessionRuntime {
 	restore(messages: readonly MessageWithMetadata[]): void {
 		this.conversation.restore(messages);
 		this.resetConversationBoundaryTrackers();
+		this.restoreRecordedToolStreak(messages);
+	}
+
+	private restoreRecordedToolStreak(
+		messages: readonly MessageWithMetadata[],
+	): void {
+		if (this.loopDetectionDisabled) return;
+		// Replay only recorded calls, with no execution, warnings or inferred
+		// progress. Reopening a session must not reset its repeated-call guard.
+		for (const message of messages) {
+			if (message.role !== "assistant" || !Array.isArray(message.content))
+				continue;
+			for (const block of message.content) {
+				if (block.type === "tool_use")
+					this.loopTracker.inspect({ name: block.name, input: block.input });
+			}
+		}
 	}
 
 	private resetConversationBoundaryTrackers(): void {
@@ -814,6 +832,13 @@ export class SessionRuntime {
 			.finally(() => {
 				if (this.activeRunPromise === activePromise) {
 					this.activeRunPromise = null;
+					// Startup can fail before executeRunInternal reaches its runtime
+					// cleanup block. Release admission on every terminal path.
+					this.running = false;
+					this.activeRuntime = null;
+					this.activeRunId = null;
+					this.abortRequested = false;
+					this.abortReason = undefined;
 				}
 			});
 		this.activeRunPromise = activePromise;
@@ -913,7 +938,6 @@ export class SessionRuntime {
 			.slice(2, 8)}`;
 		// Lazily initialize contribution-registry extensions on the
 		// first run, before runtime construction.
-		await this.initializeExtensions();
 		this.eventAdapter.reset();
 		this.currentRunToolCalls = [];
 		this.currentRunUsage = { inputTokens: 0, outputTokens: 0 };
@@ -937,18 +961,31 @@ export class SessionRuntime {
 		// a falsy input as "no additional messages", per
 		// packages/agents/src/agent-runtime.ts normalizeInput path).
 		if (effectiveUserMessage !== undefined) {
-			const content = await buildUserTurnContent(
-				effectiveUserMessage,
-				input.userImages,
-				input.userFiles,
-				this.config.userFileContentLoader,
-			);
+			let content;
+			try {
+				content = await buildUserTurnContent(
+					effectiveUserMessage,
+					input.userImages,
+					input.userFiles,
+					this.config.userFileContentLoader,
+				);
+			} catch (error) {
+				// Keep the literal request even if an attachment cannot be read.
+				this.conversation.appendMessage({
+					id: crypto.randomUUID(),
+					role: "user",
+					content: effectiveUserMessage,
+				});
+				throw error;
+			}
 			this.conversation.appendMessage({
 				id: crypto.randomUUID(),
 				role: "user",
 				content,
 			});
 		}
+		// Admission and the user request must survive extension-startup errors.
+		await this.initializeExtensions();
 
 		// Build the AgentRuntime for this turn.
 		const agentModel = createAgentModelFromConfig(
@@ -1041,7 +1078,13 @@ export class SessionRuntime {
 			completionPolicy: toolCallingDisabled ? null : undefined,
 			systemPrompt,
 		});
-		const runtime = this.createAgentRuntimeImpl(runtimeConfig);
+		let runtime: AgentRuntime;
+		try {
+			runtime = this.createAgentRuntimeImpl(runtimeConfig);
+		} catch (error) {
+			runHealth?.dispose();
+			throw error;
+		}
 		this.activeRuntime = runtime;
 
 		// Subscribe to runtime events; fan out legacy events to listeners
