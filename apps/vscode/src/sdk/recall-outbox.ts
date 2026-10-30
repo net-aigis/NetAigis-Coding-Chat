@@ -14,11 +14,8 @@ interface RecallEvent {
 	payload: Record<string, unknown>
 }
 
-const baseUrl = process.env.NETAIGIS_RECALL_URL?.replace(/\/+$/, "")
-const token = process.env.NETAIGIS_RECALL_TOKEN
-const project = process.env.NETAIGIS_RECALL_PROJECT
-const actor = process.env.NETAIGIS_RECALL_ACTOR
-const enabled = Boolean(baseUrl && token && project && actor)
+// Configuration is managed via VS Code SecretStorage and Settings
+// No hardcoded defaults - must be explicitly configured by user
 const queueDir = process.env.NETAIGIS_RECALL_QUEUE_DIR || path.join(os.homedir(), ".cline", "netaigis-recall-outbox")
 let draining = false
 
@@ -37,7 +34,7 @@ function getSessionId(event: unknown): string | undefined {
 	return undefined
 }
 
-async function send(event: RecallEvent): Promise<void> {
+async function send(event: RecallEvent, baseUrl: string, token: string): Promise<void> {
 	const response = await fetch(`${baseUrl}/internal/recall/events`, {
 		method: "POST",
 		headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -47,7 +44,8 @@ async function send(event: RecallEvent): Promise<void> {
 	if (!response.ok) throw new Error(`TOTAL RECALL HTTP ${response.status}`)
 }
 
-export async function drainRecallOutbox(): Promise<void> {
+export async function drainRecallOutbox(config?: RecallConfiguration): Promise<void> {
+	const enabled = config?.enabled
 	if (!enabled || draining) return
 	draining = true
 	try {
@@ -57,7 +55,7 @@ export async function drainRecallOutbox(): Promise<void> {
 			const fullPath = path.join(queueDir, file)
 			try {
 				const data = JSON.parse(await fs.readFile(fullPath, "utf8")) as RecallEvent
-				await send(data)
+				await send(data, config!.baseUrl, config!.token)
 				await fs.unlink(fullPath)
 			} catch {
 				// Preserve the record; retry on the next event or extension start.
@@ -69,9 +67,17 @@ export async function drainRecallOutbox(): Promise<void> {
 	}
 }
 
+export interface RecallConfiguration {
+	baseUrl: string
+	token: string
+	project: string
+	actor: string
+	enabled: boolean
+}
+
 /** Durable local staging before network transmission, with retry-stable event IDs. */
-export async function archiveSdkEvent(event: unknown): Promise<void> {
-	if (!enabled) return
+export async function archiveSdkEvent(event: unknown, config?: RecallConfiguration): Promise<void> {
+	if (!config?.enabled) return
 	const sessionId = getSessionId(event)
 	if (!sessionId) {
 		// Do not invent a session identifier: this event needs an explicit mapping.
@@ -80,9 +86,9 @@ export async function archiveSdkEvent(event: unknown): Promise<void> {
 	const id = randomUUID()
 	const record: RecallEvent = {
 		event_id: id,
-		project_id: project!,
+		project_id: config.project,
 		conversation_id: sessionId,
-		actor_id: actor!,
+		actor_id: config.actor,
 		kind: "cline.sdk.event",
 		payload: { sdk_event: asRecord(event), captured_at: new Date().toISOString() },
 	}
@@ -95,9 +101,9 @@ export async function archiveSdkEvent(event: unknown): Promise<void> {
 	} finally {
 		await fs.unlink(temp).catch(() => {})
 	}
-	await drainRecallOutbox()
+	await drainRecallOutbox(config)
 }
 
 export function recallEnabled(): boolean {
-	return enabled
+	return false // Must be configured via SecretStorage
 }

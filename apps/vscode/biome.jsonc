@@ -151,6 +151,7 @@
 				"!!**/*.test.ts",
 				"!!src/dev/**",
 				"!!src/extension.ts",
+				"!!src/core/controller/commands/recall-session-commands.ts",
 				"!!src/integrations/git/commit-message-generator.ts",
 				"!!src/integrations/terminal/**",
 				"!!src/core/controller/ui/openWalkthrough.ts"

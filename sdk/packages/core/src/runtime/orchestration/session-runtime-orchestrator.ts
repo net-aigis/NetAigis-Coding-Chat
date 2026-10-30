@@ -33,6 +33,7 @@ import {
 	type AgentResult,
 	type AgentRunResult,
 	type AgentRuntimeEvent,
+	type AgentBeforeToolResult,
 	type AgentRuntimeHooks,
 	type AgentRuntimePrepareTurnContext,
 	type AgentTool,
@@ -1158,6 +1159,26 @@ export class SessionRuntime {
 		]);
 		return {
 			...hooks,
+			beforeTool: async (ctx) => {
+				const control = await hooks.beforeTool?.(ctx);
+				if (control?.stop || control?.skip) {
+					return control;
+				}
+				// Loop detection runs here rather than in the runtime event
+				// handler: `tool-started` fires after the tool has already begun
+				// executing, so a verdict raised there can only stop the run
+				// *after* the repeated call ran again. As a `beforeTool` hook it
+				// refuses the call outright and aborts before execution.
+				const loopControl = this.inspectLoopForToolCall(
+					ctx.toolCall.toolName,
+					ctx.input,
+					ctx.snapshot.iteration,
+				);
+				if (loopControl) {
+					return { ...control, ...loopControl };
+				}
+				return control;
+			},
 			afterTool: async (ctx) => {
 				const control = await hooks.afterTool?.(ctx);
 				const result = control?.result ?? ctx.result;
@@ -1293,20 +1314,11 @@ export class SessionRuntime {
 			case "tool-started": {
 				this.toolStartedAt.set(event.toolCall.toolCallId, new Date());
 				this.toolInputs.set(event.toolCall.toolCallId, event.toolCall.input);
-				if (event.toolCall.execution) {
-					break;
-				}
-				// Loop-detection inspection: identical consecutive
-				// tool-call signatures trip the tracker. On "soft"
-				// verdict we append a recovery notice; on "hard"
-				// verdict we feed the mistake tracker with
-				// forceAtLimit:true and abort. Parity with pre-Step-9
-				// agent.ts L917-954.
-				this.inspectLoopForToolCall(
-					event.toolCall.toolName,
-					event.toolCall.input,
-					event.iteration,
-				);
+				// Loop detection runs in the `beforeTool` hook (see
+				// createRuntimeHooks), which fires before the tool executes.
+				// This event arrives after execution has already begun, so it
+				// only records timing — inspecting here let repeated calls run
+				// one more time before the guard could stop them.
 				break;
 			}
 			case "tool-finished": {
@@ -1466,13 +1478,13 @@ export class SessionRuntime {
 		toolName: string,
 		input: unknown,
 		iteration: number,
-	): void {
+	): AgentBeforeToolResult | undefined {
 		if (this.trackerAbortInFlight || this.loopDetectionDisabled) {
-			return;
+			return undefined;
 		}
 		const verdict = this.loopTracker.inspect({ name: toolName, input });
 		if (verdict.kind === "ok") {
-			return;
+			return undefined;
 		}
 		if (verdict.kind === "soft") {
 			if (verdict.message) {
@@ -1481,9 +1493,11 @@ export class SessionRuntime {
 					content: [{ type: "text", text: verdict.message }],
 				});
 			}
-			return;
+			return undefined;
 		}
-		// Hard escalation.
+		// Hard escalation. Refuse the call outright (`skip`) so a repeated tool
+		// cannot execute one more time while the tracker abort settles, then
+		// record the mistake with forceAtLimit:true so the run stops.
 		this.enqueueMistakeRecord({
 			iteration,
 			reason: "tool_execution_failed",
@@ -1492,6 +1506,9 @@ export class SessionRuntime {
 				verdict.message ??
 				`Detected repeated tool calls to \`${toolName}\`; stopping to avoid a loop.`,
 		});
+		return verdict.skip
+			? { skip: true, stop: true, reason: verdict.message }
+			: undefined;
 	}
 
 	/**

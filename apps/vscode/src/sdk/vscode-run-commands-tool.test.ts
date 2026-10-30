@@ -343,13 +343,36 @@ describe("formatCommandForTerminal", () => {
 })
 
 describe("executeForeground", () => {
-	it("returns output as-is on success (no exit code captured)", async () => {
+	it("rejects an unconfirmed completion when no exit code was captured", async () => {
 		const process = createFakeTerminalProcess({ lines: ["hello"] })
 		const terminalManager = createFakeTerminalManager(process)
 
-		const result = await executeForeground("echo hello", "/workspace", terminalManager, 1000)
+		try {
+			await executeForeground("echo hello", "/workspace", terminalManager, 1000)
+			expect.unreachable("expected executeForeground to reject a completion without an exit code")
+		} catch (error) {
+			expect(error).toBeInstanceOf(CommandExitError)
+			expect((error as InstanceType<typeof CommandExitError>).exitCode).toBe(1)
+			expect((error as InstanceType<typeof CommandExitError>).output).toContain(
+				"completion could not be confirmed",
+			)
+			expect((error as InstanceType<typeof CommandExitError>).output).toContain("hello")
+		}
+	})
 
-		expect(result).toBe("hello")
+	it("rejects a silent completion with no output and no exit code", async () => {
+		const terminalManager = createFakeTerminalManager(createFakeTerminalProcess({ lines: [] }))
+
+		try {
+			await executeForeground("touch /tmp/marker", "/workspace", terminalManager, 1000)
+			expect.unreachable("expected executeForeground to reject a silent, unconfirmed completion")
+		} catch (error) {
+			expect(error).toBeInstanceOf(CommandExitError)
+			expect((error as InstanceType<typeof CommandExitError>).exitCode).toBe(1)
+			expect((error as InstanceType<typeof CommandExitError>).output).toContain(
+				"no output and no exit code were reported",
+			)
+		}
 	})
 
 	it("returns output as-is when the exit code is 0", async () => {

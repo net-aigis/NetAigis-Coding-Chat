@@ -61,6 +61,16 @@ export function toolCallSignature(input: unknown): string {
 export interface LoopCheckResult {
 	softWarning: boolean;
 	hardEscalation: boolean;
+	/**
+	 * True when the consecutive-identical count is at or above `hardThreshold`
+	 * — i.e. this call and every call back to the start of the streak must be
+	 * refused, not just the one that tripped the threshold. The legacy
+	 * `agent.ts` loop guard skipped every call from the hard threshold onward;
+	 * a bare `>=` verdict alone let calls at counts 6, 7, 8... execute again
+	 * while the abort raced ahead of them, which is how repeated `grep`/`cat`
+	 * commands kept running in a loop.
+	 */
+	skipCall: boolean;
 }
 
 export function checkRepeatedToolCall(
@@ -83,6 +93,7 @@ export function checkRepeatedToolCall(
 	return {
 		softWarning: state.consecutiveIdenticalCount === config.softThreshold,
 		hardEscalation: state.consecutiveIdenticalCount >= config.hardThreshold,
+		skipCall: state.consecutiveIdenticalCount >= config.hardThreshold,
 	};
 }
 
@@ -102,6 +113,13 @@ export function checkRepeatedToolCall(
 export interface LoopDetectionVerdict {
 	kind: "ok" | "soft" | "hard";
 	message?: string;
+	/**
+	 * Set when the repeated call must not execute at all. `SessionRuntime`
+	 * feeds this to its `beforeTool` hook so identical calls past the hard
+	 * threshold are refused instead of running one more time while the
+	 * mistake-tracker abort settles.
+	 */
+	skip: boolean;
 }
 
 /** Minimal call shape the tracker needs; matches `AgentToolCallPart` subset. */
@@ -145,15 +163,17 @@ export class LoopDetectionTracker {
 			return {
 				kind: "hard",
 				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive identical calls to \`${call.name}\`; stopping to avoid a loop.`,
+				skip: result.skipCall,
 			};
 		}
 		if (result.softWarning) {
 			return {
 				kind: "soft",
 				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive identical calls to \`${call.name}\`; consider trying a different approach.`,
+				skip: false,
 			};
 		}
-		return { kind: "ok" };
+		return { kind: "ok", skip: false };
 	}
 
 	reset(): void {

@@ -469,10 +469,31 @@ export async function executeForeground(
 			// CommandExitError so the SDK's shell tool wrapper marks the result as
 			// `success: false` and includes the exit code in the error message —
 			// matching the background (child_process) executor's behavior.
-			// If no exit code was captured after an observed completion, return the
-			// output as-is. Unobserved completion is handled explicitly above.
+			const completionObserved =
+				completionDetails?.exitCode !== undefined &&
+				completionDetails?.exitCode !== null;
+			if (!completionObserved) {
+				// Completion was reported by the read loop but no exit code ever
+				// arrived: VS Code fired neither a CommandFinished (D) marker nor
+				// onDidEndTerminalShellExecution within EXIT_CODE_EVENT_TIMEOUT_MS.
+				// Whether the command succeeded is unknown, and an empty output in
+				// particular must never be read as "the file exists" / "the tests
+				// passed". Report it as a failure with exit code 1 so the agent has
+				// to verify the effect through another channel instead of assuming.
+				const reason =
+					" No exit code was reported for this command, so its completion is unconfirmed."
+				Logger.warn(
+					`[VscodeRunCommands] Completion without exit code for command: ${terminalCommand}`,
+				);
+				const result =
+					output.length > 0
+						? `[Command completion could not be confirmed; no exit code was reported and the command may still be running. Do not assume it succeeded — verify its effect before relying on it.]${reason}\n${output}`
+						: "[Command completion could not be confirmed; no output and no exit code were reported. The command may still be running or may have failed silently. Do not assume it succeeded — verify its effect before relying on it.]";
+				throw new CommandExitError(1, result);
+			}
+
 			const exitCode = completionDetails?.exitCode
-			if (exitCode !== undefined && exitCode !== null && exitCode !== 0) {
+			if (exitCode !== 0) {
 				const result =
 					output.length > 0
 						? `[Command exited with code ${exitCode}]\n${output}`
