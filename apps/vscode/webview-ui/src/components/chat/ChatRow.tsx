@@ -1,5 +1,5 @@
 import { GeneratedMediaContent } from "@cline/ui"
-import { COMMAND_OUTPUT_STRING } from "@shared/combineCommandSequences"
+import { commandUiState } from "@shared/command-execution"
 import {
 	ClineApiReqInfo,
 	ClineAskQuestion,
@@ -222,13 +222,7 @@ export const ChatRowContent = memo(
 		const type = message.type === "ask" ? message.ask : message.say
 
 		const isCommandMessage = type === "command"
-		// Check if command has output to determine if it's actually executing
-		const commandHasOutput = message.text?.includes(COMMAND_OUTPUT_STRING) ?? false
-		// A command is executing if it has output but hasn't completed yet
-		const isCommandExecuting = isCommandMessage && !message.commandCompleted && commandHasOutput
-		// A command is pending if it hasn't started (no output) and hasn't completed
-		const isCommandPending = isCommandMessage && isLast && !message.commandCompleted && !commandHasOutput
-		const isCommandCompleted = isCommandMessage && message.commandCompleted === true
+		const isCommandExecuting = isCommandMessage && commandUiState(message) === "running"
 
 		const isMcpServerResponding = isLast && lastModifiedMessage?.say === "mcp_server_request_started"
 
@@ -749,9 +743,6 @@ export const ChatRowContent = memo(
 				<CommandOutputRow
 					icon={icon}
 					isBackgroundExec={vscodeTerminalExecutionMode === "backgroundExec"}
-					isCommandCompleted={isCommandCompleted}
-					isCommandExecuting={isCommandExecuting}
-					isCommandPending={isCommandPending}
 					isOutputFullyExpanded={isOutputFullyExpanded}
 					message={message}
 					onCancelCommand={onCancelCommand}

@@ -1507,3 +1507,16 @@ technical PID/time/code observations; an observation timer cannot provide exit
 confirmation. The external watchdog remains a separate infrastructure process; connecting
 it to shared-runtime observations is a remaining integration/deployment task.
 No self-monitoring AI is introduced.
+
+
+Command results carry the executor's structured observation through the public
+shell tool boundary. Explicit detachment is `pending: true`, `success: false`
+with a running observation, not a successful completion. The observation is a
+point-in-time record; a later child exit does not rewrite that historical result.
+VS Code foreground detachment without direct process proof reports unknown.
+Extension and webview use the same status projection, retaining per-command exit
+codes for batches. Only confirmed numeric exit or confirmed signal/cancellation
+can finalize a row. Legacy completion booleans and stdout strings are not exit
+proof. Live metadata-only updates expose running/unknown/observation failures
+without completing an unfinished batch. Durable current-state reconciliation is
+a separate runtime responsibility and remains unfinished at this step.

@@ -1,4 +1,5 @@
 import { COMMAND_OUTPUT_STRING, COMMAND_REQ_APP_STRING } from "@shared/combineCommandSequences"
+import { commandStatusText, commandUiState } from "@shared/command-execution"
 import { ClineMessage } from "@shared/ExtensionMessage"
 import { StringRequest } from "@shared/proto/cline/common"
 import { memo, useEffect, useRef } from "react"
@@ -117,9 +118,6 @@ CommandOutputContent.displayName = "CommandOutputContent"
 export const CommandOutputRow = memo(
 	({
 		message,
-		isCommandExecuting = false,
-		isCommandPending = false,
-		isCommandCompleted = false,
 		isBackgroundExec = false, // vscodeTerminalExecutionMode === "backgroundExec"
 		onCancelCommand,
 		icon,
@@ -129,9 +127,6 @@ export const CommandOutputRow = memo(
 		onOutputChange,
 	}: {
 		message: ClineMessage
-		isCommandExecuting?: boolean
-		isCommandPending?: boolean
-		isCommandCompleted?: boolean
 		isBackgroundExec?: boolean
 		onCancelCommand?: () => void
 		icon?: JSX.Element | null
@@ -140,6 +135,11 @@ export const CommandOutputRow = memo(
 		setIsOutputFullyExpanded: (expanded: boolean) => void
 		onOutputChange?: () => void
 	}) => {
+		const status = commandUiState(message)
+		const isCommandExecuting = status === "running"
+		const isCommandPending = status === "pending"
+		const isUnconfirmed = status === "unknown" || status === "observation_failed"
+		const isFailure = ["failed", "aborted", "timed_out", "terminated", "not_started"].includes(status)
 		const splitMessage = (text: string) => {
 			const outputIndex = text.indexOf(COMMAND_OUTPUT_STRING)
 			if (outputIndex === -1) {
@@ -197,15 +197,17 @@ export const CommandOutputRow = memo(
 								<div
 									className={cn("bg-description rounded-full w-2 h-2 shrink-0", {
 										"bg-success animate-pulse": isCommandExecuting,
-										"bg-editor-warning-foreground": isCommandPending,
+										"bg-editor-warning-foreground": isCommandPending || isUnconfirmed,
+										"bg-error": isFailure,
 									})}
 								/>
 								<span
 									className={cn("text-description font-medium text-base shrink-0", {
 										"text-success": isCommandExecuting,
-										"text-editor-warning-foreground": isCommandPending,
+										"text-editor-warning-foreground": isCommandPending || isUnconfirmed,
+										"text-error": isFailure,
 									})}>
-									{getCommandStatusText(isCommandExecuting, isCommandPending, isCommandCompleted)}
+									{commandStatusText(status)}
 								</span>
 							</div>
 							<div className="flex items-center gap-2 shrink-0">
@@ -239,8 +241,8 @@ export const CommandOutputRow = memo(
 						<CommandOutputContent
 							isContainerExpanded={true}
 							isOutputFullyExpanded={isOutputFullyExpanded}
-							onToggle={() => setIsOutputFullyExpanded(!isOutputFullyExpanded)}
 							onOutputChange={onOutputChange}
+							onToggle={() => setIsOutputFullyExpanded(!isOutputFullyExpanded)}
 							output={output}
 						/>
 					)}
@@ -257,23 +259,3 @@ export const CommandOutputRow = memo(
 )
 
 CommandOutputRow.displayName = "CommandOutputRow"
-
-const CommandStatusMap = {
-	executing: "Running",
-	pending: "Pending",
-	completed: "Completed",
-	skipped: "Skipped",
-}
-
-function getCommandStatusText(isExecuting: boolean, isPending: boolean, isCompleted: boolean): string {
-	if (isExecuting) {
-		return CommandStatusMap.executing
-	}
-	if (isPending) {
-		return CommandStatusMap.pending
-	}
-	if (isCompleted) {
-		return CommandStatusMap.completed
-	}
-	return CommandStatusMap.skipped
-}

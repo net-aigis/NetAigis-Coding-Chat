@@ -33,9 +33,13 @@ export interface ToolOperationResult {
 	error?: string;
 	/** Whether the operation succeeded */
 	success: boolean;
+	/** The invocation returned while the observed process remains active. */
+	pending?: boolean;
 	/** Observed command outcome. Missing exit events must never invent a code. */
 	execution?: {
 		state:
+			| "running"
+			| "completed"
 			| "failed"
 			| "terminated"
 			| "aborted"
@@ -46,6 +50,11 @@ export interface ToolOperationResult {
 		exitCode?: number;
 		signal?: NodeJS.Signals | null;
 		terminationConfirmed?: boolean;
+		executionId?: string;
+		pid?: number;
+		detached?: boolean;
+		logPath?: string;
+		observedAtMs?: number;
 	};
 	/** Duration in MS */
 	duration?: number;

@@ -1008,6 +1008,16 @@ function spawnAndCollect(
 			]
 				.filter(Boolean)
 				.join("\n");
+			context.emitUpdate?.({
+				executionId,
+				execution: {
+					state: "running",
+					pid: childPid,
+					detached: true,
+					logPath: detachedLog.path,
+					observedAtMs: Date.now(),
+				},
+			});
 			settle(() => resolve(notice));
 			return true;
 		};

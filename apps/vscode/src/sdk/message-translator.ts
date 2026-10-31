@@ -31,6 +31,7 @@ import { PATCH_MARKERS, projectSessionMessagesForDisplay, resolveMessageDisplayR
 import type { MessageWithMetadata as SdkMessage } from "@cline/llms"
 import { type AgentEvent, formatDisplayUserInput, type ProviderErrorClass } from "@cline/shared"
 import { COMMAND_OUTPUT_STRING } from "@shared/combineCommandSequences"
+import { type CommandExecution, commandHasConfirmedExit, extractCommandExecution } from "@shared/command-execution"
 import type {
 	ClineApiReqInfo,
 	ClineAskUseMcpServer,
@@ -139,6 +140,7 @@ export class MessageTranslatorState {
 	private streamingToolName: string | undefined
 	/** Output snapshot for the active command tool's partial row. */
 	private streamingCommandOutput: { toolCallId: string | undefined; text: string; totalChars: number } | undefined
+	private streamingCommandExecutions = new Map<number, unknown>()
 	/** Approved tool-call ids mapped to the approval row that should be updated in place. */
 	private approvedToolMessageTsByCallId = new Map<string, number>()
 	/**
@@ -279,6 +281,7 @@ export class MessageTranslatorState {
 		this.streamingToolName = toolName
 		this.streamingToolInput = input
 		this.streamingCommandOutput = { toolCallId, text: "", totalChars: 0 }
+		this.streamingCommandExecutions.clear()
 	}
 
 	/** Remember the approval prompt row for a tool call after the user approves it. */
@@ -353,6 +356,14 @@ export class MessageTranslatorState {
 		})
 		return output.text
 	}
+	updateStreamingCommandExecution(index: number, execution: unknown): void {
+		this.streamingCommandExecutions.set(index, execution)
+	}
+	getStreamingCommandExecution(): CommandExecution | undefined {
+		return this.streamingCommandExecutions.size
+			? extractCommandExecution([...this.streamingCommandExecutions.values()].map((execution) => ({ execution })))
+			: undefined
+	}
 
 	isMismatchedStreamingCommand(toolName: string, toolCallId: string | undefined): boolean {
 		const output = this.streamingCommandOutput
@@ -369,6 +380,7 @@ export class MessageTranslatorState {
 		this.streamingToolInput = undefined
 		this.streamingToolName = undefined
 		this.streamingCommandOutput = undefined
+		this.streamingCommandExecutions.clear()
 		return ts
 	}
 
@@ -550,6 +562,7 @@ export class MessageTranslatorState {
 		this.streamingToolInput = undefined
 		this.streamingToolName = undefined
 		this.streamingCommandOutput = undefined
+		this.streamingCommandExecutions.clear()
 		this.clearApprovedToolMessageTs()
 		this.deniedToolApprovalsByCallId.clear()
 		this.clearSpawnAgents()
@@ -1521,23 +1534,32 @@ function translateAgentEvent(event: AgentEvent, state: MessageTranslatorState): 
 					state.getStreamingToolName() !== updateToolName ||
 					!update ||
 					typeof update !== "object" ||
-					Array.isArray(update) ||
-					!("chunk" in update) ||
-					typeof update.chunk !== "string" ||
-					!update.chunk
-				) {
+					Array.isArray(update)
+				)
 					break
-				}
-				const output = state.appendStreamingCommandOutput(event.toolCallId, update.chunk)
-				if (output === undefined) {
-					break
-				}
+				const progress = update as Record<string, unknown>
+				const chunk = typeof progress.chunk === "string" ? progress.chunk : ""
+				const execution = progress.execution as Record<string, unknown> | undefined
+				const hasState =
+					execution &&
+					(["running", "unknown"].includes(String(execution.state)) || execution.observationFailed === true)
+				if (!chunk && !hasState) break
+				const output = state.appendStreamingCommandOutput(event.toolCallId, chunk)
+				if (output === undefined) break
+				if (hasState)
+					state.updateStreamingCommandExecution(
+						Number.isSafeInteger(progress.commandIndex) ? Number(progress.commandIndex) : 0,
+						execution,
+					)
+				const commandExecution = state.getStreamingCommandExecution()
+
 				messages.push({
 					ts: state.getStreamingToolTs(),
 					type: "say",
 					say: "command",
 					text: `${extractCommandText(state.getStreamingToolInput())}\n${COMMAND_OUTPUT_STRING}\n${output}`,
 					partial: true,
+					...(commandExecution ? { commandExecution } : {}),
 				})
 				break
 			}
@@ -1743,7 +1765,7 @@ function translateAgentEvent(event: AgentEvent, state: MessageTranslatorState): 
 						break
 					}
 
-					// command tools finalize as say="command" with commandCompleted=true.
+					// A returned tool does not prove its process exited.
 					// We keep the same timestamp to replace the streaming partial command row
 					// in-place, so it doesn't disappear (command_output rows are filtered out
 					// by combineCommandSequences in the chat pipeline).
@@ -1752,13 +1774,15 @@ function translateAgentEvent(event: AgentEvent, state: MessageTranslatorState): 
 						const commandText = extractCommandText(storedInput)
 						const outputStr = event.error ? `Error: ${event.error}` : extractToolOutputText(event.output)
 						const ts = state.clearStreamingTool()
+						const commandExecution = extractCommandExecution(event.output)
 						messages.push({
 							ts,
 							type: "say",
 							say: "command",
 							text: outputStr ? `${commandText}\n${COMMAND_OUTPUT_STRING}\n${outputStr}` : commandText,
 							partial: false,
-							commandCompleted: true,
+							commandCompleted: commandHasConfirmedExit(commandExecution),
+							commandExecution,
 						})
 						break
 					}

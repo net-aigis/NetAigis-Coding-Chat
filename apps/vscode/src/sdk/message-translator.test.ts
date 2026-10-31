@@ -390,7 +390,7 @@ describe("translateSessionEvent — agent_event content_start", () => {
 						contentType: "tool",
 						toolName: "execute_command",
 						toolCallId: "command-call",
-						output: [{ result: "passed", success: true }],
+						output: [{ result: "passed", success: true, execution: { state: "completed", exitCode: 0 } }],
 					} as AgentEvent,
 				},
 			},
@@ -403,6 +403,7 @@ describe("translateSessionEvent — agent_event content_start", () => {
 			say: "command",
 			partial: false,
 			commandCompleted: true,
+			commandExecution: { state: "completed", commands: [{ state: "completed", exitCode: 0 }] },
 		})
 	})
 
@@ -2201,6 +2202,48 @@ describe("translateSessionEvent — agent_event content_update", () => {
 		translate(state, { type: "content_start", contentType: "tool", toolName, toolCallId, input: { commands: ["build"] } })[0]
 	const update = (state: MessageTranslatorState, value: unknown, toolName?: string, toolCallId?: string) =>
 		translate(state, { type: "content_update", contentType: "tool", toolName, toolCallId, update: value })
+	it.each(["unknown", "running"])("does not label a returned tool as completed when its process is %s", (processState) => {
+		const state = new MessageTranslatorState()
+		start(state)
+		const [message] = translate(state, {
+			type: "content_end",
+			contentType: "tool",
+			toolName: "run_commands",
+			output: [{ result: "partial output", success: false, execution: { state: processState } }],
+		})
+		expect(message.commandCompleted).toBe(false)
+		expect(message.commandExecution?.state).toBe(processState)
+	})
+
+	it("retains real running evidence through metadata-only and stdout updates, rejecting another call", () => {
+		const state = new MessageTranslatorState()
+		start(state, "run_commands", "active")
+		expect(update(state, { execution: { state: "running", pid: 42 } }, "run_commands", "other")).toEqual([])
+		const [running] = update(
+			state,
+			{ execution: { state: "running", pid: 123, executionId: "exec-1" } },
+			"run_commands",
+			"active",
+		)
+		expect(running.commandExecution).toEqual({
+			state: "running",
+			commands: [{ state: "running", pid: 123, executionId: "exec-1" }],
+		})
+		expect(update(state, { chunk: "still here" }, "run_commands", "active")[0].commandExecution).toEqual(
+			running.commandExecution,
+		)
+		// The first command's exit does not complete a still active batch.
+		expect(update(state, { execution: { state: "completed", exitCode: 0 } }, "run_commands", "active")).toEqual([])
+		const [next] = update(
+			state,
+			{ commandIndex: 1, execution: { state: "unknown", observationFailed: true } },
+			"run_commands",
+			"active",
+		)
+		expect(next.commandExecution?.state).toBe("observation_failed")
+		expect(next.commandExecution?.commands).toHaveLength(2)
+		expect(next.commandCompleted).not.toBe(true)
+	})
 
 	it.each(["run_commands", "execute_command"])("streams %s stdout and stderr into the existing row", (toolName) => {
 		const state = new MessageTranslatorState()
@@ -2224,13 +2267,14 @@ describe("translateSessionEvent — agent_event content_update", () => {
 			type: "content_end",
 			contentType: "tool",
 			toolName,
-			output: [{ result: "final output", success: true }],
+			output: [{ result: "final output", success: true, execution: { state: "completed", exitCode: 0 } }],
 		})
 		expect(completed).toEqual({
 			...initial,
 			text: `build\n${COMMAND_OUTPUT_STRING}\nfinal output`,
 			partial: false,
 			commandCompleted: true,
+			commandExecution: { state: "completed", commands: [{ state: "completed", exitCode: 0 }] },
 		})
 		expect(update(state, { chunk: "late output" }, toolName)).toEqual([])
 	})
@@ -2244,7 +2288,7 @@ describe("translateSessionEvent — agent_event content_update", () => {
 				type: "content_end",
 				contentType: "tool",
 				toolCallId: "call-1",
-				output: [{ result: "final output", success: true }],
+				output: [{ result: "final output", success: true, execution: { state: "completed", exitCode: 0 } }],
 			}),
 		).toEqual([
 			{
@@ -2252,6 +2296,7 @@ describe("translateSessionEvent — agent_event content_update", () => {
 				text: `build\n${COMMAND_OUTPUT_STRING}\nfinal output`,
 				partial: false,
 				commandCompleted: true,
+				commandExecution: { state: "completed", commands: [{ state: "completed", exitCode: 0 }] },
 			},
 		])
 	})
@@ -2313,7 +2358,7 @@ describe("translateSessionEvent — agent_event content_update", () => {
 				contentType: "tool",
 				toolName: activeToolName,
 				toolCallId: "active-call",
-				output: [{ result: "active final", success: true }],
+				output: [{ result: "active final", success: true, execution: { state: "completed", exitCode: 0 } }],
 			}),
 		).toEqual([
 			{
@@ -2321,6 +2366,7 @@ describe("translateSessionEvent — agent_event content_update", () => {
 				text: `build\n${COMMAND_OUTPUT_STRING}\nactive final`,
 				partial: false,
 				commandCompleted: true,
+				commandExecution: { state: "completed", commands: [{ state: "completed", exitCode: 0 }] },
 			},
 		])
 	})

@@ -11,6 +11,7 @@ import { ClineFeatureSetting } from "./ClineFeatureSetting"
 import { BannerCardData } from "./cline/banner"
 import { ClineRulesToggles } from "./cline-rules"
 import type { CloudTaskTargetView, CurrentCloudTaskInfo } from "./cloud/cloud-sessions"
+import type { CommandExecution } from "./command-execution"
 import { HistoryItem } from "./HistoryItem"
 import { McpDisplayMode } from "./McpDisplayMode"
 import { ClineMessageModelInfo } from "./messages"
@@ -216,6 +217,8 @@ export interface ClineMessage {
 	 */
 	epoch?: number
 	commandCompleted?: boolean
+	/** Explicit process evidence; returning a tool does not confirm process exit. */
+	commandExecution?: CommandExecution
 	lastCheckpointHash?: string
 	isCheckpointCheckedOut?: boolean
 	isOperationOutsideWorkspace?: boolean

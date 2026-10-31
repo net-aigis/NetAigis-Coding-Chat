@@ -9,6 +9,7 @@ import {
 	createBuiltinTools,
 	createShellExecutor,
 } from "../../index";
+import { RunCommandExecutionController } from "./executors/run-command-execution-controller";
 
 const context: AgentToolContext = {
 	agentId: "agent-1",
@@ -17,6 +18,86 @@ const context: AgentToolContext = {
 };
 
 describe("public shell error boundary", () => {
+	it("returns pending process evidence rather than success when the user proceeds while it still runs", async () => {
+		const controller = new RunCommandExecutionController();
+		const abort = new AbortController();
+		let ready!: () => void, exited!: () => void;
+		const canDetach = new Promise<void>((resolve) => {
+			ready = resolve;
+		});
+		const didExit = new Promise<void>((resolve) => {
+			exited = resolve;
+		});
+		let detachable = false,
+			hasOutput = false,
+			pid = 0;
+		const tool = createBuiltinTools({
+			executorOptions: {
+				bash: { timeoutMs: null, executionController: controller },
+			},
+		}).find((candidate) => candidate.name === "run_commands");
+		if (!tool) throw new Error("Expected shell tool");
+		const execution = tool.execute(
+			{
+				commands: [
+					{
+						command: process.execPath,
+						args: [
+							"-e",
+							"process.stdout.write('ready'); setTimeout(()=>{},2000)",
+						],
+					},
+				],
+			},
+			{
+				...context,
+				sessionId: "pending-session",
+				toolCallId: "pending-call",
+				signal: abort.signal,
+				emitUpdate(update) {
+					const value = update as {
+						detachable?: boolean;
+						chunk?: string;
+						execution?: { state?: string; pid?: number; exitCode?: number };
+					};
+					if (value.detachable) detachable = true;
+					if (value.chunk?.includes("ready")) hasOutput = true;
+					if (value.execution?.pid) pid = value.execution.pid;
+					if (detachable && hasOutput) ready();
+					if (
+						value.execution?.state === "completed" &&
+						value.execution.exitCode === 0
+					)
+						exited();
+				},
+			},
+		);
+		try {
+			await canDetach;
+			expect(
+				controller.proceedWhileRunning("pending-session", "pending-call"),
+			).toBe(1);
+			const result = await execution;
+			expect(result).toMatchObject([
+				{
+					success: false,
+					pending: true,
+					execution: { state: "running", detached: true, pid },
+				},
+			]);
+			expect(
+				(result as Array<{ execution: unknown }>)[0].execution,
+			).not.toHaveProperty("exitCode");
+			expect(() => process.kill(pid, 0)).not.toThrow();
+			await didExit;
+			expect(
+				(result as Array<{ execution: { state: string } }>)[0].execution.state,
+			).toBe("running");
+		} finally {
+			abort.abort();
+			await Promise.resolve(execution).catch(() => {});
+		}
+	});
 	it("rejects at the executor but returns a failed run_commands result for a missing shell", async () => {
 		const shell = join(tmpdir(), `cline-missing-shell-${randomUUID()}`);
 		const executor = createShellExecutor({ shell });
@@ -73,7 +154,8 @@ describe("public shell error boundary", () => {
 			).resolves.toEqual([
 				{
 					query: expect.any(String),
-					result: "[Command terminated by signal SIGTERM]\npartial output\n[stderr]\npartial error",
+					result:
+						"[Command terminated by signal SIGTERM]\npartial output\n[stderr]\npartial error",
 					error: "Command terminated by signal SIGTERM",
 					success: false,
 					execution: { state: "terminated", signal: "SIGTERM" },

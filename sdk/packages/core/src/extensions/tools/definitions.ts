@@ -193,8 +193,9 @@ async function executeShellCommand(
 	cwd: string,
 	context: AgentToolContext,
 	timeoutMs: number | null,
-): Promise<string> {
+): Promise<{ output: string; execution?: ToolOperationResult["execution"] }> {
 	const controller = new AbortController();
+	let execution: ToolOperationResult["execution"];
 	const stdout = createRollingCollector(MAX_COMMAND_OUTPUT_CHARS);
 	const stderr = createRollingCollector(MAX_COMMAND_OUTPUT_CHARS);
 	let cancellation: "timed_out" | "aborted" | undefined;
@@ -246,8 +247,20 @@ async function executeShellCommand(
 						signal: controller.signal,
 						emitUpdate(update) {
 							const value = update as
-								| { stream?: string; chunk?: unknown }
+								| {
+										stream?: string;
+										chunk?: unknown;
+										executionId?: string;
+										execution?: ToolOperationResult["execution"];
+								  }
 								| undefined;
+							if (value?.execution?.state)
+								execution = {
+									...value.execution,
+									...(value.executionId
+										? { executionId: value.executionId }
+										: {}),
+								};
 							if (typeof value?.chunk === "string") {
 								(value.stream === "stderr" ? stderr : stdout).append(
 									Buffer.from(value.chunk),
@@ -260,7 +273,7 @@ async function executeShellCommand(
 				.then(
 					(output) => {
 						if (cancellation) throw cancellationError();
-						return output;
+						return { output, ...(execution ? { execution } : {}) };
 					},
 					(error: unknown) => {
 						if (
@@ -315,7 +328,7 @@ async function executeShellCommands(
 						}
 					: context;
 				try {
-					const output = await executeShellCommand(
+					const observed = await executeShellCommand(
 						executor,
 						command,
 						cwd,
@@ -324,8 +337,15 @@ async function executeShellCommands(
 					);
 					return {
 						query,
-						result: output,
-						success: true,
+						result: observed.output,
+						success:
+							!observed.execution ||
+							(observed.execution.state === "completed" &&
+								observed.execution.exitCode === 0),
+						...(observed.execution ? { execution: observed.execution } : {}),
+						...(observed.execution?.state === "running"
+							? { pending: true }
+							: {}),
 					};
 				} catch (error) {
 					if (error instanceof TimeoutError) {

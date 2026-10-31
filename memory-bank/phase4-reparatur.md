@@ -880,3 +880,46 @@ Finaler Laufzeitnachweis nach Korrektur der Testhilfen: Start 1793457494237, Wri
 Ab jetzt für Paket-Builds den vorhandenen Bun-Schalter `bun run --shell=bun ...` verwenden. Die System-Shell der vorherigen Bun-Skriptaufrufe las trotz äußerem /bin/sh die Benutzer-bashrc und versuchte SSH-Agent-Startup; Schreib-/Socketversuche waren in der Sandbox verweigert. Keine Benutzerkonfiguration ändern; der CLI-Schalter begrenzt die Änderung auf den jeweiligen eigenen Buildprozess.
 
 Auch `p4-shared-command-vscode-types-fixed` ist jetzt tatsächlich mit Exit 0 abgeschlossen. Keine weiteren bekannten Typfehler dieses Schritts. Nächster Schritt bleibt die strukturierte Detached-/Running-Zustandsbehandlung und Writer-Reconnect, danach vollständiger Recall-Restore und reale Integration.
+
+
+### Jüngste Modellpräzisierung und laufende Zustandsprojektion
+
+Benutzerkorrektur: Modelle bleiben austauschbar; Wechsel zu „DeepSeek 4.1 1017B“ steht unmittelbar bevor. Kein behaupteter aktiver DeepSeek-/1017B-Nachweis, kein Modellwechsel durch diese Arbeiten. Der früher abgefragte Qwen-Katalogname ist lediglich eine gelesene Backend-Angabe; Parameterzahl wird nicht als Funktionsvoraussetzung festgeschrieben. Vor realer Abnahme zählt die dann aktive Konfiguration. Diese Präzisierung ersetzt keine anderen Auftragsbestandteile.
+
+Aktuell uncommitted nach c1c6a8a05: Nachrichtentranslator setzte bei jeder Toolrückgabe commandCompleted=true; zwei gezielte Tests `p4-command-ui-state-red` reproduzierten unknown/running fälschlich als Completed (2 Fehler, 179 nicht betroffene Fälle übersprungen). In Arbeit: gemeinsame strukturierte Statusprojektion mit tatsächlichen Einzel-Exitcodes statt stdout-/Boolean-Vermutung, eigene UI-Zustände für unbekannt/Beobachtungsfehler/laufend/abgebrochen/fehlgeschlagen. Alte unbestätigte Flags werden beim Anzeigen nicht zu erfundenem Exit 0. Native Executor-Beobachtungen werden bis in Shell-Ergebnisse erhalten; explizites Detachment wird als pending und nicht als Erfolg ausgegeben. Foreground meldet Erfolg nur bei tatsächlich erhaltenem numerischem Exitcode; Pre-start-/unbeobachtetes Detachment bleibt unbekannt. Änderungen noch gezielt bauen, typprüfen, testen und anschließend committen.
+
+Für neue SDK-Testaufrufe zusätzlich TMPDIR ausschließlich auf das bereits vom Prüfstarter angelegte private test-data/<label>/data setzen. Der vorhandene run-check.py ist im alten P1-Nachweis versiegelt und wird nicht umgeschrieben. So greifen neu gestartete Tests/Log-Reaper nicht auf produktive temporäre Verzeichnisse zu. Keine neuen beliebigen Ablagewurzeln oder Sicherungen.
+
+
+### Wahrheitsgemäße Werkzeugrückgabe und Terminalanzeige
+
+Der neue echte Detachment-Vertrag ist geprüft: `p4-command-result-evidence-core`
+**90/90** (87 bestehende Definitionen und drei Shell-Grenzfälle). Der Prozess lebt
+bei Rückgabe weiter, Ergebnis pending=true/success=false ohne erfundenen Exit;
+der spätere echte Exit 0 ändert den historischen Rückgabestatus nicht. Native
+Prozessbeobachtung bleibt bis zum strukturierten Toolergebnis erhalten.
+
+`p4-command-ui-proof-fixtures`: **237/237** Translator-/Status-/Adapterfälle
+bestanden. Vorlauf `p4-command-ui-projection`: 226 bestanden, zehn fehlgeschlagen,
+weil alte positive Fixtures nur success:true ohne Exitbeleg lieferten. Diese
+Fixtures liefern jetzt ausdrücklich bestätigten Exit 0; unbekannt und laufend
+bleiben durch eigene negative Regressionen geschützt. Kein blindes Wiedergrün-
+Setzen der alten Erfolgsannahme. Metadata-only-Updates, spätes stdout, fremde
+Call-ID und laufende Batches sind separat geprüft. `p4-command-ui-render`:
+**9/9** tatsächliche Komponentenfälle bestanden. Überlappende Läufe nicht addieren.
+
+Biome aus der Monorepo-Wurzel verweigerte die verschachtelte App-Konfiguration;
+keine Konfigurationsmigration vorgenommen. Mit vorhandenem App-Biome liefen
+Formatierung und betroffene Prüfungen. Typprüfungen für diesen Schritt laufen
+noch. Keine wiederholte produktive Sleep-Serie und keine produktiven Änderungen.
+Dauerhafter aktueller Prozessstand, sichere Writer-Wiederanbindung und Recall-
+Wiederaufnahme bleiben die anschließenden offenen Arbeitsschritte.
+
+Typprüfungen abgeschlossen: `p4-command-result-app-types` und
+`p4-command-result-web-types` Exit 0; Core mit dem bestehenden Entwicklungs-
+Prüfprofil `p4-command-result-types-dev` Exit 0. Der erste Core-Aufruf ohne
+`tsconfig.dev.json` fand zwei unveränderte unused-Fixturevariablen und einen neuen
+unknown-Rückgabetyp in der Testbereinigung. Letzterer ist durch Promise.resolve
+korrekt normalisiert; keine Quellfehler unterdrückt und keine globalen
+Compileroptionen geändert. Staged-Diff- und aktuelle Commit-Historienprüfung mit
+gitleaks redacted erfolgreich, keine Secrets ausgegeben.

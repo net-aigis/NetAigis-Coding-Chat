@@ -24,7 +24,7 @@ import {
 	type StructuredCommandInput,
 	truncateCommandOutput,
 } from "@cline/core"
-import type { AgentTool } from "@cline/shared"
+import type { AgentTool, AgentToolContext } from "@cline/shared"
 import { TerminalUserInterventionAction, telemetryService } from "@services/telemetry"
 import { ClineTempManager } from "@services/temp"
 import * as fs from "fs"
@@ -241,6 +241,7 @@ export async function executeForeground(
 	abortSignal?: AbortSignal,
 	foregroundCommands?: SdkForegroundCommandCoordinator,
 	terminalProfileId?: string,
+	emitUpdate?: AgentToolContext["emitUpdate"],
 ): Promise<string> {
 	if (abortSignal?.aborted) throw new CommandAbortError("", true)
 	const terminalCommand = formatCommandForTerminal(command)
@@ -343,6 +344,7 @@ export async function executeForeground(
 				throw new Error("Detached command log was not initialized")
 			}
 			void acquisition.then((outcome) => finishDetachedAcquisition(outcome, log))
+			emitUpdate?.({ execution: { state: "unknown", detached: true, logPath: log.path } })
 			return formatDetachedResult(log.path, "", detachReason ?? "timeout")
 		}
 
@@ -360,6 +362,7 @@ export async function executeForeground(
 				throw new Error("Detached command log was not initialized")
 			}
 			finishDetachedAcquisition(firstOutcome, log)
+			emitUpdate?.({ execution: { state: "unknown", detached: true, logPath: log.path } })
 			return formatDetachedResult(log.path, "", detachReason ?? "timeout")
 		}
 		if (firstOutcome.type === "error") {
@@ -465,6 +468,7 @@ export async function executeForeground(
 			}
 
 			if (detachedLog !== undefined) {
+				emitUpdate?.({ execution: { state: "unknown", detached: true, logPath: detachedLog.path } })
 				return formatDetachedResult(detachedLog.path, output, detachReason ?? "timeout")
 			}
 
@@ -525,6 +529,7 @@ export async function executeForeground(
 				throw new CommandExitError(exitCode, result)
 			}
 
+			emitUpdate?.({ execution: { state: "completed", exitCode } })
 			return output
 		} finally {
 			process.removeListener("line", bufferLine)
@@ -649,6 +654,7 @@ function createVscodeShellExecutor(options: VscodeRunCommandsToolOptions, state:
 			context.signal,
 			options.foregroundCommands,
 			profileId,
+			context.emitUpdate,
 		)
 	}
 }
