@@ -1944,3 +1944,49 @@ Regressionen, keine produktive Geräteabnahme. p4-legacy-command-types und
 p4-legacy-command-build jeweils Exit 0. Die bereits abgeschlossene echte
 Sleep-Messreihe wurde nicht wiederholt. Nicht belegte historische Prozesse
 bleiben lesbar, ihre technische Klärung bleibt für sichere Schreibaufnahme offen.
+
+### Vorbereitete privilegierte Adapter-Wiederherstellungsprüfung
+
+Lesende Berechtigungsprüfung: /opt/netaigis-coding-agent/ollama_adapter.py
+gehört uid/gid 0:0, Modus 0644, für friseer lesbar und nicht schreibbar;
+sudo -n true nicht verfügbar. Keine Rechte, Dateien oder Dienste verändert.
+
+sdk/scripts/netaigis-coding-agent-adapter-preflight.py bereitet ausschließlich
+die für den nachgewiesenen Adapterfehler notwendige neue Einzelsicherung vor.
+Keine Wiederholung der Phase-2-Sicherungen. Quelle bleibt auf Acer, exakter
+Quellhash wird vorab geprüft. Vorhandener privater Root-Phase-2-Ordner muss
+existieren; einziger neuer Unterordner phase4-ollama-adapter-preflight wird
+exklusiv angelegt, vorhandene oder unvollständige Nachweise niemals ersetzt.
+Archiv 0600 mit ACL/xattrs, tatsächliches Entpacken im getrennten restore-probe,
+Vergleich von Bytes, uid/gid, Modus, mtime und xattrs sowie SHA256-Neulesen von
+Archiv, Wiederherstellung und Manifest. Geänderte Quelle, kaputte Wiederherstellung
+oder Archivfehler veröffentlichen keinen Erfolgsnachweis. Kein Zurückschreiben
+in /opt, keine Dienststeuerung und keine Modellabfrage.
+
+p4-adapter-preflight-fixture 5/5; nach zusätzlichen Fehlerfällen und Manifest-
+Prüfsumme p4-adapter-preflight-failures **7/7** bestanden, mit echtem tar auf
+lokalen privaten Fixtures. Das ist noch keine tatsächliche Acer-Sicherung.
+
+Für den Betreiber: folgenden Befehl in einem Terminal auf 440G5suse ausführen.
+Er liest nur das öffentliche Prüfschema aus dem Reparatur-Worktree und führt es
+auf Acer mit sudo aus. Ein benötigtes Passwort ausschließlich dort im Terminal
+eingeben, niemals im Chat. Ausgabe enthält nur Nachweispfade/Prüfsummen/Flags.
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import shlex, subprocess
+source = Path('/home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-coding-agent-adapter-preflight.py').read_text()
+command = 'sudo python3 -c ' + shlex.quote(source)
+with open('/dev/tty') as terminal:
+    raise SystemExit(subprocess.call([
+        'ssh', '-t', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+        '-o', 'ConnectTimeout=7', '-o', 'ConnectionAttempts=1',
+        '-o', 'ControlMaster=no', '-o', 'ControlPath=none',
+        'friseer@192.168.178.43', command,
+    ], stdin=terminal))
+PY
+```
+
+Ein Fehler bleibt ein Blocker für die produktive Anwendung. Dieser Prüfschritt
+ist ausdrücklich keine Freigabe für Adapterersetzung oder Dienstneustart.
