@@ -1520,3 +1520,40 @@ bestanden; keine selbst nachgebaute RPC-Mockimplementierung. Typprüfung der
 Dist-Grenze p4-recall-facade-app-types-boundary Exit 0; abschließender öffentlicher
 Paketimport p4-recall-facade-app-public-types ebenfalls Exit 0. Physisches Android, produktiver Recall-Import
 und Modell-/Diensteabnahme bleiben ausdrücklich offen.
+
+### Modellwechsel bleibt nach Sitzungsende und Wiederaufnahme erhalten
+
+Auf 7b2e5773d fortgesetzt, gezielt wegen des angekündigten Modellwechsels.
+p4-model-selection-persistence-red reproduziert zweimal den tatsächlichen
+Fehler: nach updateSessionConnection war das Manifest neu, File-/SQLite-Index
+aber weiterhin initial-model (0/2 bestanden). Die bisherige reine Manifest-
+Aktualisierung konnte beim späteren get/Archivabschluss alte Auswahl melden.
+
+Die vorhandenen Adapter aktualisieren jetzt Provider-/Modellfelder mit ihrer
+bestehenden Statusrevision. Native updateSessionConnectionSelection schreibt
+die Modelldaten und ein atomar ersetztes Manifest; Metadaten, historische
+Nachrichten und Verbindungsgeheimnisse bleiben separat. Bei simuliertem
+Manifestfehler wird nur die eigene Indexrevision bedingt zurückgenommen;
+geänderte fremde Revisionen werden nicht überschrieben und kein Erfolg bestätigt.
+Das ist keine behauptete atomare Transaktion über DB und Dateisystem bei
+Stromausfall. Die aktive Verbindung wird erst nach erfolgreicher Speicherung
+geändert; Runtime-Snapshot informiert anschließend auch andere Clients.
+Neuere Titel-/Checkpoint-/Werkzeugmetadaten werden aus dem aktuellen Manifest
+übernommen, keine Rückkehr zu einer älteren in-memory Kopie.
+
+p4-model-selection-persistence 2/2 bestanden. Danach mit gezieltem Fehlerpfad:
+p4-model-selection-rollback **125/125** bestanden einschließlich bestehender
+Host-/Persistenzverträge. Die beiden neuen echten File-/SQLite-Fälle prüfen
+fehlgeschlagenen Commit ohne Agent-Update, unveränderte Manifestbytes und alte
+aktive Auswahl, dann erfolgreiche neue Auswahl in Index/Manifest, Sitzungsausgang
+und frische Runtime mit neuer Kennung. Transkriptbytes, Friseer-Urheber und alte
+Nachrichten-Modellkennung bleiben identisch. Kein produktiver Modellaufruf.
+
+Der vorhandene Minimal-Mock-Test für Modell-/Metadatenerhalt verwendet jetzt
+echte File-Persistenz und die tatsächliche metadata.title-Struktur; zuvor enthielt
+sein Fake ein nicht zum Manifestschema gehörendes top-level title. Seine
+beabsichtigte Titel-/Compaction-Erhaltprüfung bleibt erhalten und wird stärker
+belegt. Thinking-only Update schreibt weiterhin keine Modelldatei.
+p4-model-selection-types und abschließender p4-model-selection-build Exit 0.
+Keine Änderung produktiver Modellkennung, Parameterzahl, API-Endpunkte, Router
+oder Acer-Dienste. Alle Modellnamen der neuen Tests sind ausdrücklich Fixtures.

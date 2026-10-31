@@ -2020,6 +2020,25 @@ export class LocalRuntimeHost implements RuntimeHost {
 	): Promise<void> {
 		const updates = normalizeConnectionUpdate(rawUpdates);
 		const session = this.getSessionOrThrow(sessionId);
+		if (updates.providerId !== undefined || updates.modelId !== undefined) {
+			await this.ensureSessionPersisted(session);
+			await this.queueManifestMutation(sessionId, async () => {
+				const saved = await this.invoke<{
+					updated: boolean;
+					manifest?: SessionManifest;
+				}>("updateSessionConnectionSelection", {
+					sessionId,
+					provider: updates.providerId,
+					model: updates.modelId,
+				});
+				if (!saved.updated || !saved.manifest)
+					throw new Error(
+						"Selected model was not persisted; active connection was not changed",
+					);
+				if (session.artifacts) session.artifacts.manifest = saved.manifest;
+				session.sessionMetadata = saved.manifest.metadata;
+			});
+		}
 		if (updates.providerId !== undefined)
 			session.config.providerId = updates.providerId;
 		if (updates.modelId !== undefined) session.config.modelId = updates.modelId;
@@ -2077,14 +2096,8 @@ export class LocalRuntimeHost implements RuntimeHost {
 		);
 		session.agent.updateConnection(updates);
 		session.runtime.teamRuntime?.updateTeammateConnections(teammateUpdates);
-		// Keep the persisted manifest in sync so session history reflects the
-		// connection the session is now using, not the one it started with.
-		if (updates.providerId || updates.modelId) {
-			await this.mutateSessionManifest(session, (manifest) => {
-				if (updates.providerId) manifest.provider = updates.providerId;
-				if (updates.modelId) manifest.model = updates.modelId;
-			});
-		}
+		if (updates.providerId !== undefined || updates.modelId !== undefined)
+			await this.emitSessionSnapshot(sessionId);
 	}
 
 	/**

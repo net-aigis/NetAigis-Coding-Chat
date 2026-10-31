@@ -35,6 +35,7 @@ import { withSessionHistoryOriginMetadata } from "../history-origin";
 import type { SessionCompactionState } from "../models/session-compaction";
 import type { SessionRow } from "../models/session-row";
 import { SNAPSHOT_IMPORT_METADATA_KEY } from "../snapshot-import-state";
+import { writeFileAtomic } from "../stores/atomic-file";
 import { SessionManifestStore } from "../stores/session-manifest-store";
 import { TeamChildSessionManager } from "../team";
 import {
@@ -303,6 +304,60 @@ export class UnifiedSessionPersistenceService {
 				);
 			}
 			return { updated: true, endedAt };
+		}
+		return { updated: false };
+	}
+
+	/** Persist only the explicit selection. No credential, endpoint or historical-message rewrite. */
+	async updateSessionConnectionSelection(input: {
+		sessionId: string;
+		provider?: string;
+		model?: string;
+	}): Promise<{
+		updated: boolean;
+		manifest?: import("../models/session-manifest").SessionManifest;
+	}> {
+		for (const value of [input.provider, input.model])
+			if (value !== undefined && (!value.trim() || value !== value.trim()))
+				throw new Error("Invalid provider/model selection");
+		for (let attempt = 0; attempt < OCC_MAX_RETRIES; attempt++) {
+			const row = await this.adapter.getSession(input.sessionId);
+			const current = this.manifestStore.readManifestFile(input.sessionId);
+			if (!row || !current.manifest) return { updated: false };
+			const manifest = {
+				...current.manifest,
+				provider: input.provider ?? current.manifest.provider,
+				model: input.model ?? current.manifest.model,
+			};
+			const changed = await this.adapter.updateSession({
+				sessionId: input.sessionId,
+				provider: manifest.provider,
+				model: manifest.model,
+				expectedStatusLock: row.statusLock,
+			});
+			if (!changed.updated) continue;
+			try {
+				await writeFileAtomic(
+					current.path,
+					JSON.stringify(manifest, null, 2) + "\n",
+					0o600,
+				);
+			} catch (error) {
+				// Restore only our own selection revision; never replace another writer's row.
+				const rollback = await this.adapter.updateSession({
+					sessionId: input.sessionId,
+					provider: row.provider,
+					model: row.model,
+					expectedStatusLock: changed.statusLock,
+				});
+				if (!rollback.updated)
+					throw new Error(
+						"Model selection commit and conditional rollback were not confirmed; no success acknowledged",
+						{ cause: error },
+					);
+				throw error;
+			}
+			return { updated: true, manifest };
 		}
 		return { updated: false };
 	}

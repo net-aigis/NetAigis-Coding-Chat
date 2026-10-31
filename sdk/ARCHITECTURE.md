@@ -1694,3 +1694,11 @@ dashboard uses the authenticated peer's Core facade, binds inspected references
 to its actor and latest selection generation, and opens the imported ID through
 its existing session UI. Observer credentials never perform archive writes.
 Import, writer claim, activation and model execution remain separate operations.
+
+Explicit provider/model selection updates both native index and manifest under
+the session mutation queue and adapter revision. An atomic manifest replacement
+keeps existing metadata; a failed write conditionally restores only the owning
+index revision and is not acknowledged as success. Active agent/delegated
+connection changes occur after persistence, followed by a runtime snapshot.
+Historical message model metadata is never rewritten. Selecting a model does
+not choose or change endpoints, credentials or physical backend deployment.
