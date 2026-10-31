@@ -1719,3 +1719,48 @@ werden dadurch nicht geändert. Bei abweichendem Hash, fehlendem Rollback oder
 aktiver Arbeit keine Anwendung. Der vorhandene unprivilegierte SSH-Zugang allein
 belegt keine Berechtigung für diese produktiven Eingriffe. Test der tatsächlichen
 Backendbegrenzung und reale VS-Code-/Android-Abnahme bleiben offen.
+
+### Lokaler Einstieg nimmt denselben gespeicherten Stand wieder auf
+
+Auf 23ba39e32 fortgesetzt. p4-local-canonical-admission-red 0/2 reproduziert in
+echten File-/SQLite-Speichern: start mit bestehender ID akzeptierte einen alten
+Client-Verlauf, alte Modellwahl und Client-Metadaten statt des gespeicherten
+Standes. Derselbe Einstieg konnte eine residente ruhende Agentinstanz ersetzen.
+Start bindet bestehende residente Sitzungen jetzt wieder an und delegiert für
+vorhandene native Manifeste an den schon vorhandenen kanonischen Resume-Pfad.
+Neue Prompts werden dort nicht als neuer Start derselben ID angenommen; Resume
+und Eingabe bleiben getrennt. Keine Kopie in einen neuen Verlauf und kein neuer
+Speicherpfad. Die Friseer/jimmi-Testautoren bleiben unverändert.
+Fehlende/ungültige Transkripte und unbestätigte Prozesszustände führen zum Fehler
+vor Agentanlage. Abweichende gespeicherte Session-ID wird zurückgewiesen.
+
+p4-local-canonical-admission 111/117: die zwei neuen nativen Fälle sind grün.
+Sechs ältere Testaufbauten enthielten vorgetäuschte gespeicherte Sitzungen ohne
+Datei bzw. mit running-Status, obwohl sie ruhende Historie prüfen sollten, oder
+meldeten ein Manifest bereits vor ihrer simulierten frischen Erstellung zurück.
+Sie erzeugen jetzt private echte Nachrichtendateien, bestätigen passende
+interaktive/historische Zustände und geben neue Manifeste erst nach Erstellung
+zurück. Die Alt-Resume-Metadatenprüfung erwartet nun den gespeicherten Titel
+anstelle des veralteten Client-Titels; spätere explizite Metadatenänderungen
+haben weiterhin ihren eigenen API-Pfad. Kein Test entfernt oder übersprungen.
+
+p4-local-canonical-admission-fixtures 116/117 deckte zusätzlich einen echten
+Origin-Mergefehler beim expliziten Wechsel des Auftragsmodus auf: der alte
+Import-trigger blieb am neuen Modus hängen. Die vorhandene ausdrückliche
+Modusentscheidung ersetzt jetzt die Origin-Struktur vollständig; gewöhnliches
+Resume erhält die gespeicherte Herkunft. Der Komprimierungstest lädt seinen
+vorhandenen Sidecar über die Backend-Antwort statt ihn nur im Client mitzugeben.
+
+Erste Typprüfung p4-local-canonical-types Exit 2: die neuen bereits ausgeführten
+Unknown-Exit-Fälle benutzten null, das bisher im Anlage-Eingabetyp fehlte, obwohl
+Persistenz und Laufzeit dies unterstützen. Der Eingangstyp lässt null jetzt
+ausdrücklich zu. p4-local-canonical-types-final Exit 0.
+p4-local-canonical-admission-final **133/133** bestanden einschließlich
+Unverändertheit von Transkriptbytes, beiden Urhebern, Auftrag/Korrektur, Modell,
+Checkpoint-Metadaten, Wiederanbindung ohne Agentersatz und verweigerter Ersetzung
+bei kaputtem gespeicherten Transkript. p4-local-canonical-build-final Exit 0.
+p4-local-canonical-vscode **29/29** bestanden gegen das aktualisierte Core-Bundle;
+dies sind Adapter-/Fixturetests, keine reale Geräteabnahme. Originalbranch und
+Originalarbeitsstand erneut nur auf Unverändertheit geprüft: coding-agent-v4
+weiter 624c2cd6661e100680d8b61daa3a3447f4708536, Status-SHA256 mit allen
+unversionierten Dateien unverändert aff4aedbf69ef2f24960a735b51663df55a0a961ef0d2fb8e910293e010c9fbb.

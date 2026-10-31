@@ -2117,8 +2117,19 @@ describe("LocalRuntimeHost", () => {
 		await git.addRemote("origin", "https://example.com/imported.git");
 
 		const sessionId = "sess-imported-resume";
+		for (const id of [sessionId, `${sessionId}-override`])
+			writeFileSync(
+				join(isolatedHomeDir, `${id}.messages.json`),
+				JSON.stringify({
+					version: 1,
+					messages: [{ role: "user", content: "imported prompt" }],
+				}),
+			);
 		const importedManifest = (id: string): SessionManifest => ({
 			...createManifest(id),
+			status: "completed",
+			interactive: true,
+			messages_path: join(isolatedHomeDir, `${id}.messages.json`),
 			source: SessionSource.DESKTOP,
 			cwd: workspaceRoot,
 			workspace_root: workspaceRoot,
@@ -2647,7 +2658,11 @@ describe("LocalRuntimeHost", () => {
 		});
 		const readSessionManifest = vi
 			.fn()
-			.mockImplementation(() => storedManifest);
+			.mockImplementation(() =>
+				createRootSessionWithArtifacts.mock.calls.length
+					? storedManifest
+					: undefined,
+			);
 		const writeSessionManifest = vi
 			.fn()
 			.mockImplementation((_path, manifest) => {
@@ -5338,6 +5353,7 @@ describe("LocalRuntimeHost", () => {
 		);
 		const manifest = {
 			...createManifest(sessionId),
+			interactive: true,
 			status: "completed" as const,
 			ended_at: "2026-01-01T00:03:00.000Z",
 			metadata: {
@@ -5365,6 +5381,10 @@ describe("LocalRuntimeHost", () => {
 				},
 			},
 		];
+		writeFileSync(
+			messagesPath,
+			JSON.stringify({ version: 1, messages: initialMessages }),
+		);
 		const createRootSessionWithArtifacts = vi.fn();
 		const persistSessionMessages = vi.fn();
 		const updateSessionStatus = vi.fn().mockResolvedValue({
@@ -5451,8 +5471,7 @@ describe("LocalRuntimeHost", () => {
 		expect(updateSession).not.toHaveBeenCalled();
 		expect((await manager.getSession(sessionId))?.metadata).toEqual(
 			expect.objectContaining({
-				title: "updated title",
-				modelId: "anthropic/claude-haiku-4.5",
+				title: "saved title",
 				checkpoint: manifest.metadata.checkpoint,
 			}),
 		);
@@ -5546,6 +5565,7 @@ describe("LocalRuntimeHost", () => {
 		};
 		const manifest = {
 			...createManifest(sessionId),
+			interactive: true,
 			status: "completed" as const,
 			ended_at: "2026-01-01T00:03:00.000Z",
 			metadata: {
@@ -5570,6 +5590,10 @@ describe("LocalRuntimeHost", () => {
 				},
 			},
 		];
+		writeFileSync(
+			messagesPath,
+			JSON.stringify({ version: 1, messages: initialMessages }),
+		);
 		const sessionService = {
 			ensureSessionsDir: vi.fn().mockReturnValue(sessionsDir),
 			readSessionManifest: vi.fn().mockReturnValue(manifest),
@@ -5900,7 +5924,13 @@ describe("LocalRuntimeHost", () => {
 			writeSessionManifest: vi.fn(),
 			listSessions: vi.fn().mockResolvedValue([]),
 			deleteSession: vi.fn().mockResolvedValue({ deleted: true }),
-			readSessionManifest: vi.fn().mockResolvedValue(manifest),
+			readSessionManifest: vi
+				.fn()
+				.mockImplementation((): SessionManifest | undefined =>
+					sessionService.createRootSessionWithArtifacts.mock.calls.length
+						? manifest
+						: undefined,
+				),
 		};
 		const runtimeBuilder = {
 			build: vi.fn().mockReturnValue({ tools: [], shutdown: vi.fn() }),
@@ -7014,14 +7044,27 @@ describe("LocalRuntimeHost", () => {
 				compact?: () => Promise<{ messages: MessageWithMetadata[] }>;
 			} = {},
 		) => {
+			const messagesPath = join(
+				isolatedHomeDir,
+				`${sessionId}.persisted.messages.json`,
+			);
+			writeFileSync(
+				messagesPath,
+				JSON.stringify({ version: 1, messages: initialMessages }),
+			);
 			const manifest = {
 				...createManifest(sessionId),
+				messages_path: messagesPath,
+				interactive: true,
 				status: "completed" as const,
 				metadata,
 			};
 			const sessionService = {
 				ensureSessionsDir: vi.fn().mockReturnValue("/tmp/sessions"),
 				readSessionManifest: vi.fn().mockReturnValue(manifest),
+				readSessionCompactionState: vi
+					.fn()
+					.mockReturnValue(options.initialCompactionState),
 				createRootSessionWithArtifacts: vi.fn(),
 				persistSessionMessages: vi.fn(),
 				persistSessionCompactionState: vi.fn(),

@@ -1732,3 +1732,11 @@ owner-process synchronization, not a cross-process transactional guarantee.
 
 Native creation, like later status updates, preserves absent/null exit evidence
 as unknown. A terminal lifecycle label does not manufacture exit zero.
+
+Local start by an existing native ID follows the same canonical resume contract
+as the shared Hub. An idle resident agent is reattached without replacement;
+saved native history/model/metadata/compaction are loaded from the owning store,
+not echoed client data. Starting an existing ID with a new prompt is refused;
+resume and new input remain separate. A corrupt or unconfirmed saved state is
+not replaced by the client's copy. Seeded creation remains available for an ID
+without native saved history, with exclusive native admission.

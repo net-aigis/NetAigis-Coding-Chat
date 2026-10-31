@@ -530,40 +530,29 @@ export class LocalRuntimeHost implements RuntimeHost {
 		// run keeps going unreachable (no abort, no queue) and its transcript
 		// writes resolve to the replacement's stale snapshot. Reattach instead.
 		const live = this.sessions.get(sessionId);
-		if (live && !live.agent.canStartRun()) {
+		if (live) {
 			if (input.prompt?.trim()) {
 				throw new Error(
-					`Session ${sessionId} already has a run in progress; queue the prompt instead.`,
+					live.agent.canStartRun()
+						? `Session ${sessionId} already exists; send a new prompt separately.`
+						: `Session ${sessionId} already has a run in progress; queue the prompt instead.`,
 				);
 			}
+			if (!live.artifacts) await this.ensureSessionPersisted(live);
 			return await this.liveSessionStartResult(live);
 		}
-		const isReadOnlyResumeStart =
-			requestedSessionId.length > 0 &&
-			(input.initialMessages?.length ?? 0) > 0 &&
-			!input.prompt?.trim();
-		const hasRequestedWorkspace = Boolean(
-			input.config.cwd?.trim() || input.config.workspaceRoot?.trim(),
-		);
-		const existingResumeManifest =
-			isReadOnlyResumeStart && !hasRequestedWorkspace
-				? await this.invokeOptionalValue<SessionManifest>(
-						"readSessionManifest",
-						sessionId,
-					)
-				: undefined;
-		const config = existingResumeManifest
-			? {
-					...input.config,
-					cwd: existingResumeManifest.cwd,
-					workspaceRoot: existingResumeManifest.workspace_root,
-				}
-			: await resolveStartSessionWorkspace(input.config);
+		if (requestedSessionId && (await this.readManifest(sessionId))) {
+			if (input.prompt?.trim())
+				throw new Error(
+					`Session ${sessionId} already exists; resume and send a new prompt separately.`,
+				);
+			return this.resumeSession(input);
+		}
+		const config = await resolveStartSessionWorkspace(input.config);
 		return await this.startResolvedSession(
 			{ ...input, config },
 			sessionId,
 			requestedSessionId.length > 0,
-			existingResumeManifest,
 		);
 	}
 
@@ -582,6 +571,10 @@ export class LocalRuntimeHost implements RuntimeHost {
 		}
 		const manifest = await this.readManifest(id);
 		if (!manifest) throw new SessionNotFoundError(id);
+		if (manifest.session_id !== id)
+			throw new Error(
+				"Stored session identity does not match the requested session",
+			);
 		await this.assertSessionImportAdmission(id);
 		assertSnapshotImportComplete(manifest.metadata);
 		assertRuntimeOwnerConfirmed(manifest.metadata);
@@ -736,32 +729,20 @@ export class LocalRuntimeHost implements RuntimeHost {
 		});
 		let resumedArtifacts: RootSessionArtifacts | undefined;
 		let resumedCompactionState: SessionCompactionState | undefined;
-		const isReadOnlyResumeStart =
-			Boolean(existingResumeManifest) ||
-			(wasSessionIdRequested &&
-				initialMessages.length > 0 &&
-				!startInput.prompt?.trim());
-		if (isReadOnlyResumeStart) {
-			const existingManifest =
-				existingResumeManifest ??
-				(await this.invokeOptionalValue<SessionManifest>(
-					"readSessionManifest",
+		const isReadOnlyResumeStart = Boolean(existingResumeManifest);
+		if (existingResumeManifest) {
+			manifest = existingResumeManifest;
+			resumedArtifacts = {
+				manifestPath,
+				messagesPath: existingResumeManifest.messages_path || messagesPath,
+				compactionPath: existingResumeManifest.compaction_path,
+				manifest: existingResumeManifest,
+			};
+			resumedCompactionState =
+				await this.invokeOptionalValue<SessionCompactionState>(
+					"readSessionCompactionState",
 					sessionId,
-				));
-			if (existingManifest) {
-				manifest = existingManifest;
-				resumedArtifacts = {
-					manifestPath,
-					messagesPath: existingManifest.messages_path || messagesPath,
-					compactionPath: existingManifest.compaction_path,
-					manifest: existingManifest,
-				};
-				resumedCompactionState =
-					await this.invokeOptionalValue<SessionCompactionState>(
-						"readSessionCompactionState",
-						sessionId,
-					);
-			}
+				);
 		}
 		const initialAggregateUsage = await this.seedAggregateUsageFromArtifacts({
 			initialUsage,
@@ -900,6 +881,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 				{
 					...(resumedArtifacts?.manifest.metadata ?? {}),
 					...(startInput.sessionMetadata ?? {}),
+					...(startInput.mode ? { sessionHistoryOrigin: sessionOrigin } : {}),
 				},
 				bootstrap.gitState,
 			),

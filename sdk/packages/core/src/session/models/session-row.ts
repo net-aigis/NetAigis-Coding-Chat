@@ -85,7 +85,7 @@ export interface CreateRootSessionWithArtifactsInput {
 	 */
 	status?: SessionStatus;
 	endedAt?: string;
-	exitCode?: number;
+	exitCode?: number | null;
 }
 
 export interface RootSessionArtifacts {
