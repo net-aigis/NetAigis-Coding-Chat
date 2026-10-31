@@ -2267,3 +2267,15 @@ Nach Freigabe und belegtem erfolgreichem Anwendungslauf folgen die tatsächliche
 Backend-/Recall-/Sitzungstests und der angeleitete Android-Test im bestehenden
 Gesamtauftrag. Unabhängiger Watchdog und produktive Fork-Migration/VSIX bleiben
 separat abzusichern; keine vorgezogene Gesamtabnahme.
+
+Anwendungsvorbereitung committet als 810df407f. Die gezielte Freigabe für den
+oben beschriebenen Modulwechsel und Stop/Start wurde angefragt; die Antwort
+steht aus. Syntax des vollständigen Bedienbefehls und des erzeugten Remote-
+Loaders, sämtliche öffentlichen Skripthashes sowie lesende Voreinstellung
+zusätzlich geprüft, ohne Ausführung von SSH/sudo aus diesem Bedienbefehl.
+17 neue Prüf-/Nachweisdateien einschließlich fehlgeschlagener Versuche im
+vorhandenen Prüfverzeichnis per SHA256 versiegelt und nachgelesen:
+SHA256SUMS.acer-maintenance-810df407f-20261031,
+Listen-SHA256 c65fa141db40d143b3305dd5d3d097366f66315290f67739227713101919ed57.
+Keine produktive Änderung vorgenommen; die zwölf alten unversionierten
+Reparaturartefakte bleiben ungestaged erhalten.
