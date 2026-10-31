@@ -1073,7 +1073,7 @@ describe("SessionImportService", () => {
 		const sessions = new CoreSessionService(store, {
 			sessionArtifactsDir: tempDir("cline-sessions-"),
 		});
-		// createRootSessionWithArtifacts upserts the row, then writes the
+		// createRootSessionWithArtifacts exclusively reserves the row, then writes the
 		// messages file and manifest; simulate the file write failing.
 		const original = sessions.createRootSessionWithArtifacts.bind(sessions);
 		let failNext = true;
@@ -1101,6 +1101,52 @@ describe("SessionImportService", () => {
 		]);
 		expect(retried.ok).toBe(true);
 		expect(store.list(50)).toHaveLength(1);
+	});
+
+	it("retains a pre-existing target on an ID collision instead of deleting it as a failed import", async () => {
+		const projectsDir = tempDir("cc-import-");
+		writeClaudeCodeFixture(projectsDir);
+		const store = sessionStore(tempDir("cline-db-"));
+		const sessions = new CoreSessionService(store, {
+			sessionArtifactsDir: tempDir("cline-sessions-"),
+		});
+		const original = sessions.createRootSessionWithArtifacts.bind(sessions);
+		let retained: Awaited<ReturnType<typeof original>> | undefined;
+		let before: Buffer[] | undefined;
+		sessions.createRootSessionWithArtifacts = async (input) => {
+			retained = await original({
+				...input,
+				onReserved: undefined,
+				metadata: { title: "Original retained order" },
+			});
+			await sessions.persistSessionMessages(input.sessionId, [
+				{
+					role: "user",
+					content: "Preserve this existing history",
+					metadata: { author: { actorId: "Friseer" } },
+				},
+			] as never);
+			before = [
+				readFileSync(retained.messagesPath),
+				readFileSync(retained.manifestPath),
+			];
+			return original(input);
+		};
+		const deleteSpy = vi.spyOn(sessions, "deleteSession");
+		const importer = new SessionImportService(sessions, [
+			new ClaudeCodeImportAdapter({ projectsDir }),
+		]);
+		const [result] = await importer.importMany([
+			{ tool: "claude-code", sourceId: "abc" },
+		]);
+		expect(result.ok).toBe(false);
+		expect(deleteSpy).not.toHaveBeenCalled();
+		expect(store.list(50)).toHaveLength(1);
+		expect(retained).toBeDefined();
+		expect([
+			readFileSync(retained!.messagesPath),
+			readFileSync(retained!.manifestPath),
+		]).toEqual(before);
 	});
 
 	it("coalesces overlapping imports of the same source into one session", async () => {

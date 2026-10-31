@@ -278,6 +278,47 @@ describe("LocalRuntimeHost", () => {
 		}
 	});
 
+	it.each([
+		"../escape",
+		"a/b",
+		"a\\b",
+		".",
+		"..",
+		"invalid\u0000id",
+	])("rejects unsafe session ID %s before building or executing a runtime", async (sessionId) => {
+		const createAgent = vi.fn();
+		const runtimeBuilder = { build: vi.fn() };
+		const manager = new RuntimeHostUnderTest({
+			sessionService: new FileSessionService(
+				join(isolatedHomeDir, "id-boundary"),
+			),
+			createAgent,
+			runtimeBuilder: runtimeBuilder as never,
+		});
+		try {
+			await expect(
+				manager.startSession({
+					config: {
+						sessionId,
+						providerId: "fixture",
+						modelId: "fixture",
+						cwd: isolatedHomeDir,
+						workspaceRoot: isolatedHomeDir,
+						systemPrompt: "fixture",
+						enableTools: false,
+						enableSpawnAgent: false,
+						enableAgentTeams: false,
+					},
+					interactive: true,
+				}),
+			).rejects.toThrow("Unsafe session ID");
+			expect(runtimeBuilder.build).not.toHaveBeenCalled();
+			expect(createAgent).not.toHaveBeenCalled();
+		} finally {
+			await manager.dispose();
+		}
+	});
+
 	it("preserves a caller-owned telemetry identity when no distinct id is supplied", async () => {
 		const setDistinctId = vi.fn();
 		const manager = new RuntimeHostUnderTest({

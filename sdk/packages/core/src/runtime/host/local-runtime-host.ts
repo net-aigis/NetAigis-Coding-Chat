@@ -56,7 +56,10 @@ import {
 	type PluginCommandsApi,
 } from "../../services/plugin-command-api";
 import { PluginCommandManager } from "../../services/plugin-commands";
-import { nowIso } from "../../services/session-artifacts";
+import {
+	assertSafeSessionArtifactId,
+	nowIso,
+} from "../../services/session-artifacts";
 import {
 	toSessionRecord,
 	withLatestAssistantTurnMetadata,
@@ -519,6 +522,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 	async startSession(input: StartSessionInput): Promise<StartSessionResult> {
 		const requestedSessionId = input.config.sessionId?.trim() ?? "";
 		const sessionId = requestedSessionId || createSessionId();
+		assertSafeSessionArtifactId(sessionId);
 		if (requestedSessionId) {
 			await this.assertSessionImportAdmission(sessionId);
 		}
@@ -570,6 +574,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 			throw new Error(
 				"Resume requires an existing session ID and no new prompt",
 			);
+		assertSafeSessionArtifactId(id);
 		const live = this.sessions.get(id);
 		if (live) {
 			if (!live.artifacts) await this.ensureSessionPersisted(live);
@@ -676,6 +681,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 		wasSessionIdRequested: boolean,
 		existingResumeManifest?: SessionManifest,
 	): Promise<StartSessionResult> {
+		assertSafeSessionArtifactId(sessionId);
 		const source = input.source ?? SessionSource.CLI;
 		const startedAt = nowIso();
 		const startInput: ResolvedStartSessionInput =

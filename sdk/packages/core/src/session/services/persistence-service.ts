@@ -9,7 +9,11 @@ import type {
 } from "../../extensions/tools/team";
 import type { HookEventPayload } from "../../hooks";
 import { deleteCheckpointRefs } from "../../hooks/checkpoint-hooks";
-import { nowIso, unlinkIfExists } from "../../services/session-artifacts";
+import {
+	assertSafeSessionArtifactId,
+	nowIso,
+	unlinkIfExists,
+} from "../../services/session-artifacts";
 import {
 	buildManifestFromRow,
 	deriveTitleFromPrompt,
@@ -139,25 +143,13 @@ export class UnifiedSessionPersistenceService {
 		input: import("../models/session-row").CreateRootSessionWithArtifactsInput,
 	): Promise<import("../models/session-row").RootSessionArtifacts> {
 		const startedAt = input.startedAt ?? nowIso();
-		const providedId = input.sessionId.trim();
-		if (
-			input.ifAbsent &&
-			(!providedId ||
-				providedId !== input.sessionId ||
-				[".", ".."].includes(providedId) ||
-				/[/\\]/.test(providedId) ||
-				Array.from(providedId).some(
-					(character) =>
-						character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
-				))
-		)
-			throw new Error("Unsafe archive session ID; no target was created");
-		if (input.ifAbsent && !this.adapter.insertSessionIfAbsent)
+		const sessionId =
+			input.sessionId || (input.ifAbsent ? "" : `${Date.now()}_${nanoid(5)}`);
+		assertSafeSessionArtifactId(sessionId);
+		if (!this.adapter.insertSessionIfAbsent)
 			throw new Error(
 				"Session backend cannot guarantee creation without replacement",
 			);
-		const sessionId =
-			providedId.length > 0 ? providedId : `${Date.now()}_${nanoid(5)}`;
 		const messagesPath =
 			this.manifestStore.artifacts.sessionMessagesPath(sessionId);
 		const compactionPath =
@@ -227,7 +219,7 @@ export class UnifiedSessionPersistenceService {
 			messagesPath,
 			updatedAt: nowIso(),
 		};
-		if (input.ifAbsent) {
+		{
 			const directory =
 				this.manifestStore.artifacts.sessionArtifactsDir(sessionId);
 			// mkdir without recursive is the exclusive artifact reservation. Existing
@@ -256,19 +248,16 @@ export class UnifiedSessionPersistenceService {
 				}
 				throw error;
 			}
-		} else await this.adapter.upsertSession(row);
+		}
 
+		input.onReserved?.();
 		this.manifestStore.initializeMessagesFile(
 			row,
 			messagesPath,
 			startedAt,
-			input.ifAbsent,
+			true,
 		);
-		this.manifestStore.writeSessionManifest(
-			manifestPath,
-			manifest,
-			input.ifAbsent,
-		);
+		this.manifestStore.writeSessionManifest(manifestPath, manifest, true);
 		return { manifestPath, messagesPath, compactionPath, manifest };
 	}
 
@@ -585,9 +574,7 @@ export class UnifiedSessionPersistenceService {
 		}
 	}
 
-	private async reconcileDeadRunningSession(
-		row: SessionRow,
-	): Promise<boolean> {
+	private async reconcileDeadRunningSession(row: SessionRow): Promise<boolean> {
 		if (
 			row.status === "idle" ||
 			(row.pid === 0 &&

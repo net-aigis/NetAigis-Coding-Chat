@@ -14,14 +14,3 @@ export function assertSnapshotImportComplete(
 			"Native session import is incomplete; original source and partial target were retained",
 		);
 }
-
-export function assertSafeImportSessionId(id: string): void {
-	if (
-		!id ||
-		id !== id.trim() ||
-		[".", ".."].includes(id) ||
-		/[/\\]/.test(id) ||
-		Array.from(id).some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
-	)
-		throw new Error("Unsafe archive session ID; no target was created");
-}

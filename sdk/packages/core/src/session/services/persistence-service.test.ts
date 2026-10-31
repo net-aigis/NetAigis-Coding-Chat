@@ -1003,23 +1003,39 @@ describe("UnifiedSessionPersistenceService", () => {
 		const sessionsDir = join(rootDir, "sessions");
 		const service = new FileSessionService(sessionsDir);
 		const sessionId = "../escape";
-		const artifacts = await createRootSession(
-			service,
-			sessionId,
-			"do not delete outside the sessions directory",
-		);
-		const indexPath = join(sessionsDir, "sessions.index.json");
-		const index = JSON.parse(readFileSync(indexPath, "utf8")) as {
-			sessions: Record<string, unknown>;
+		await expect(
+			createRootSession(
+				service,
+				sessionId,
+				"do not delete outside the sessions directory",
+			),
+		).rejects.toThrow("Unsafe session ID");
+		// Retain the legacy deletion-boundary proof with files an old writer or
+		// external actor might have left. The protected API no longer creates them.
+		const artifacts = {
+			messagesPath: join(rootDir, "escape.messages.json"),
+			manifestPath: join(rootDir, "escape.json"),
 		};
-		delete index.sessions[sessionId];
-		writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`, "utf8");
+		writeFileSync(
+			artifacts.messagesPath,
+			"retain original external transcript\n",
+		);
+		writeFileSync(
+			artifacts.manifestPath,
+			"retain original external manifest\n",
+		);
 
 		const result = await service.deleteSession(sessionId);
 
 		expect(result).toEqual({ deleted: false });
 		expect(existsSync(artifacts.messagesPath)).toBe(true);
 		expect(existsSync(artifacts.manifestPath)).toBe(true);
+		expect(readFileSync(artifacts.messagesPath, "utf8")).toBe(
+			"retain original external transcript\n",
+		);
+		expect(readFileSync(artifacts.manifestPath, "utf8")).toBe(
+			"retain original external manifest\n",
+		);
 	});
 
 	it("cascades file-backed child rows after deleting the parent row", async () => {

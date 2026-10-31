@@ -55,8 +55,10 @@ export interface CreateRootSessionInput {
 }
 
 export interface CreateRootSessionWithArtifactsInput {
-	/** Reserve a new ID and artifact directory; never replace an existing target. */
+	/** Legacy caller hint. Creation always reserves an absent ID and directory. */
 	ifAbsent?: boolean;
+	/** In-process receipt for this caller's exclusive reservation, before artifact writes. */
+	onReserved?: () => void;
 	sessionId: string;
 	source: SessionSource;
 	mode?: string;

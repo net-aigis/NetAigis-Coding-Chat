@@ -16,6 +16,18 @@ export function nowIso(): string {
 	return new Date().toISOString();
 }
 
+/** A session ID is a file stem, never a caller-selected relative path. */
+export function assertSafeSessionArtifactId(id: string): void {
+	if (
+		!id ||
+		id !== id.trim() ||
+		[".", ".."].includes(id) ||
+		/[/\\]/.test(id) ||
+		Array.from(id).some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)
+	)
+		throw new Error("Unsafe session ID; no target was created");
+}
+
 export function unlinkIfExists(path: string | null | undefined): void {
 	if (!path || !existsSync(path)) {
 		return;

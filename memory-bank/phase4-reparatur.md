@@ -1632,3 +1632,43 @@ oder Längenbegrenzungsunterstützung. Der Coding-Agent verwendet seinen bestehe
 Proxy mit nativer Adapterroute. Vor einem begrenzten echten Modelltest ist deren
 Request-Konvertierung gezielt zu prüfen. Keine neue Modellgeneration ausgelöst,
 keine produktive Quelldatei oder Konfiguration verändert, keine Secrets ausgegeben.
+
+### Exklusive normale Sitzungserstellung und frühe Pfadgrenze
+
+Auf e69abca2c fortgesetzt. p4-native-creation-default-red 7/12 bestanden,
+fünf Fehler: ohne ifAbsent war weiterhin upsert mit leerem Nachrichtentranskript
+möglich; beide gleichzeitigen Ersteller erhielten Erfolg, bestehende Symlinks
+wurden angenommen. Der vorher bereits geprüfte explizite Recall-Schutz bleibt
+erhalten und gilt jetzt für jede native Root-Erstellung. Vorhandene Verzeichnisse,
+Indexzeilen, Nachrichten, Metadaten und Symlinks werden nicht ersetzt.
+Der alte ifAbsent-Hinweis erlaubt auch mit false keinen Ersatz alter Historie.
+
+p4-native-creation-default 169/171 zeigte zwei Folgeprüfungen: ein bisheriger
+Grenztest erzeugte selbst über die API eine unsichere ../-ID; er prüft jetzt die
+frühe Ablehnung und zusätzlich manuell angelegte externe Altdateien gegen
+Löschung. Der bestehende Drittformat-Importer musste eine eigene Reservierung
+von einer ID-Kollision unterscheiden, sonst hätte sein alter pauschaler
+Fehler-Cleanup einen bereits vorhandenen Zielverlauf gelöscht. Eine interne
+onReserved-Quittung nach exklusiver Index-/Verzeichnisreservierung erhält die
+bisherige Rücknahme auch bei anschließendem Dateifehler, ohne Kollisionen zu
+löschen. Zusätzlicher realer SQLite-Kollisionstest erhält Bytes und Urheber.
+p4-native-creation-ownership **172/172** bestanden. Keine fremden Projekte
+oder realen Drittformat-Verläufe untersucht; sämtliche Importquellen sind Fixtures.
+
+p4-native-early-id-red 0/6 (103 übersprungen) belegt die fehlende frühe Prüfung
+im lokalen Runtime-Start. Die vorhandene ID-Prüfung ist in die gemeinsame
+Artifact-Hilfe verschoben und wird vor Start/Resume/Runtime-Aufbau sowie nativer
+Erstellung und Recall-Import verwendet. Keine parallelen Speicherkomponenten.
+p4-native-creation-boundaries **178/178** bestanden, p4-native-creation-types
+und p4-native-creation-core-build Exit 0. Geprüft sind insbesondere Rücknahme
+eigener Teilanlagen, Wiederholung ohne Überschreiben, ID-Kollisionen, Symlinks,
+relative Pfade und Abbruch vor Agent-/Runtime-Erstellung bei ungültiger ID.
+
+Weiterer konkreter Acer-Vertragsbefund ohne Modellgenerierung:
+p4-acer-coding-token-limit-reproduction.json führt ausschließlich die tatsächliche
+reine native_request-Funktion des installierten Coding-Adapters mit Testobjekten
+aus. Sowohl max_tokens=8 als auch max_completion_tokens=8 verschwinden aus dem
+Backendpayload (num_predict fehlt). Modellkennung und stream bleiben erhalten.
+Die Modulquelle ist SHA256 cdf5d6768d8fffb9e3d1d0f4b08db9784a5ce5b432003f4cf16d4f3a970c8b81.
+Keine produktive Adapterkorrektur oder Modellanfrage ausgeführt; dies ist ein
+belegter offener Integrationsfehler, keine vorgetäuschte produktive Abnahme.

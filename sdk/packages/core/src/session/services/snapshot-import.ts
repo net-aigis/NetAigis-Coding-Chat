@@ -11,6 +11,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { sessionSnapshotRecoveryProblem } from "../../services/recall-session-reader";
+import { assertSafeSessionArtifactId } from "../../services/session-artifacts";
 import {
 	buildManifestFromRow,
 	buildMessagesFilePayload,
@@ -22,10 +23,7 @@ import {
 	type CoreSessionSnapshot,
 	coreSessionSnapshotToRecord,
 } from "../session-snapshot";
-import {
-	assertSafeImportSessionId,
-	SNAPSHOT_IMPORT_METADATA_KEY,
-} from "../snapshot-import-state";
+import { SNAPSHOT_IMPORT_METADATA_KEY } from "../snapshot-import-state";
 import { writeFileAtomic } from "../stores/atomic-file";
 import type { SessionManifestStore } from "../stores/session-manifest-store";
 
@@ -79,7 +77,7 @@ export async function importNativeSessionSnapshot(
 	const { snapshot, source, requestedBy } = JSON.parse(
 		JSON.stringify(input),
 	) as NativeSnapshotImportInput;
-	assertSafeImportSessionId(snapshot.sessionId);
+	assertSafeSessionArtifactId(snapshot.sessionId);
 	const problem = sessionSnapshotRecoveryProblem(snapshot);
 	if (problem) throw new Error(`Snapshot cannot be imported: ${problem}`);
 	if (

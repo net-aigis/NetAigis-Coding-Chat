@@ -319,10 +319,14 @@ export class SessionImportService {
 		// birth, and a transient running/pid-0 row is exactly what the
 		// stale-session reconciler — running in the hub daemon against the
 		// same DB — would flip to failed mid-import. Creation sits inside the
-		// rollback: it upserts the row before writing the artifact files, so a
-		// failed file write must not leave a completed row with no transcript.
+		// rollback. Only a target whose exclusive creation succeeded belongs to
+		// this import; a collision or failed reservation must never delete history.
+		let created = false;
 		try {
 			await this.sessions.createRootSessionWithArtifacts({
+				onReserved: () => {
+					created = true;
+				},
 				sessionId,
 				source: SessionSource.DESKTOP,
 				pid: 0,
@@ -343,6 +347,7 @@ export class SessionImportService {
 				endedAt: new Date(endedAtMs).toISOString(),
 				exitCode: 0,
 			});
+			created = true;
 
 			await this.sessions.persistSessionMessages(sessionId, messages);
 
@@ -368,10 +373,12 @@ export class SessionImportService {
 			// Remove the half-written session so history never shows a broken
 			// entry (deleteSession tolerates a missing row or missing files);
 			// even if this fails, the row carries no importedFrom marker.
-			try {
-				await this.sessions.deleteSession(sessionId);
-			} catch {
-				// Best-effort; the original failure is what the caller needs.
+			if (created) {
+				try {
+					await this.sessions.deleteSession(sessionId);
+				} catch {
+					// Best-effort; the original failure is what the caller needs.
+				}
 			}
 			throw error;
 		}

@@ -55,7 +55,7 @@ async function fixture(kind: "files" | "sqlite") {
 it.each([
 	"files",
 	"sqlite",
-] as const)("never replaces an existing %s row, transcript or manifest when creation requires absence", async (kind) => {
+] as const)("never replaces an existing %s row, transcript or manifest, including default or requested replacement", async (kind) => {
 	const f = await fixture(kind);
 	try {
 		const original = await f.service.createRootSessionWithArtifacts(input);
@@ -73,13 +73,14 @@ it.each([
 			readFile(original.messagesPath),
 			readFile(original.manifestPath),
 		]);
-		await expect(
-			f.service.createRootSessionWithArtifacts({
-				...input,
-				metadata: { title: "replacement" },
-				ifAbsent: true,
-			}),
-		).rejects.toThrow();
+		for (const ifAbsent of [true, undefined, false])
+			await expect(
+				f.service.createRootSessionWithArtifacts({
+					...input,
+					metadata: { title: "replacement" },
+					ifAbsent,
+				}),
+			).rejects.toThrow();
 		expect(
 			(await f.service.listSessions(10)).find(
 				(row) => row.sessionId === input.sessionId,
@@ -96,14 +97,16 @@ it.each([
 	}
 });
 it.each([
-	"files",
-	"sqlite",
-] as const)("admits only one concurrent %s creator for the same ID", async (kind) => {
+	["files", true],
+	["sqlite", true],
+	["files", undefined],
+	["sqlite", undefined],
+] as const)("admits only one concurrent %s creator for the same ID (ifAbsent=%s)", async (kind, ifAbsent) => {
 	const f = await fixture(kind);
 	try {
 		const results = await Promise.allSettled([
-			f.service.createRootSessionWithArtifacts({ ...input, ifAbsent: true }),
-			f.service.createRootSessionWithArtifacts({ ...input, ifAbsent: true }),
+			f.service.createRootSessionWithArtifacts({ ...input, ifAbsent }),
+			f.service.createRootSessionWithArtifacts({ ...input, ifAbsent }),
 		]);
 		expect(
 			results.filter((value) => value.status === "fulfilled"),
@@ -206,8 +209,35 @@ it("does not follow an existing artifact symlink or accept a path outside the ta
 					sessionId,
 					ifAbsent: true,
 				}),
-			).rejects.toThrow("Unsafe archive session ID");
+			).rejects.toThrow("Unsafe session ID");
 		expect(await readFile(join(target, "marker.txt"), "utf8")).toBe("retained");
+	} finally {
+		await f.close();
+	}
+});
+
+it("protects default creation from artifact symlinks and relative path IDs", async () => {
+	const f = await fixture("files");
+	try {
+		const target = join(f.root, "retained-target");
+		await mkdir(target);
+		await writeFile(join(target, "marker.txt"), "retained");
+		await mkdir(f.sessionsDir);
+		await symlink(target, join(f.sessionsDir, input.sessionId), "dir");
+		await expect(
+			f.service.createRootSessionWithArtifacts(input),
+		).rejects.toThrow();
+		for (const sessionId of [
+			"../retained-target",
+			"a/b",
+			"..",
+			" same-session",
+		])
+			await expect(
+				f.service.createRootSessionWithArtifacts({ ...input, sessionId }),
+			).rejects.toThrow("Unsafe");
+		expect(await readFile(join(target, "marker.txt"), "utf8")).toBe("retained");
+		expect(await f.service.listSessions(10)).toEqual([]);
 	} finally {
 		await f.close();
 	}

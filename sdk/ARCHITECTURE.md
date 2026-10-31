@@ -1720,3 +1720,12 @@ conversation is not an active process merely because it has a historical PID.
 The latest row status and owner PID are rechecked before the conditional update;
 an intervening transition to idle is retained and not counted as reconciliation.
 Canonical resume still rejects unfinished calls and unconfirmed command journals.
+
+All native root creation now uses exclusive directory and index admission,
+including the default call. Creating a root can never upsert old history; reads,
+resumes and metadata changes use their existing dedicated methods. The shared
+artifact-ID validator runs before local runtime construction and native writes.
+An in-process reservation receipt lets the existing transcript importer roll
+back only its own new target, including artifact-write failures; a colliding
+target is never deleted as failed work. File-index admission remains single-
+owner-process synchronization, not a cross-process transactional guarantee.
