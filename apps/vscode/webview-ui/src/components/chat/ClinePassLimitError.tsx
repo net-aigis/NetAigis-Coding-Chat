@@ -38,8 +38,8 @@ const ClinePassLimitError = ({ message }: ClinePassLimitErrorProps) => {
 			)
 			setDidSwitch(true)
 		} catch (error) {
-			console.error("Failed to switch to Cline usage-based billing:", error)
-			setError("Failed to switch provider. Select Cline Usage-Billing in API Configuration settings.")
+			console.error("Failed to switch to NetAigis Coding Chat usage-based billing:", error)
+			setError("Failed to switch provider. Select NetAigis Coding Chat Usage-Billing in API Configuration settings.")
 		} finally {
 			setIsSwitching(false)
 		}

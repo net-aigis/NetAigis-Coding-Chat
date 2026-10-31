@@ -95,7 +95,10 @@ describe("TOTAL RECALL command wiring", () => {
 	it("keeps the selected conversation ID when two sessions have identical titles", async () => {
 		registerTotalRecallCommands({} as vscode.ExtensionContext)
 		mocks.quickPick.mockImplementationOnce(async (items: unknown[]) => items[1])
-		await mocks.commands.get("cline.recall.quickPick")?.()
+		const command = mocks.commands.get("netaigis-coding-chat.recall.quickPick")
+		expect(command).toBeTypeOf("function")
+		expect(mocks.commands.has("cline.recall.quickPick")).toBe(false)
+		await command!()
 		expect(mocks.snapshot).toHaveBeenCalledWith("second")
 	})
 	it("does not persist partial configuration after a cancelled prompt", async () => {

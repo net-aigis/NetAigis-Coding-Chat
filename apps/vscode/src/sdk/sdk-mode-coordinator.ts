@@ -269,7 +269,7 @@ export class SdkModeCoordinator {
 
 			if (usesClineAccountAuth(config.providerId) && !config.apiKey) {
 				Logger.warn(
-					`[SdkController] Mode rebuild: new mode '${newMode}' provider is '${config.providerId}' but no Cline auth token - emitting auth error`,
+					`[SdkController] Mode rebuild: new mode '${newMode}' provider is '${config.providerId}' but no NetAigis Coding Chat auth token - emitting auth error`,
 				)
 				// The session still runs with the old mode's tools, so roll the
 				// setting back to keep the UI toggle coherent with it.

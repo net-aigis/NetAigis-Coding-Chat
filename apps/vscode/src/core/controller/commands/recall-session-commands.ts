@@ -23,19 +23,24 @@ async function showError(): Promise<void> {
 }
 export function registerTotalRecallCommands(_context: vscode.ExtensionContext): vscode.Disposable[] {
 	const disposables = [
-		vscode.commands.registerCommand("cline.recall.listSessions", openRecallSessionView),
-		vscode.commands.registerCommand("cline.recall.quickPick", quickPickRecallSession),
-		vscode.commands.registerCommand("cline.recall.configure", configureTotalRecall),
+		vscode.commands.registerCommand("netaigis-coding-chat.recall.listSessions", openRecallSessionView),
+		vscode.commands.registerCommand("netaigis-coding-chat.recall.quickPick", quickPickRecallSession),
+		vscode.commands.registerCommand("netaigis-coding-chat.recall.configure", configureTotalRecall),
 		{ dispose: () => recallPanel?.dispose() },
 	]
 	return disposables
 }
 export async function openRecallSessionView(): Promise<void> {
 	if (!recallPanel) {
-		const panel = vscode.window.createWebviewPanel("recall-session-view", "TOTAL RECALL", vscode.ViewColumn.Beside, {
-			enableScripts: true,
-			localResourceRoots: [],
-		})
+		const panel = vscode.window.createWebviewPanel(
+			"netaigis-coding-chat.recall-session-view",
+			"TOTAL RECALL",
+			vscode.ViewColumn.Beside,
+			{
+				enableScripts: true,
+				localResourceRoots: [],
+			},
+		)
 		recallPanel = panel
 		panel.webview.html = renderRecallSessionBrowser()
 		const messages = panel.webview.onDidReceiveMessage(async (message: unknown) => {

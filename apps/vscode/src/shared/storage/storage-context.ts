@@ -63,6 +63,13 @@ export interface StorageContextOptions {
 	workspaceStorageDir?: string
 }
 
+let extensionStorageRoot: string | undefined
+export function setExtensionStorageRoot(root: string): void {
+	extensionStorageRoot = root
+}
+export function getExtensionStorageRoot(): string | undefined {
+	return extensionStorageRoot
+}
 const SETTINGS_SUBFOLDER = "data"
 
 /**
@@ -91,6 +98,7 @@ function hashString(str: string): string {
  * show (ENG-2332).
  */
 export function resolveDataDirFromEnv(): string {
+	if (extensionStorageRoot) return path.join(extensionStorageRoot, "data")
 	const envDataDir = process.env.CLINE_DATA_DIR?.trim()
 	if (envDataDir) {
 		return envDataDir

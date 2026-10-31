@@ -623,7 +623,7 @@ export class AuthService {
 				})
 			} catch (error) {
 				rejectAuthMessage(error)
-				Logger.error("[SdkAuthService] Cline OAuth login failed:", error)
+				Logger.error("[SdkAuthService] NetAigis Coding Chat OAuth login failed:", error)
 			}
 		})()
 

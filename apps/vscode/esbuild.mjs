@@ -166,7 +166,7 @@ const baseConfig = {
 // Extension-specific configuration
 const extensionConfig = {
 	...baseConfig,
-	entryPoints: ["src/extension.ts"],
+	entryPoints: ["src/fork-entry.ts"],
 	outfile: `${destDir}/extension.js`,
 	external: ["vscode"],
 }

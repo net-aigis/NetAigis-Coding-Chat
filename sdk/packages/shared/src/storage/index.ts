@@ -64,6 +64,7 @@ export {
 	setClineDirIfUnset,
 	setHomeDir,
 	setHomeDirIfUnset,
+	setIsolatedStorageRoot,
 	type TaskSpecsScope,
 	WORKFLOWS_CONFIG_DIRECTORY_NAME,
 } from "./paths";

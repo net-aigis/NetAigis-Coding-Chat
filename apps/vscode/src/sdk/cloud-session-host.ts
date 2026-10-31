@@ -142,7 +142,7 @@ export class CloudSessionHost implements SdkSessionHost {
 		const host = new RemoteRuntimeHost({
 			endpoint: options.socketUrl,
 			clientType: "vscode-cloud-session",
-			displayName: "Cline for VS Code (cloud session)",
+			displayName: "NetAigis Coding Chat for VS Code (cloud session)",
 			workspaceRoot,
 			cwd: workspaceRoot,
 			telemetry: options.telemetry,
@@ -150,7 +150,7 @@ export class CloudSessionHost implements SdkSessionHost {
 			resolveConnectionHeaders: async () => {
 				const token = (await options.getAuthToken())?.trim()
 				if (!token) {
-					throw new Error("Sign in to Cline to connect to this cloud session.")
+					throw new Error("Sign in to NetAigis Coding Chat to connect to this cloud session.")
 				}
 				return { Authorization: `Bearer ${token}` }
 			},

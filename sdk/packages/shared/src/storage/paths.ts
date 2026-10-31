@@ -132,6 +132,12 @@ export function setHomeDirIfUnset(dir: string) {
 	HOME_DIR = trimmed;
 }
 
+// Process-local embedding override; never changes another extension's process.env.
+let ISOLATED_STORAGE_ROOT: string | undefined;
+export function setIsolatedStorageRoot(root: string | undefined): void {
+	ISOLATED_STORAGE_ROOT = root;
+}
+
 let CLINE_DIR: string | undefined;
 let CLINE_DIR_SET_EXPLICITLY = false;
 
@@ -156,6 +162,7 @@ export function setClineDirIfUnset(dir: string): void {
 }
 
 export function resolveClineDir(): string {
+	if (ISOLATED_STORAGE_ROOT) return ISOLATED_STORAGE_ROOT;
 	if (CLINE_DIR) {
 		return CLINE_DIR;
 	}
@@ -167,6 +174,7 @@ export function resolveClineDir(): string {
 }
 
 export function resolveDocumentsClineDirectoryPath(): string {
+	if (ISOLATED_STORAGE_ROOT) return join(ISOLATED_STORAGE_ROOT, "documents");
 	return join(HOME_DIR, "Documents", "Cline");
 }
 
@@ -184,6 +192,7 @@ export function resolveDocumentsExtensionPath(
 }
 
 export function resolveClineDataDir(): string {
+	if (ISOLATED_STORAGE_ROOT) return join(ISOLATED_STORAGE_ROOT, "data");
 	const explicitDir = process.env.CLINE_DATA_DIR?.trim();
 	if (explicitDir) {
 		return explicitDir;
@@ -192,6 +201,8 @@ export function resolveClineDataDir(): string {
 }
 
 export function resolveSessionDataDir(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(ISOLATED_STORAGE_ROOT, "data", "sessions");
 	const explicitDir = process.env.CLINE_SESSION_DATA_DIR?.trim();
 	if (explicitDir) {
 		return explicitDir;
@@ -200,6 +211,8 @@ export function resolveSessionDataDir(): string {
 }
 
 export function resolveTeamDataDir(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(ISOLATED_STORAGE_ROOT, "data", "teams");
 	const explicitDir = process.env.CLINE_TEAM_DATA_DIR?.trim();
 	if (explicitDir) {
 		return explicitDir;
@@ -208,6 +221,8 @@ export function resolveTeamDataDir(): string {
 }
 
 export function resolveConnectorDataDir(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(ISOLATED_STORAGE_ROOT, "data", "connectors");
 	const explicitDir = process.env.CLINE_CONNECTOR_DATA_DIR?.trim();
 	if (explicitDir) {
 		return explicitDir;
@@ -237,6 +252,13 @@ export function resolveConnectorLogPath(
 }
 
 export function resolveConnectorSettingsPath(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(
+			ISOLATED_STORAGE_ROOT,
+			"data",
+			"connectors",
+			CLINE_CONNECTOR_SETTINGS_FILE_NAME,
+		);
 	const explicitPath = process.env.CLINE_CONNECTOR_SETTINGS_PATH?.trim();
 	if (explicitPath) {
 		return explicitPath;
@@ -245,6 +267,7 @@ export function resolveConnectorSettingsPath(): string {
 }
 
 export function resolveDbDataDir(): string {
+	if (ISOLATED_STORAGE_ROOT) return join(ISOLATED_STORAGE_ROOT, "data", "db");
 	const explicitDir = process.env.CLINE_DB_DATA_DIR?.trim();
 	if (explicitDir) {
 		return explicitDir;
@@ -258,6 +281,8 @@ export function resolveDbDataDir(): string {
  * credentials/config stay decoupled from session storage.
  */
 export function resolveConnectorsDbPath(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(ISOLATED_STORAGE_ROOT, "data", "db", "connectors.db");
 	const explicitPath = process.env.CLINE_CONNECTORS_DB_PATH?.trim();
 	if (explicitPath) {
 		return explicitPath;
@@ -271,6 +296,8 @@ export function resolveConnectorsDbPath(): string {
  * retention, and query patterns stay decoupled from session storage.
  */
 export function resolveCronDbPath(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(ISOLATED_STORAGE_ROOT, "data", "db", "cron.db");
 	const explicitPath = process.env.CLINE_CRON_DB_PATH?.trim();
 	if (explicitPath) {
 		return explicitPath;
@@ -280,6 +307,8 @@ export function resolveCronDbPath(): string {
 
 /** Path to the dedicated agenda task queue database. */
 export function resolveTasksDbPath(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(ISOLATED_STORAGE_ROOT, "data", "db", "tasks.db");
 	const explicitPath = process.env.CLINE_TASKS_DB_PATH?.trim();
 	if (explicitPath) {
 		return explicitPath;
@@ -429,6 +458,8 @@ export function resolveCronEventsDir(
 }
 
 export function resolveProviderSettingsPath(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(ISOLATED_STORAGE_ROOT, "data", "settings", "providers.json");
 	const explicitPath = process.env.CLINE_PROVIDER_SETTINGS_PATH?.trim();
 	if (explicitPath) {
 		return explicitPath;
@@ -437,6 +468,13 @@ export function resolveProviderSettingsPath(): string {
 }
 
 export function resolveGlobalSettingsPath(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(
+			ISOLATED_STORAGE_ROOT,
+			"data",
+			"settings",
+			"global-settings.json",
+		);
 	const explicitPath = process.env.CLINE_GLOBAL_SETTINGS_PATH?.trim();
 	if (explicitPath) {
 		return explicitPath;
@@ -445,6 +483,13 @@ export function resolveGlobalSettingsPath(): string {
 }
 
 export function resolveMcpSettingsPath(): string {
+	if (ISOLATED_STORAGE_ROOT)
+		return join(
+			ISOLATED_STORAGE_ROOT,
+			"data",
+			"settings",
+			CLINE_MCP_SETTINGS_FILE_NAME,
+		);
 	const explicitPath = process.env.CLINE_MCP_SETTINGS_PATH?.trim();
 	if (explicitPath) {
 		return explicitPath;

@@ -8,6 +8,7 @@ import os from "os"
 import * as path from "path"
 import { HostProvider } from "@/hosts/host-provider"
 import { Logger } from "@/shared/services/Logger"
+import { getExtensionStorageRoot } from "@/shared/storage/storage-context"
 import { getDocumentsPath } from "./documents-path"
 
 export { getDocumentsPath } from "./documents-path"
@@ -45,7 +46,7 @@ export const GlobalFileNames = {
  * This is intended to eventually replace ~/Documents/Cline as the global config location.
  */
 function getClineHomePath(): string {
-	return path.join(os.homedir(), ".cline")
+	return getExtensionStorageRoot() || path.join(os.homedir(), ".cline")
 }
 
 export async function ensureTaskDirectoryExists(taskId: string): Promise<string> {
@@ -53,45 +54,61 @@ export async function ensureTaskDirectoryExists(taskId: string): Promise<string>
 }
 
 export async function ensureRulesDirectoryExists(): Promise<string> {
-	const userDocumentsPath = await getDocumentsPath()
-	const clineRulesDir = path.join(userDocumentsPath, "Cline", "Rules")
+	const userDocumentsPath = getExtensionStorageRoot() ? "" : await getDocumentsPath()
+	const clineRulesDir = getExtensionStorageRoot()
+		? path.join(getExtensionStorageRoot()!, "documents", "Rules")
+		: path.join(userDocumentsPath, "Cline", "Rules")
 	try {
 		await fs.mkdir(clineRulesDir, { recursive: true })
 	} catch (_error) {
-		return path.join(os.homedir(), "Documents", "Cline", "Rules") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
+		return getExtensionStorageRoot()
+			? path.join(getExtensionStorageRoot()!, "documents", "Rules")
+			: path.join(os.homedir(), "Documents", "Cline", "Rules") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
 	}
 	return clineRulesDir
 }
 
 export async function ensureWorkflowsDirectoryExists(): Promise<string> {
-	const userDocumentsPath = await getDocumentsPath()
-	const clineWorkflowsDir = path.join(userDocumentsPath, "Cline", "Workflows")
+	const userDocumentsPath = getExtensionStorageRoot() ? "" : await getDocumentsPath()
+	const clineWorkflowsDir = getExtensionStorageRoot()
+		? path.join(getExtensionStorageRoot()!, "documents", "Workflows")
+		: path.join(userDocumentsPath, "Cline", "Workflows")
 	try {
 		await fs.mkdir(clineWorkflowsDir, { recursive: true })
 	} catch (_error) {
-		return path.join(os.homedir(), "Documents", "Cline", "Workflows") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
+		return getExtensionStorageRoot()
+			? path.join(getExtensionStorageRoot()!, "documents", "Workflows")
+			: path.join(os.homedir(), "Documents", "Cline", "Workflows") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
 	}
 	return clineWorkflowsDir
 }
 
 export async function ensureMcpServersDirectoryExists(): Promise<string> {
-	const userDocumentsPath = await getDocumentsPath()
-	const mcpServersDir = path.join(userDocumentsPath, "Cline", "MCP")
+	const userDocumentsPath = getExtensionStorageRoot() ? "" : await getDocumentsPath()
+	const mcpServersDir = getExtensionStorageRoot()
+		? path.join(getExtensionStorageRoot()!, "documents", "MCP")
+		: path.join(userDocumentsPath, "Cline", "MCP")
 	try {
 		await fs.mkdir(mcpServersDir, { recursive: true })
 	} catch (_error) {
-		return path.join(os.homedir(), "Documents", "Cline", "MCP") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine since this path is only ever used in the system prompt
+		return getExtensionStorageRoot()
+			? path.join(getExtensionStorageRoot()!, "documents", "MCP")
+			: path.join(os.homedir(), "Documents", "Cline", "MCP") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine since this path is only ever used in the system prompt
 	}
 	return mcpServersDir
 }
 
 export async function ensureHooksDirectoryExists(): Promise<string> {
-	const userDocumentsPath = await getDocumentsPath()
-	const clineHooksDir = path.join(userDocumentsPath, "Cline", "Hooks")
+	const userDocumentsPath = getExtensionStorageRoot() ? "" : await getDocumentsPath()
+	const clineHooksDir = getExtensionStorageRoot()
+		? path.join(getExtensionStorageRoot()!, "documents", "Hooks")
+		: path.join(userDocumentsPath, "Cline", "Hooks")
 	try {
 		await fs.mkdir(clineHooksDir, { recursive: true })
 	} catch (_error) {
-		return path.join(os.homedir(), "Documents", "Cline", "Hooks") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
+		return getExtensionStorageRoot()
+			? path.join(getExtensionStorageRoot()!, "documents", "Hooks")
+			: path.join(os.homedir(), "Documents", "Cline", "Hooks") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
 	}
 	return clineHooksDir
 }

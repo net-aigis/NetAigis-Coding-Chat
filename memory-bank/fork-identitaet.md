@@ -1,8 +1,8 @@
 # Verbindlicher Auftrag: eigenständiger Fork und sichere Identitätsmigration
 
-Stand 31.10.2026. Dieser Auftrag wurde zwischen Phase 2 und Phase 3 erteilt
-und ist **nicht abgeschlossen**. Die Upstream-Integration ersetzt ihn nicht.
-Die Benutzerkorrektur vom 31.10.2026 bestätigt ihn ausdrücklich erneut.
+Stand 31.10.2026: Die technische Identitätsumstellung ist im Reparatur-Worktree umgesetzt. Ziel bleibt ausschließlich **NetAigis Coding Chat**, `netaigis.netaigis-coding-chat`, `0.1.0`. Die produktive Migration/Installation und vollständige Abnahme stehen aus. Die Upstream-Integration ersetzt die Fork-Eigenständigkeit nicht.
+
+Die nachstehenden frühen Befunde dokumentieren den Stand **vor** dieser technischen Umstellung. Der aktuelle Implementierungs- und Prüfnachweis steht im letzten Abschnitt und in [phase4-reparatur.md](phase4-reparatur.md). Frühere Aussagen „noch nicht umgestellt“ beschreiben diesen historischen Stand, keine erneute Namensentscheidung.
 
 ## Festgelegte Eigentümerschaft
 
@@ -15,13 +15,13 @@ Die Benutzerkorrektur vom 31.10.2026 bestätigt ihn ausdrücklich erneut.
 - Modellrouting, Coding-Agent, Learning-Agent, TOTAL RECALL und bestehende
   Sitzungen bleiben erhalten. Keine Abhängigkeit von einem Cline-Cloud-Konto.
 
-## Tatsächlicher Quellstand und freigegebene Zielidentität
+## Historischer Quellstand vor der technischen Umstellung und freigegebene Zielidentität
 
-`apps/vscode/package.json` trägt derzeit `publisher: saoudrizwan`,
+Vor diesem Arbeitsschritt trug `apps/vscode/package.json` `publisher: saoudrizwan`,
 `name: claude-dev`, `displayName: Cline`, `version: 4.1.26`.
 `apps/vscode/src/registry.ts` bildet daraus `saoudrizwan.claude-dev`, den
 Command-Präfix `cline` und `claude-dev.SidebarProvider`.
-Damit ist die geforderte eigene Extension-Identität noch nicht umgesetzt.
+Damit war die geforderte eigene Extension-Identität damals noch nicht umgesetzt.
 Die Repository-Metadaten werden auf das eigene Forgejo berichtigt; das ist
 keine Freigabe einer Umbenennung oder produktiven Installation.
 
@@ -72,7 +72,7 @@ eigene Tags und VSIX-Artefakte stehen aus; es wurden noch keine Tags erzeugt.
 Diese Liste ist ein verbindlicher offener Arbeitsstand, keine behauptete
 Migrationsprüfung oder bereits durchgeführte produktive Installation.
 
-## Umgesetzter Schutz vom 31.10.2026
+## Historischer Release-Schutz aus Commit 8b85d65e1
 
 Die vorhandene Paketdatei enthält nun getrennte `fork.upstream`-Metadaten
 (Basisversion und Commit) sowie `fork.release: null`. Das Null-Feld bedeutet
@@ -113,7 +113,7 @@ erledigt. **NetAigis Coding Agent** bleibt die Bezeichnung des eigenständigen
 Acer-Backends; dieser Dienst wird nicht umbenannt. Die gesamte sichtbare
 VS-Code-Oberfläche muss zur freigegebenen eigenen Identität passen.
 
-Die praktische Umstellung ist weiterhin OFFEN und folgt erst auf die oben
+Historischer Stand vor diesem Arbeitsschritt: Die praktische Umstellung war OFFEN und folgte erst auf die oben
 belegte Kompatibilitätsanalyse und tatsächliche Daten-/Secret-/Checkpoint-
 Migrationstests. Keine bloße Änderung von package.json, kein Datenverlust,
 keine Kollision mit Original-Cline. Publisher-Verfügbarkeit wird bei einer
@@ -127,12 +127,12 @@ Verbindliche Benutzerkorrektur: **NetAigis Coding Chat** mit Paket
 Auslegung des Assistenten, nur den Anzeigenamen zu ändern und die technische
 ID beizubehalten, war nicht freigegeben und ist zurückgenommen. Es bleibt
 bei Publisher `netaigis`, Startversion `0.1.0` und eigenem SemVer. Der Acer
-Coding-Agent behält seine Identität. Noch keine technische Umstellung erfolgt.
+Coding-Agent behält seine Identität. Vor diesem Arbeitsschritt war noch keine technische Umstellung erfolgt.
 
 
 ## Gezielte Folgenprüfung für netaigis.netaigis-coding-chat
 
-Keine alternative Identität wird gewählt. Noch keine Paket-/ID-/Versionsänderung.
+Keine alternative Identität wurde gewählt. Diese frühe Folgenprüfung erfolgte vor der Paket-/ID-/Versionsänderung.
 Die erneute Prüfung betrifft ausschließlich die nun vollständig präzisierte
 Zielidentität, keine neue Bestandsaufnahme der abgeschlossenen Phasen.
 
@@ -170,3 +170,33 @@ Ablehnung oder Änderung der freigegebenen Identität. Native Alt-Secrets,
 alte/aktive SDK- und Legacy-Sitzungen, Einstellungen, Aufträge, Autor-Metadaten,
 Checkpoints, Recall-Outbox und Rollback sind praktisch zu prüfen. Unbelegte
 Wiederherstellungs- oder Erreichbarkeitserfolge werden nicht behauptet.
+
+
+## Technische Umsetzung im Reparatur-Worktree, 31.10.2026
+
+Die freigegebene Identität steht nun tatsächlich in `apps/vscode/package.json`: Publisher `netaigis`, Name `netaigis-coding-chat`, Anzeigename **NetAigis Coding Chat**, ID `netaigis.netaigis-coding-chat`, eigene Version `0.1.0`. Upstream `4.1.26`/`a459f1d04dea030833b558be645011ab739c463b` bleibt unter `fork.upstream` getrennt. `fork.release.approved` bestätigt die ausdrücklich erteilte Identitätsentscheidung; es ersetzt keine produktive Abnahme, Veröffentlichungsfreigabe oder Publisher-Verfügbarkeitsprüfung. Keine eigenen Release-Tags, keine produktive VSIX-Installation.
+
+Manifest, Registry, Recall-Kommandos, View-/Sidebar-/Aktivitätsleisten-IDs, URI-Callbacks, Walkthrough und sichtbare Produkttexte sind zusammen umgestellt. Eigene lokale SVG-/PNG-Assets ersetzen das Produktlogo; upstreamgebrandete Walkthrough-Screenshots werden nicht als eigene Screenshots ausgegeben. About zeigt eigenes Forgejo und getrennte Upstream-Basis. Ein externer Cline-Provider bleibt als solcher bezeichnet und wird nicht in einen erfundenen eigenen Cloud-Dienst umetikettiert. Das eigene Welcome benötigt kein Cline-Konto und übernimmt keine neuen Standardmodelle.
+
+### Speicher und native Secrets
+
+`src/fork-entry.ts` initialisiert die SDK-/Dateispeicher erst nach der Migrationsentscheidung. Im eigenen VS-Code-Namensraum liegt `home/` für moderne Daten und `legacy/` für übernommene Extension-Daten. Modulgebundene Pfadauflösung ersetzt **keine** gemeinsam genutzten `process.env`-Werte. Original-Cline bleibt damit im Paralleltest auf seinem bisherigen Speicher. Vorhandene alte Daten führen ohne verifizierten Import in eine ausdrückliche Migrationsansicht.
+
+`fork-identity-export.ts` ist ein minimaler Exporthelfer ausschließlich unter der alten ID und ausschließlich für eine isolierte Kopie des alten Profils. Die produktive Originalextension wird dafür nicht ersetzt. Er liest native Secrets im tatsächlich berechtigten alten Kontext; der neue Kontext greift nicht vermeintlich auf alte Secrets zu. Unterstützt der Host die Enumeration, werden sämtliche nativen Schlüssel exportiert, ansonsten die bestehenden bekannten `SecretKeys`. Alte Werte bleiben erhalten. Die neue ID schreibt die übernommenen Werte in **ihren** SecretStorage und prüft sie nach. Dateiwerte und bereits vorhandene Zielkonfiguration werden nicht blind überschrieben.
+
+Übertragungsmanifest und Payload sind zugriffsgeschützt, pro Datei SHA256-geprüft. Echte Secrets müssen bei einer später ausdrücklich freigegebenen produktiven Übernahme außerhalb von Git bleiben; die gespeicherten Entwicklungstests verwenden ausschließlich deklarierte Native-Secret-Fixtures. Produktive native Zugangsdaten wurden in diesem Schritt weder exportiert noch ausgegeben. Globale und aktuelle Workspace-Mementos sowie die vorhandenen dateibasierten Workspace-Einstellungen werden übernommen. Andere native Workspace-Kontexte müssen vor einer produktiven Komplettübernahme im jeweiligen alten Kontext erfasst werden; ihre Erreichbarkeit wird nicht durch den Test eines einzelnen Workspace behauptet. Das Manifest enthält aktuell keine VS-Code-Konfigurationseigenschaften unter einem alten Produktpräfix (`contributes.configuration.properties` ist leer). Benutzerdefinierte alte Keybindings werden nicht global umgeschrieben und bleiben bei der alten Extension; die eigenen Standard-Keybindings benutzen eigene IDs.
+
+### Transaktion und Wiederherstellung
+
+SQLite wird bei Export über die tatsächliche SQLite-Backup-API einschließlich bestätigter WAL-Daten übertragen; ohne diese API wird abgebrochen, keine aktive DB einfach kopiert. Datenbanken werden auf Integrität geprüft. Pfadverweise in Manifesten/Indexen und SQLite-Spalten werden vor der Veröffentlichung angepasst. Kanonische Nachrichten bleiben unverändert. IDs, Originalaufträge, Autor-Metadaten, Modelle und gespeicherte Prozesswerte werden nicht neu erfunden.
+
+Bei einer gesicherten Kopie unterscheidet `originalFrom` den ursprünglichen absoluten Speicherpfad vom heutigen physischen Snapshotpfad. Diese Zuordnung war mit den echten Phase-2-Daten zunächst nachweislich fehlerhaft und wurde korrigiert. Explizit fehlende Quellverzeichnisse, veränderte Quelldateien, Symlinks und externe Git-Objektreferenzen führen zum Abbruch statt zu einer unvollständigen Erfolgsmeldung.
+
+Ein privates, synchronisiertes Journal dokumentiert Ausgangswerte und veröffentlichte Prüfsummen. SQLite-Änderungen werden vorab in privaten temporären Dateien vorbereitet. Ein exklusiver Eigentümer-Lock verhindert parallele Migration/Rücknahme. Nach Prozessabbruch ist nur geprüfte Rücknahme erlaubt; ein noch lebender Eigentümer bleibt geschützt. Wiederholung desselben Imports überschreibt keine spätere Arbeit. Rücknahme verweigert Dateien oder Einstellungen, die nach der Migration geändert wurden. Die Originaldateien und alten nativen Secrets werden nicht gelöscht.
+
+### Tatsächliche Grenzen
+
+Die tatsächliche Übernahme einer gesicherten SDK-Sitzung und der Secret-Transport in realen isolierten VS-Code-Kontexten sind belegt. Ein Datenimport überträgt keinen laufenden Betriebssystemprozess und bestätigt keinen heutigen Prozesszustand aus einem alten PID-Wert. Vollständiger produktiver Altbestand, OS-Schlüsselbund aus einem produktiven Profil, projektspezifische Checkpoint-Bedienung, Android und echte 125B-Ausführung sind gesondert abzunehmen. Produktive Migration benötigt weiterhin nachgewiesene Wiederherstellbarkeit **und die ausdrücklich verlangte Freigabe**. Der eigenständige Acer-Backenddienst wird nicht umbenannt oder verändert.
+
+
+Ergänzender Prüfnachweis: Native Secret-Persistenz wird durch sechs **normale** isolierte VS-Code-Läufe ohne `--extensionTestsPath` belegt. Dieser Standard-Testschalter verwendet RAM-only Storage und ist dafür ungeeignet; frühe Wiederstart-/Fallback-Aussagen daraus waren nicht ausreichend. Der endgültige Fallback-Helfer darf nur in `seed` Fixtures erzeugen, nicht beim Rückfall. Reale neue Native-Secrets wurden nach zwei echten Prozessneustarts erneut gelesen. Xvfb-Absturzzuordnung und ausschließlich betroffene Startkorrektur sind im Phase-4-Bericht dokumentiert; die Fork-Identitäts-/Migrationsdateien wurden bei dieser Absturzprüfung nicht geändert.

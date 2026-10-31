@@ -202,7 +202,7 @@ const ClineModelPicker: React.FC<ClineModelPickerProps> = ({
 			)
 			return true
 		} catch (error) {
-			console.error("Failed to refresh Cline recommended models:", error)
+			console.error("Failed to refresh NetAigis Coding Chat recommended models:", error)
 			return false
 		}
 	}, [])
@@ -277,7 +277,7 @@ const ClineModelPicker: React.FC<ClineModelPickerProps> = ({
 		void commitSelection(currentMode, {
 			providerId: "cline",
 			modelId: newModelId,
-		}).catch((err) => console.error("Failed to commit Cline model selection:", err))
+		}).catch((err) => console.error("Failed to commit NetAigis Coding Chat model selection:", err))
 
 		void handleModeFieldsChange(
 			{
@@ -655,7 +655,7 @@ const ClineModelPicker: React.FC<ClineModelPickerProps> = ({
 						marginTop: 0,
 						color: "var(--vscode-descriptionForeground)",
 					}}>
-					The extension automatically fetches the latest Cline model list.
+					The extension automatically fetches the latest NetAigis Coding Chat model list.
 				</p>
 			)}
 		</div>

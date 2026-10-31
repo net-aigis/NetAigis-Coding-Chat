@@ -165,7 +165,7 @@ Options:
   --random-port         Bind an OS-assigned random free port instead of --port
   --instances <n>       Start N independent servers, each on its own random
                         port (implies --random-port). Use to add several MCP
-                        servers to Cline at once.
+                        servers to NetAigis Coding Chat at once.
   --auto-approve        Always approve authorization (no consent screen)
   --auto-deny           Always deny authorization (simulate "Deny" click)
   --code-ttl <ms>       Authorization code lifetime (default 600000)
@@ -669,7 +669,7 @@ class TestServer {
 </head>
 <body>
   <div class="card">
-    <h1>Authorize Cline?</h1>
+    <h1>Authorize NetAigis Coding Chat?</h1>
     <p>The MCP OAuth Test Server is asking you to authorize this client.</p>
     <div class="row">Client: <code>${escapeHtml(clientId)}</code></div>
     <div class="row">Redirect: <code>${escapeHtml(redirectUri)}</code></div>

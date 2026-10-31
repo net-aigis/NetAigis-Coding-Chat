@@ -154,10 +154,12 @@ class ClineTempManagerImpl {
 			}
 
 			if (deletedCount > 0) {
-				Logger.info(`Cline temp cleanup: deleted ${deletedCount} files, freed ${Math.round(freedBytes / 1024 / 1024)}MB`)
+				Logger.info(
+					`NetAigis Coding Chat temp cleanup: deleted ${deletedCount} files, freed ${Math.round(freedBytes / 1024 / 1024)}MB`,
+				)
 			}
 		} catch (error) {
-			Logger.error("Error during Cline temp cleanup", error)
+			Logger.error("Error during NetAigis Coding Chat temp cleanup", error)
 		}
 
 		return { deletedCount, freedBytes }

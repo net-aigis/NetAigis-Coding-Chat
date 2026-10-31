@@ -40,7 +40,8 @@ import { prepareTaskResumeStartInput } from "./sdk-task-resume"
 import type { SdkSessionHost } from "./session-host"
 
 const COMPACTION_FAILURE_MESSAGE = "Couldn't compact the conversation. Please try again."
-const COMPACTION_UNSUPPORTED_MESSAGE = "Compaction is not supported by this runtime yet. Please update Cline and try again."
+const COMPACTION_UNSUPPORTED_MESSAGE =
+	"Compaction is not supported by this runtime yet. Please update NetAigis Coding Chat and try again."
 const COMPACTION_TURN_RUNNING_MESSAGE =
 	"Cannot compact while a response is in progress. Try again once the current turn finishes."
 

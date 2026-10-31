@@ -151,6 +151,8 @@
 				"!!**/*.test.ts",
 				"!!src/dev/**",
 				"!!src/extension.ts",
+				// Bootstrap must use the native host before the bridge and shared storage are initialized.
+				"!!src/fork-entry.ts",
 				"!!src/core/controller/commands/recall-session-commands.ts",
 				"!!src/integrations/git/commit-message-generator.ts",
 				"!!src/integrations/terminal/**",
@@ -195,7 +197,10 @@
 				"!!src/common.ts",
 				"!!src/services/logging/distinctId.ts",
 				"!!src/core/storage/utils/state-helpers.ts",
-				"!!src/extension.ts"
+				"!!src/extension.ts",
+				// Identity transfer must access each owning native SecretStorage, never the shared CacheService.
+				"!!src/hosts/vscode/fork-identity-migration.ts",
+				"!!src/hosts/vscode/fork-identity-export.ts"
 			],
 			"plugins": [
 				"src/dev/grit/use-cache-service.grit"

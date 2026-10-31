@@ -1,5 +1,6 @@
 import os from "os"
 import * as path from "path"
+import { getExtensionStorageRoot } from "@/shared/storage/storage-context"
 
 const SKILL_DIRECTORY_NAMES = {
 	clineruleSkillsDir: ".clinerules/skills",
@@ -14,7 +15,7 @@ export type SkillsScanDirectory = {
 }
 
 function getClineHomePath(): string {
-	return path.join(os.homedir(), ".cline")
+	return getExtensionStorageRoot() || path.join(os.homedir(), ".cline")
 }
 
 function getClineSkillsDirectoryPath(): string {

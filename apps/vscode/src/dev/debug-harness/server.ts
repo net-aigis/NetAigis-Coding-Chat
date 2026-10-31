@@ -543,7 +543,7 @@ class DebugHarness {
 				if (frame.isDetached()) continue
 				try {
 					const title = await frame.title()
-					if (title.startsWith("Cline")) {
+					if (title.startsWith("NetAigis Coding Chat")) {
 						this.sidebarFrame = frame
 						return frame
 					}
@@ -892,7 +892,7 @@ class DebugHarness {
 			// Activity bar might need a different approach
 			await this.page.keyboard.press("Meta+Shift+p")
 			await sleep(300)
-			await this.page.keyboard.type("Cline: Focus on Cline View")
+			await this.page.keyboard.type("NetAigis Coding Chat: Focus on NetAigis Coding Chat View")
 			await sleep(200)
 			await this.page.keyboard.press("Enter")
 		}
@@ -1246,7 +1246,7 @@ class DebugHarness {
 		if (!this.app) throw new Error("VSCode not running")
 
 		// Build the URI
-		const extensionId = "saoudrizwan.claude-dev"
+		const extensionId = "netaigis.netaigis-coding-chat"
 		const scheme = "vscode"
 		const searchParams = new URLSearchParams()
 		if (params.code) searchParams.set("code", params.code)
@@ -1278,7 +1278,7 @@ class DebugHarness {
 						// SharedUriHandler which is imported in extension.ts.
 						//
 						// For now, we'll note the URI and the agent should use
-						// ui.command_palette with "Cline: Handle URI" or similar.
+						// ui.command_palette with "NetAigis Coding Chat: Handle URI" or similar.
 						return ${JSON.stringify(uri)}
 					})()
 				`,
@@ -1295,7 +1295,7 @@ class DebugHarness {
 				note:
 					"URI constructed. For callbacks that use the vscode:// scheme, " +
 					"you need to trigger the extension's URI handler. Options:\n" +
-					"1. For Cline OAuth (SDK local callback): the SDK captures the code " +
+					"1. For NetAigis Coding Chat OAuth (SDK local callback): the SDK captures the code " +
 					"automatically from its local HTTP server — no simulation needed.\n" +
 					"2. For MCP/provider OAuth: use 'ext.evaluate' to call " +
 					"SharedUriHandler.handleUri() directly, or use the command palette.",

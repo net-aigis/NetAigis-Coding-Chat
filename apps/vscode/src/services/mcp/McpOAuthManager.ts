@@ -111,7 +111,7 @@ class ClineOAuthClientProvider implements OAuthClientProvider {
 			token_endpoint_auth_method: "none",
 			grant_types: ["authorization_code", "refresh_token"],
 			response_types: ["code"],
-			client_name: "Cline",
+			client_name: "NetAigis Coding Chat",
 		}
 	}
 
@@ -251,7 +251,7 @@ export class McpOAuthManager {
 			const result = await authorizeMcpServerOAuth({
 				serverName,
 				filePath: settingsPath,
-				clientName: "Cline",
+				clientName: "NetAigis Coding Chat",
 				fetch,
 				openUrl: (url) => openExternal(url),
 				callbackPorts: MCP_OAUTH_CALLBACK_PORTS,

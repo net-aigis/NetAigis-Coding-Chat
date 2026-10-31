@@ -25,8 +25,8 @@ export class TerminalRegistry {
 	static createTerminal(cwd?: string | vscode.Uri | undefined, shellPath?: string): TerminalInfo {
 		const terminalOptions: vscode.TerminalOptions = {
 			cwd,
-			name: "Cline",
-			iconPath: new vscode.ThemeIcon("cline-icon"),
+			name: "NetAigis Coding Chat",
+			iconPath: new vscode.ThemeIcon("comment-discussion"),
 			env: {
 				CLINE_ACTIVE: "true",
 				// Override $SHELL to match the selected shell profile so that

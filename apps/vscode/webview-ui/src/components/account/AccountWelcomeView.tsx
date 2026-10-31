@@ -16,6 +16,8 @@ export const AccountWelcomeView = () => {
 		<div className="flex flex-col items-center gap-2.5">
 			<ClineLogoVariable className="size-16 mb-4" environment={environment} />
 
+			<h2>Cline provider account</h2>
+			<p>Optional external provider. NetAigis Coding Chat also works with your local model without this account.</p>
 			<p>
 				Sign up for an account to get access to the latest models, billing dashboard to view usage and credits, and more
 				upcoming features.

@@ -1,17 +1,17 @@
 {
-	"name": "claude-dev",
-	"displayName": "Cline",
+	"name": "netaigis-coding-chat",
+	"displayName": "NetAigis Coding Chat",
 	"description": "Autonomous coding agent right in your IDE, capable of creating/editing files, running commands, using the browser, and more with your permission every step of the way.",
-	"version": "4.1.26",
-	"icon": "assets/icons/icon.png",
+	"version": "0.1.0",
+	"icon": "assets/icons/netaigis-coding-chat.png",
 	"engines": {
 		"vscode": "^1.101.0"
 	},
 	"author": {
-		"name": "Cline Bot Inc."
+		"name": "netaigis"
 	},
 	"license": "Apache-2.0",
-	"publisher": "saoudrizwan",
+	"publisher": "netaigis",
 	"repository": {
 		"type": "git",
 		"url": "https://git.wittmer.software/AIGIS/cline.git"
@@ -22,9 +22,15 @@
 			"version": "4.1.26",
 			"commit": "a459f1d04dea030833b558be645011ab739c463b"
 		},
-		"release": null
+		"release": {
+			"approved": true,
+			"publisher": "netaigis",
+			"name": "netaigis-coding-chat",
+			"displayName": "NetAigis Coding Chat",
+			"version": "0.1.0"
+		}
 	},
-	"homepage": "https://cline.bot",
+	"homepage": "https://git.wittmer.software/AIGIS/cline.git",
 	"categories": [
 		"AI",
 		"Chat",
@@ -54,33 +60,24 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
-		"icons": {
-			"cline-icon": {
-				"description": "cline",
-				"default": {
-					"fontPath": "assets/icons/cline-bot.woff",
-					"fontCharacter": "\\e900"
-				}
-			}
-		},
 		"walkthroughs": [
 			{
-				"id": "ClineWalkthrough",
-				"title": "Meet Cline, your new coding partner",
-				"description": "Cline codes like a developer because it thinks like one. Here are 5 ways to put it to work:",
+				"id": "NetAigisCodingChatWalkthrough",
+				"title": "Meet NetAigis Coding Chat, your new coding partner",
+				"description": "NetAigis Coding Chat codes like a developer because it thinks like one. Here are 5 ways to put it to work:",
 				"steps": [
 					{
 						"id": "welcome",
 						"title": "Start with a Goal, Not Just a Prompt",
-						"description": "Tell Cline what you want to achieve. It plans, asks, and then codes, like a true partner.",
+						"description": "Tell NetAigis Coding Chat what you want to achieve. It plans, asks, and then codes, like a true partner.",
 						"media": {
 							"markdown": "walkthrough/step1.md"
 						}
 					},
 					{
 						"id": "learn",
-						"title": "Let Cline Learn Your Codebase",
-						"description": "Point Cline to your project. It builds understanding to make smart, context-aware changes.",
+						"title": "Let NetAigis Coding Chat Learn Your Codebase",
+						"description": "Point NetAigis Coding Chat to your project. It builds understanding to make smart, context-aware changes.",
 						"media": {
 							"markdown": "walkthrough/step2.md"
 						}
@@ -88,7 +85,7 @@
 					{
 						"id": "advanced-features",
 						"title": "Always Use the Best AI Models",
-						"description": "Cline empowers you with State-of-the-Art AI, connecting to top models (Anthropic, Gemini, OpenAI & more).",
+						"description": "NetAigis Coding Chat empowers you with State-of-the-Art AI, connecting to top models (Anthropic, Gemini, OpenAI & more).",
 						"media": {
 							"markdown": "walkthrough/step3.md"
 						}
@@ -104,7 +101,7 @@
 					{
 						"id": "getting-started",
 						"title": "You're Always in Control",
-						"description": "Review Cline's plans and diffs. Approve changes before they happen. No surprises.",
+						"description": "Review NetAigis Coding Chat's plans and diffs. Approve changes before they happen. No surprises.",
 						"media": {
 							"markdown": "walkthrough/step5.md"
 						},
@@ -118,141 +115,175 @@
 		"viewsContainers": {
 			"activitybar": [
 				{
-					"id": "claude-dev-ActivityBar",
-					"title": "Cline",
-					"icon": "assets/icons/icon.svg"
+					"id": "netaigis-coding-chat-ActivityBar",
+					"title": "NetAigis Coding Chat",
+					"icon": "assets/icons/netaigis-coding-chat.svg"
 				}
 			]
 		},
 		"views": {
-			"claude-dev-ActivityBar": [
+			"netaigis-coding-chat-ActivityBar": [
 				{
 					"type": "webview",
-					"id": "claude-dev.SidebarProvider",
+					"id": "netaigis-coding-chat.SidebarProvider",
 					"name": "",
-					"icon": "assets/icons/icon.svg"
+					"icon": "assets/icons/netaigis-coding-chat.svg"
 				}
 			]
 		},
 		"commands": [
 			{
-				"command": "cline.recall.listSessions",
-				"title": "TOTAL RECALL: Sitzungsverlauf öffnen"
+				"command": "netaigis-coding-chat.recall.listSessions",
+				"title": "TOTAL RECALL: Sitzungsverlauf \u00f6ffnen"
 			},
 			{
-				"command": "cline.recall.quickPick",
-				"title": "TOTAL RECALL: Sitzung auswählen"
+				"command": "netaigis-coding-chat.recall.quickPick",
+				"title": "TOTAL RECALL: Sitzung ausw\u00e4hlen"
 			},
 			{
-				"command": "cline.recall.configure",
+				"command": "netaigis-coding-chat.recall.configure",
 				"title": "TOTAL RECALL: Konfigurieren"
 			},
 			{
-				"command": "cline.plusButtonClicked",
+				"command": "netaigis-coding-chat.plusButtonClicked",
 				"title": "New Task",
 				"icon": "$(add)"
 			},
 			{
-				"command": "cline.mcpButtonClicked",
+				"command": "netaigis-coding-chat.mcpButtonClicked",
 				"title": "MCP Servers",
 				"icon": "$(server)"
 			},
 			{
-				"command": "cline.marketplaceButtonClicked",
+				"command": "netaigis-coding-chat.marketplaceButtonClicked",
 				"title": "Customize",
 				"icon": "$(wrench)"
 			},
 			{
-				"command": "cline.historyButtonClicked",
+				"command": "netaigis-coding-chat.historyButtonClicked",
 				"title": "History",
 				"icon": "$(history)"
 			},
 			{
-				"command": "cline.accountButtonClicked",
+				"command": "netaigis-coding-chat.accountButtonClicked",
 				"title": "Account",
 				"icon": "$(account)"
 			},
 			{
-				"command": "cline.settingsButtonClicked",
+				"command": "netaigis-coding-chat.settingsButtonClicked",
 				"title": "Settings",
 				"icon": "$(settings-gear)"
 			},
 			{
-				"command": "cline.dev.createTestTasks",
+				"command": "netaigis-coding-chat.dev.createTestTasks",
 				"title": "Create Test Tasks",
-				"category": "Cline",
-				"when": "cline.isDevMode"
+				"category": "NetAigis Coding Chat",
+				"when": "netaigis-coding-chat.isDevMode"
 			},
 			{
-				"command": "cline.dev.expireMcpOAuthTokens",
+				"command": "netaigis-coding-chat.dev.expireMcpOAuthTokens",
 				"title": "Expire MCP OAuth Tokens (for testing)",
-				"category": "Cline",
-				"when": "cline.isDevMode"
+				"category": "NetAigis Coding Chat",
+				"when": "netaigis-coding-chat.isDevMode"
 			},
 			{
-				"command": "cline.addToChat",
-				"title": "Add to Cline",
-				"category": "Cline"
+				"command": "netaigis-coding-chat.addToChat",
+				"title": "Add to NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat"
 			},
 			{
-				"command": "cline.addTerminalOutputToChat",
-				"title": "Add to Cline",
-				"category": "Cline"
+				"command": "netaigis-coding-chat.addTerminalOutputToChat",
+				"title": "Add to NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat"
 			},
 			{
-				"command": "cline.focusChatInput",
+				"command": "netaigis-coding-chat.focusChatInput",
 				"title": "Jump to Chat Input",
-				"category": "Cline"
+				"category": "NetAigis Coding Chat"
 			},
 			{
-				"command": "cline.generateGitCommitMessage",
-				"title": "Generate Commit Message with Cline",
-				"category": "Cline",
-				"icon": "$(cline-icon)"
+				"command": "netaigis-coding-chat.generateGitCommitMessage",
+				"title": "Generate Commit Message with NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat",
+				"icon": "$(comment-discussion)"
 			},
 			{
-				"command": "cline.abortGitCommitMessage",
-				"title": "Generate Commit Message with Cline - Stop",
-				"category": "Cline",
+				"command": "netaigis-coding-chat.abortGitCommitMessage",
+				"title": "Generate Commit Message with NetAigis Coding Chat - Stop",
+				"category": "NetAigis Coding Chat",
 				"icon": "$(debug-stop)"
 			},
 			{
-				"command": "cline.explainCode",
-				"title": "Explain with Cline",
-				"category": "Cline"
+				"command": "netaigis-coding-chat.explainCode",
+				"title": "Explain with NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat"
 			},
 			{
-				"command": "cline.improveCode",
-				"title": "Improve with Cline",
-				"category": "Cline"
+				"command": "netaigis-coding-chat.improveCode",
+				"title": "Improve with NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat"
 			},
 			{
-				"command": "cline.jupyterGenerateCell",
-				"title": "Generate Jupyter Cell with Cline",
-				"category": "Cline",
+				"command": "netaigis-coding-chat.jupyterGenerateCell",
+				"title": "Generate Jupyter Cell with NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat",
 				"icon": "$(sparkle)"
 			},
 			{
-				"command": "cline.jupyterExplainCell",
-				"title": "Explain Jupyter Cell with Cline",
-				"category": "Cline",
+				"command": "netaigis-coding-chat.jupyterExplainCell",
+				"title": "Explain Jupyter Cell with NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat",
 				"icon": "$(question)"
 			},
 			{
-				"command": "cline.jupyterImproveCell",
-				"title": "Improve Jupyter Cell with Cline",
-				"category": "Cline",
+				"command": "netaigis-coding-chat.jupyterImproveCell",
+				"title": "Improve Jupyter Cell with NetAigis Coding Chat",
+				"category": "NetAigis Coding Chat",
 				"icon": "$(lightbulb)"
 			},
 			{
-				"command": "cline.openWalkthrough",
+				"command": "netaigis-coding-chat.openWalkthrough",
 				"title": "Open Walkthrough",
-				"category": "Cline"
+				"category": "NetAigis Coding Chat"
+			},
+			{
+				"command": "netaigis-coding-chat.migration.import",
+				"title": "Import verified identity transfer",
+				"category": "NetAigis Coding Chat"
+			},
+			{
+				"command": "netaigis-coding-chat.migration.preview",
+				"title": "Preview identity transfer",
+				"category": "NetAigis Coding Chat",
+				"enablement": "false"
+			},
+			{
+				"command": "netaigis-coding-chat.migration.apply",
+				"title": "Apply previewed identity transfer",
+				"category": "NetAigis Coding Chat",
+				"enablement": "false"
+			},
+			{
+				"command": "netaigis-coding-chat.migration.rollback",
+				"title": "Roll back unchanged migration output",
+				"category": "NetAigis Coding Chat"
+			},
+			{
+				"command": "netaigis-coding-chat.migration.rollbackPreview",
+				"title": "Migration rollbackPreview",
+				"category": "NetAigis Coding Chat",
+				"enablement": "false"
+			},
+			{
+				"command": "netaigis-coding-chat.migration.rollbackApply",
+				"title": "Migration rollbackApply",
+				"category": "NetAigis Coding Chat",
+				"enablement": "false"
 			}
 		],
 		"keybindings": [
 			{
-				"command": "cline.addToChat",
+				"command": "netaigis-coding-chat.addToChat",
 				"key": "cmd+'",
 				"mac": "cmd+'",
 				"win": "ctrl+'",
@@ -260,11 +291,11 @@
 				"when": "editorHasSelection"
 			},
 			{
-				"command": "cline.generateGitCommitMessage",
+				"command": "netaigis-coding-chat.generateGitCommitMessage",
 				"when": "config.git.enabled && scmProvider == git"
 			},
 			{
-				"command": "cline.focusChatInput",
+				"command": "netaigis-coding-chat.focusChatInput",
 				"key": "cmd+'",
 				"mac": "cmd+'",
 				"win": "ctrl+'",
@@ -275,88 +306,88 @@
 		"menus": {
 			"view/title": [
 				{
-					"command": "cline.plusButtonClicked",
+					"command": "netaigis-coding-chat.plusButtonClicked",
 					"group": "navigation@1",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == netaigis-coding-chat.SidebarProvider"
 				},
 				{
-					"command": "cline.marketplaceButtonClicked",
+					"command": "netaigis-coding-chat.marketplaceButtonClicked",
 					"group": "navigation@2",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == netaigis-coding-chat.SidebarProvider"
 				},
 				{
-					"command": "cline.historyButtonClicked",
+					"command": "netaigis-coding-chat.historyButtonClicked",
 					"group": "navigation@3",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == netaigis-coding-chat.SidebarProvider"
 				},
 				{
-					"command": "cline.accountButtonClicked",
+					"command": "netaigis-coding-chat.accountButtonClicked",
 					"group": "navigation@5",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == netaigis-coding-chat.SidebarProvider"
 				},
 				{
-					"command": "cline.settingsButtonClicked",
+					"command": "netaigis-coding-chat.settingsButtonClicked",
 					"group": "navigation@6",
-					"when": "view == claude-dev.SidebarProvider"
+					"when": "view == netaigis-coding-chat.SidebarProvider"
 				}
 			],
 			"editor/context": [
 				{
-					"command": "cline.addToChat",
+					"command": "netaigis-coding-chat.addToChat",
 					"group": "navigation",
 					"when": "editorHasSelection"
 				}
 			],
 			"terminal/context": [
 				{
-					"command": "cline.addTerminalOutputToChat",
+					"command": "netaigis-coding-chat.addTerminalOutputToChat",
 					"group": "navigation"
 				}
 			],
 			"scm/title": [
 				{
-					"command": "cline.generateGitCommitMessage",
+					"command": "netaigis-coding-chat.generateGitCommitMessage",
 					"group": "navigation",
-					"when": "config.git.enabled && scmProvider == git && !cline.isGeneratingCommit"
+					"when": "config.git.enabled && scmProvider == git && !netaigis-coding-chat.isGeneratingCommit"
 				},
 				{
-					"command": "cline.abortGitCommitMessage",
+					"command": "netaigis-coding-chat.abortGitCommitMessage",
 					"group": "navigation",
-					"when": "config.git.enabled && scmProvider == git && cline.isGeneratingCommit"
+					"when": "config.git.enabled && scmProvider == git && netaigis-coding-chat.isGeneratingCommit"
 				}
 			],
 			"notebook/toolbar": [
 				{
-					"command": "cline.jupyterGenerateCell",
+					"command": "netaigis-coding-chat.jupyterGenerateCell",
 					"group": "navigation/add@1",
 					"when": "notebookType == 'jupyter-notebook'"
 				}
 			],
 			"notebook/cell/title": [
 				{
-					"command": "cline.jupyterExplainCell",
+					"command": "netaigis-coding-chat.jupyterExplainCell",
 					"group": "inline@1",
 					"when": "notebookType == 'jupyter-notebook'"
 				},
 				{
-					"command": "cline.jupyterImproveCell",
+					"command": "netaigis-coding-chat.jupyterImproveCell",
 					"group": "inline@2",
 					"when": "notebookType == 'jupyter-notebook'"
 				}
 			],
 			"commandPalette": [
 				{
-					"command": "cline.generateGitCommitMessage",
-					"when": "config.git.enabled && !cline.isGeneratingCommit"
+					"command": "netaigis-coding-chat.generateGitCommitMessage",
+					"when": "config.git.enabled && !netaigis-coding-chat.isGeneratingCommit"
 				},
 				{
-					"command": "cline.abortGitCommitMessage",
-					"when": "config.git.enabled && cline.isGeneratingCommit"
+					"command": "netaigis-coding-chat.abortGitCommitMessage",
+					"when": "config.git.enabled && netaigis-coding-chat.isGeneratingCommit"
 				}
 			]
 		},
 		"configuration": {
-			"title": "Cline",
+			"title": "NetAigis Coding Chat",
 			"properties": {}
 		}
 	},

@@ -82,7 +82,7 @@ export class VsCodeLmHandler implements ApiHandler {
 			)
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Unknown error"
-			throw new Error(`Cline <Language Model API>: Failed to select model: ${message}`)
+			throw new Error(`NetAigis Coding Chat <Language Model API>: Failed to select model: ${message}`)
 		}
 	}
 
@@ -117,7 +117,7 @@ export class VsCodeLmHandler implements ApiHandler {
 
 		try {
 			const requestOptions: vscode.LanguageModelChatRequestOptions = {
-				justification: `Cline would like to use '${client.name}' from '${client.vendor}', Click 'Allow' to proceed.`,
+				justification: `NetAigis Coding Chat would like to use '${client.name}' from '${client.vendor}', Click 'Allow' to proceed.`,
 			}
 
 			// Native tool calling: the VS Code LM API (finalized in VS Code 1.95)
@@ -191,13 +191,13 @@ export class VsCodeLmHandler implements ApiHandler {
 		} catch (error) {
 			this.ensureCleanState()
 			if (error instanceof vscode.CancellationError) {
-				throw new Error("Cline <Language Model API>: Request cancelled by user")
+				throw new Error("NetAigis Coding Chat <Language Model API>: Request cancelled by user")
 			}
 			if (error instanceof Error) {
-				Logger.error("Cline <Language Model API>: Stream error:", error)
+				Logger.error("NetAigis Coding Chat <Language Model API>: Stream error:", error)
 				throw error
 			}
-			throw new Error(`Cline <Language Model API>: Response stream error: ${String(error)}`)
+			throw new Error(`NetAigis Coding Chat <Language Model API>: Response stream error: ${String(error)}`)
 		} finally {
 			this.ensureCleanState()
 		}

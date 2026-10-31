@@ -4,6 +4,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { fetch } from "@/shared/net"
+import { getExtensionStorageRoot } from "@/shared/storage/storage-context"
 
 export interface RecallEvent {
 	event_id: string
@@ -28,7 +29,9 @@ export interface RecallDrainResult {
 	pending: number
 	blocked?: "unbound_legacy" | "invalid_record" | "delivery_failed"
 }
-const queueDir = process.env.NETAIGIS_RECALL_QUEUE_DIR || path.join(os.homedir(), ".cline", "netaigis-recall-outbox")
+const queueDir = getExtensionStorageRoot()
+	? path.join(getExtensionStorageRoot()!, "netaigis-recall-outbox")
+	: process.env.NETAIGIS_RECALL_QUEUE_DIR || path.join(os.homedir(), ".cline", "netaigis-recall-outbox")
 let writes = Promise.resolve()
 let activeDrain: Promise<RecallDrainResult> | undefined
 let lastStamp = 0
