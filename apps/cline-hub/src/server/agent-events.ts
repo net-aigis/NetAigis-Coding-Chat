@@ -1,5 +1,10 @@
 import type { CoreSessionEvent } from "@cline/core";
-import type { AgentEvent } from "@cline/shared";
+import {
+	type AgentEvent,
+	commandExecutionStatusText,
+	extractCommandExecution,
+	isCommandTool,
+} from "@cline/shared";
 import type { WebviewToolEvent } from "../webview-protocol";
 import { rejectPendingApprovalsForSession } from "./approvals";
 import type { HubContext } from "./state";
@@ -81,15 +86,21 @@ function forwardAgentEvent(
 		}
 		if (event.contentType === "tool") {
 			const toolName = event.toolName ?? "tool";
+			const execution = isCommandTool(toolName)
+				? extractCommandExecution(event.output)
+				: undefined;
 			ctx.sendToSelectedPeers(sessionId, {
 				type: "tool_event",
-				text: event.error
-					? `${toolName} failed: ${event.error}`
-					: `${toolName} completed`,
+				text: execution
+					? `${toolName}: ${commandExecutionStatusText(execution.state)}`
+					: event.error
+						? `${toolName} failed: ${event.error}`
+						: `${toolName} completed`,
 				event: {
 					toolCallId: event.toolCallId,
 					toolName,
-					status: event.error ? "failed" : "completed",
+					status: execution?.state ?? (event.error ? "failed" : "completed"),
+					...(execution ? { execution } : {}),
 					output: event.output,
 					error: event.error,
 				},
@@ -147,7 +158,15 @@ export function handleSessionEvent(
 	const payload = event.payload as Record<string, unknown> | undefined;
 	const sessionId = asString(payload?.sessionId);
 	if (!sessionId) return;
-	if (event.type === "chunk") {
+	if (event.type === "session_snapshot") {
+		const journal = event.payload.snapshot.metadata?.runtimeCommandObservations;
+		if (journal !== undefined)
+			ctx.sendToSelectedPeers(sessionId, {
+				type: "command_observations",
+				sessionId,
+				journal,
+			});
+	} else if (event.type === "chunk") {
 		const text = chunkText((payload as Record<string, unknown>).chunk);
 		sendChunkToSelectedPeers(ctx, sessionId, text);
 	} else if (event.type === "agent_event") {
@@ -177,7 +196,9 @@ export function handleSessionEvent(
 		);
 		const tracked = ctx.sessions.get(sessionId);
 		if (tracked) {
-			tracked.status = "completed";
+			// `ended` is runtime teardown, not successful completion of its tools or task.
+			if (["running", "pending", "idle"].includes(tracked.status))
+				tracked.status = "unknown";
 			tracked.updatedAt = Date.now();
 		}
 		for (const peer of ctx.peers) {

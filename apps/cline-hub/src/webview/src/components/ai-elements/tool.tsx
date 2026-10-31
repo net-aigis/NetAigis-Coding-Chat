@@ -32,6 +32,7 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 
 export type ToolHeaderProps = {
 	title?: string;
+	statusLabel?: string;
 	className?: string;
 } & (
 	| { type: ToolUIPart["type"]; state: ToolUIPart["state"]; toolName?: never }
@@ -63,6 +64,7 @@ export const ToolHeader = ({
 	type,
 	state,
 	toolName,
+	statusLabel,
 	...props
 }: ToolHeaderProps) => {
 	const toolNameParts = title?.split(":");
@@ -83,7 +85,11 @@ export const ToolHeader = ({
 				<span className="font-light text-muted-foreground text-sm truncated wrap-break-word ellipses">
 					{toolInput}
 				</span>
-				{getStatusBadge(state)}
+				{statusLabel ? (
+					<Badge variant="secondary">{statusLabel}</Badge>
+				) : (
+					getStatusBadge(state)
+				)}
 			</div>
 		</CollapsibleTrigger>
 	);

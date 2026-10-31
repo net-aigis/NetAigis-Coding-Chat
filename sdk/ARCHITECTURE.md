@@ -1676,3 +1676,13 @@ handover or archive recovery until actual termination evidence is available.
 Detection time is not a child-process exit time. Actor metadata writes cannot
 clear or forge this observation. The local admission reader serves this state
 without imposing a session-list dependency on minimal runtime backends.
+
+Structured command-evidence projection now belongs to browser-safe shared
+utilities. VS Code and the existing browser dashboard use the same validation,
+aggregation and protected-journal reconciliation. Tool return and runtime end
+cannot manufacture process completion. History alone cannot assert liveness;
+fresh live observations may update current state, confirmed terminal evidence
+is never downgraded, and a lost browser connection makes running state unknown.
+Dashboard history and late snapshots update existing UI rows while preserving
+canonical transcripts, output and authors. This is client projection of the
+runtime's own normal error/process interface, not independent monitoring.

@@ -61,6 +61,33 @@ describe("factual command status projection", () => {
 })
 
 describe("later runtime observations without rewriting history", () => {
+	it("refreshes a live unknown observation without treating the same stored running record as proof of liveness", () => {
+		const message: ClineMessage = {
+			ts: 1,
+			type: "say",
+			say: "command",
+			text: "retained",
+			commandExecution: {
+				state: "unknown",
+				commands: [{ state: "unknown", executionId: "exec", pid: 42, observedAtMs: 10 }],
+			},
+		}
+		const journal = {
+			version: 1,
+			entries: [
+				{
+					source: "child_process",
+					sessionId: "session",
+					runtimeInstanceId: "runtime",
+					sequence: 2,
+					executionId: "exec",
+					execution: { state: "running", pid: 42, observedAtMs: 20 },
+				},
+			],
+		}
+		expect(reconcileCommandMessage(message, "session", journal).commandExecution?.state).toBe("running")
+		expect(reconcileCommandMessage(message, "session", journal, true).commandExecution?.state).toBe("unknown")
+	})
 	const pending: ClineMessage = {
 		ts: 42,
 		type: "say",

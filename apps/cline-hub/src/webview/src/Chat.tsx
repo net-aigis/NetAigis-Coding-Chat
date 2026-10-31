@@ -1,6 +1,11 @@
 "use client";
 
 import {
+	commandExecutionStatusText,
+	extractCommandExecution,
+	mergeCommandObservationJournals,
+} from "@cline/shared";
+import {
 	type GeneratedMedia,
 	USER_REJECTED_TOOL_REASON,
 } from "@cline/shared/browser";
@@ -52,7 +57,13 @@ import {
 } from "@/components/ai-elements/tool";
 import TeamTasks, { type TeamToolEvent } from "@/components/TeamTasks";
 import { Button } from "@/components/ui/button";
+import { isBrowserTransportFailure } from "@/lib/desktop-client";
 import { cn } from "@/lib/utils";
+import {
+	commandPartState,
+	reconcileBrowserCommandMessages,
+	toolEventExecution,
+} from "../../command-tool-state";
 import type {
 	WebviewChatAttachments,
 	WebviewChatMessage,
@@ -375,6 +386,7 @@ type ExpandedToolEvent = {
 	state: ToolEvent["state"];
 	output: string;
 	error?: string;
+	statusLabel?: string;
 };
 
 function formatInputSummary(input: unknown): string {
@@ -409,17 +421,30 @@ function expandToolEvent(toolEvent: ToolEvent): ExpandedToolEvent[] {
 		return toolEvent.output.map((entry, index) => {
 			const query = entry.query ?? "";
 			const title = query ? `${toolEvent.name}: ${query}` : toolEvent.name;
-			const state: ToolEvent["state"] =
-				entry.success === false ? "output-error" : toolEvent.state;
+			const execution = toolEvent.execution
+				? extractCommandExecution([
+						{ execution: toolEvent.execution.commands[index] },
+					])
+				: undefined;
+			const state: ToolEvent["state"] = execution
+				? commandPartState(execution)
+				: entry.success === false
+					? "output-error"
+					: toolEvent.state;
 			const output =
 				entry.result ?? (entry.success === false ? "(failed)" : "(no output)");
 			const error =
-				entry.success === false ? (entry.result ?? "failed") : undefined;
+				!execution && entry.success === false
+					? (entry.result ?? "failed")
+					: undefined;
 			return {
 				id: `${toolEvent.id}-${index}`,
 				name: toolEvent.name,
 				title,
 				state,
+				...(execution
+					? { statusLabel: commandExecutionStatusText(execution.state) }
+					: {}),
 				output,
 				error,
 			};
@@ -437,6 +462,9 @@ function expandToolEvent(toolEvent: ToolEvent): ExpandedToolEvent[] {
 			name: toolEvent.name,
 			title,
 			state: toolEvent.state,
+			...(toolEvent.execution
+				? { statusLabel: commandExecutionStatusText(toolEvent.execution.state) }
+				: {}),
 			output:
 				toolEvent.error ?? formatRawOutput(toolEvent.output, toolEvent.text),
 			error: toolEvent.error,
@@ -467,6 +495,11 @@ function mapToolEventState(
 	event?: WebviewToolEvent,
 	fallbackText?: string,
 ): ToolEvent["state"] {
+	const execution = toolEventExecution(
+		event,
+		extractToolName(fallbackText ?? ""),
+	);
+	if (execution) return commandPartState(execution);
 	if (event?.status === "failed") {
 		return "output-error";
 	}
@@ -525,6 +558,9 @@ function appendToolEvent(
 		input: event?.input,
 		output: event?.output,
 		error: event?.error,
+		...(toolEventExecution(event, extractToolName(text))
+			? { execution: toolEventExecution(event, extractToolName(text)) }
+			: {}),
 	};
 
 	if (activeAssistantId) {
@@ -600,6 +636,7 @@ function renderToolEvent(
 				title={expanded.title}
 				type="dynamic-tool"
 				toolName={expanded.name}
+				statusLabel={expanded.statusLabel}
 			/>
 			<ToolContent>
 				<ToolOutput errorText={expanded.error} output={expanded.output} />
@@ -710,7 +747,7 @@ function finalizeAssistantTurn(
 		...current,
 		createMessage(
 			"meta",
-			`Done (${finishReason}) • iterations=${iterations} • input=${usage?.inputTokens ?? 0} output=${usage?.outputTokens ?? 0}`,
+			`Turn ended (${finishReason}) • iterations=${iterations} • input=${usage?.inputTokens ?? 0} output=${usage?.outputTokens ?? 0}`,
 		),
 	];
 }
@@ -746,6 +783,14 @@ export default function Chat({
 	onSessionSelected,
 }: ChatProps) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const commandJournal = useRef<
+		| {
+				sessionId: string;
+				journal: unknown;
+				live: boolean;
+		  }
+		| undefined
+	>(undefined);
 	const [status, setStatus] = useState("Waiting for RPC initialization...");
 	const [sessionId, setSessionId] = useState<string>();
 	const [hydratingSessionId, setHydratingSessionId] = useState<string>();
@@ -844,6 +889,28 @@ export default function Chat({
 				return;
 			}
 
+			if (isBrowserTransportFailure(message)) {
+				const currentId = sessionIdRef.current;
+				if (currentId)
+					commandJournal.current = {
+						sessionId: currentId,
+						journal:
+							commandJournal.current?.sessionId === currentId
+								? commandJournal.current.journal
+								: undefined,
+						live: false,
+					};
+				if (currentId)
+					setMessages(
+						(current) =>
+							reconcileBrowserCommandMessages(
+								current,
+								currentId,
+								undefined,
+								true,
+							) as ChatMessage[],
+					);
+			}
 			switch (message.type) {
 				case "status":
 					setStatus(message.text);
@@ -994,7 +1061,17 @@ export default function Chat({
 										.reverse()
 										.find((item) => item.role === "assistant")?.id
 								: undefined;
-						return merged;
+						return reconcileBrowserCommandMessages(
+							merged,
+							message.sessionId,
+							commandJournal.current?.sessionId === message.sessionId
+								? commandJournal.current.journal
+								: undefined,
+							!(
+								commandJournal.current?.sessionId === message.sessionId &&
+								commandJournal.current.live
+							),
+						) as ChatMessage[];
 					});
 					setStatus(
 						message.status === "running"
@@ -1022,14 +1099,48 @@ export default function Chat({
 						appendAssistantMedia(current, message.media, activeAssistantIdRef),
 					);
 					return;
+				case "command_observations": {
+					if (message.sessionId !== sessionIdRef.current) return;
+					const journal = mergeCommandObservationJournals(
+						commandJournal.current?.sessionId === message.sessionId
+							? commandJournal.current.journal
+							: undefined,
+						message.journal,
+						message.sessionId,
+					);
+					commandJournal.current = {
+						sessionId: message.sessionId,
+						journal,
+						live: true,
+					};
+					setMessages(
+						(current) =>
+							reconcileBrowserCommandMessages(
+								current,
+								message.sessionId,
+								journal,
+							) as ChatMessage[],
+					);
+					return;
+				}
 				case "tool_event":
-					setMessages((current) =>
-						appendToolEvent(
-							current,
-							message.text,
-							message.event,
-							activeAssistantIdRef,
-						),
+					setMessages(
+						(current) =>
+							reconcileBrowserCommandMessages(
+								appendToolEvent(
+									current,
+									message.text,
+									message.event,
+									activeAssistantIdRef,
+								),
+								sessionIdRef.current ?? "",
+								commandJournal.current &&
+									commandJournal.current.sessionId === sessionIdRef.current
+									? commandJournal.current.journal
+									: undefined,
+								commandJournal.current?.sessionId === sessionIdRef.current &&
+									commandJournal.current?.live === false,
+							) as ChatMessage[],
 					);
 					return;
 				case "approval_request":
@@ -1053,7 +1164,7 @@ export default function Chat({
 					);
 					return;
 				case "turn_done":
-					setStatus(`Done (${message.finishReason})`);
+					setStatus(`Turn ended (${message.finishReason})`);
 					setSending(false);
 					setPendingApprovals([]);
 					activeAssistantIdRef.current = undefined;

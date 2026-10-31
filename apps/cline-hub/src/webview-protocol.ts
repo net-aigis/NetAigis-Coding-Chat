@@ -4,7 +4,11 @@ import type {
 	ProviderModel,
 	SessionWriterControl,
 } from "@cline/core";
-import type { GeneratedMedia } from "@cline/shared";
+import type {
+	CommandExecution,
+	CommandExecutionState,
+	GeneratedMedia,
+} from "@cline/shared";
 
 export type WebviewUsage = {
 	inputTokens?: number;
@@ -33,7 +37,8 @@ export type WebviewReasonLevel = "none" | "low" | "medium" | "high";
 export type WebviewToolEvent = {
 	toolCallId?: string;
 	toolName?: string;
-	status: "running" | "completed" | "failed";
+	status: CommandExecutionState;
+	execution?: CommandExecution;
 	input?: unknown;
 	output?: unknown;
 	error?: string;
@@ -66,6 +71,7 @@ export type WebviewChatMessage = Omit<
 		name: string;
 		text: string;
 		state: "input-available" | "output-available" | "output-error";
+		execution?: CommandExecution;
 		input?: unknown;
 		output?: unknown;
 		error?: string;
@@ -289,6 +295,7 @@ export type WebviewInboundMessage =
 	| { type: "forkSession" };
 
 export type WebviewOutboundMessage =
+	| { type: "command_observations"; sessionId: string; journal: unknown }
 	| { type: "shared_actor"; actorId?: string }
 	| {
 			type: "session_control";

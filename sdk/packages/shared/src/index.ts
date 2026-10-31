@@ -632,6 +632,7 @@ export {
 } from "./storage/chat-workspace-paths";
 export * from "./tasks";
 export * from "./team";
+export * from "./tools/command-observations";
 export { createTool } from "./tools/create";
 export * from "./types";
 export { AUTH_ERROR_PATTERNS, isLikelyAuthError } from "./types/auth";

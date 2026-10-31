@@ -208,7 +208,10 @@ export async function selectSession(
 		status: tracked?.status,
 		providerId: tracked?.provider,
 		modelId: tracked?.model,
-		messages: mapHistoryToWebviewMessages(history),
+		messages: mapHistoryToWebviewMessages(history, {
+			sessionId,
+			journal: record.metadata?.runtimeCommandObservations,
+		}),
 	});
 	if (ctx.externalHub && peer.actorRuntime)
 		await updateBrowserSessionControl(ctx, peer, "get", sessionId);
@@ -408,7 +411,10 @@ export async function forkPeerSession(
 			status: newSession?.status,
 			providerId: newSession?.provider,
 			modelId: newSession?.model,
-			messages: mapHistoryToWebviewMessages(rawMessages),
+			messages: mapHistoryToWebviewMessages(rawMessages, {
+				sessionId: result.sessionId,
+				journal: newSession?.metadata?.runtimeCommandObservations,
+			}),
 		});
 		ctx.send(peer, {
 			type: "fork_done",
@@ -478,7 +484,10 @@ export async function restorePeerSession(
 		status: restoredSession?.status,
 		providerId: restoredSession?.provider,
 		modelId: restoredSession?.model,
-		messages: mapHistoryToWebviewMessages(messages),
+		messages: mapHistoryToWebviewMessages(messages, {
+			sessionId: result.sessionId,
+			journal: restoredSession?.metadata?.runtimeCommandObservations,
+		}),
 	});
 	await syncHubClientsAndSessions();
 	broadcastHubState(ctx);

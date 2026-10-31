@@ -1413,3 +1413,66 @@ completed und ended ebenfalls auf completed. Dieser gemeinsame UI-Pfad muss
 nun denselben tatsächlichen Prozessbeleg wie die VS-Code-Ansicht verwenden.
 Die abgeschlossenen echten Sleeps und ursprünglichen Terminalpatches bleiben
 erhalten; keine pauschale Wiederholung.
+
+### Derselbe Prozessbeleg für VS Code und Android-Dashboard
+
+Auf 7c1390f7b fortgesetzt. p4-browser-process-state-red: neun neue tatsächliche
+Fehler (3/12 bestanden einschließlich zweier unveränderter Fehlerweiterleitungs-
+Fälle). Dashboard machte bisher content_end ohne error zu completed, selbst
+für laufende/ungeklärte Prozesse und JSON-Text mit falscher Erfolgsmeldung;
+ended überschrieb auch bekannte Sessionfehler als completed.
+
+Die vorhandene reine VS-Code-Auswertung wurde in das browserfähige Shared-
+Paket verschoben, keine zweite Prozessüberwachung und kein neuer Speicher.
+Beide Oberflächen verwenden dieselbe Validierung numerischer Exits, Signale,
+Abbruchsbestätigung und Beobachtungsfehler. Direkte Werkzeugrückgabe, laufende
+Ausführung und Session-/Runtime-Ende bleiben getrennt. Dashboard-Badges zeigen
+den tatsächlichen Prozessstatus; pending/success:false wird nicht pauschal als
+Prozessfehler oder Abschluss umgedeutet. Turn ended ersetzt die pauschale
+Done-Anzeige, ohne die kanonische Historie umzuschreiben.
+
+Historische Running-Einträge beweisen keine heutige Lebendigkeit. Der bereits
+geschützte Runtime-Journalstand kann dieselbe UI-Zeile später durch passenden
+Exitbeleg aktualisieren, auch wenn ein älterer Tool-Return danach eintrifft.
+Eindeutig zugeordnete neue Live-Beobachtungen dürfen Unknown aktualisieren;
+bestätigte Terminalbelege werden nie durch späteres Running überschrieben.
+Verbindungsausfall setzt laufende Beobachtung auf unbekannt, auch bei verspätet
+ausgewerteten React-Updates. Ein reiner JSON-stdout-Text bleibt Ausgabe.
+
+p4-browser-process-projection 24/24 bestanden; nach ergänztem Snapshot-Forwarding
+p4-browser-observation-final 16/16 bestanden (überlappend, History-Suite nicht
+erneut ausgeführt). p4-browser-observation-live 4/4 bestanden einschließlich
+tatsächlicher Live-Aktualisierung und Rückstufung bei Verbindungsverlust.
+Ein vorheriger einzelner Disconnect-Fall prüfte noch keinen vorher bestätigten
+Running-Zustand; neue positive Vorbedingung ergänzt, kein stärkerer Nachweis aus
+dem früheren 1/1-Lauf behauptet. Das bleiben Source-/UI-Komponentenfälle;
+physisches Android und produktives Modell sind damit noch nicht abgenommen.
+
+p4-vscode-shared-command-contracts 189/189 bestanden. SDK-Builds
+p4-shared-command-projection-build und nach ergänztem Live-Verhalten
+p4-shared-command-live-build Exit 0. Shared-Browser-Exportvertrag
+p4-shared-browser-contract 1/1 bestanden. Browser-Server-Typprüfung fand zwei
+falsche Unionzugriffe in neuen Testhilfen; explizite Ausgabe-Erwartungen
+korrigiert. Browser-Webview-Typprüfung fand einen echten fehlenden optionalen
+Cache-Guard, der bei noch nicht ausgewählter Session auch zur Laufzeit hätte
+scheitern können; korrigiert. p4-browser-projection-types-fixed,
+p4-browser-projection-web-types-fixed und p4-vscode-browser-command-types Exit 0.
+Beide Webviews erfolgreich in vorhandene private Testdatenverzeichnisse
+gebündelt: p4-browser-command-bundle / p4-vscode-command-bundle; kein produktives
+Bundle überschrieben. Ergänzter Disconnect-Guard inklusive Typprüfung/Bundle:
+p4-browser-command-build-disconnect Exit 0. Dashboard meldet nur bestehende
+Chunkgrößenwarnung, kein verdeckter Buildfehler.
+
+Testauswahllücke beim Abschluss erkannt: p4-vscode-live-command-projection
+führte nur die sechs Coordinator-Fälle aus. shared/command-execution.test.ts
+war im bisherigen Vitest-include nicht enthalten; auch im 189er-Lauf war diese
+angegebene Datei nicht ausgeführt. Die tatsächlich bestandenen 189/6 Fälle
+bleiben gültig, beweisen aber nicht die ausgelassene Testdatei. Explizites
+include ergänzt; p4-vscode-command-discovery **13/13** bestanden. JSON-Bericht
+zusätzlich auf tatsächlich ausgeführte Datei und 13 Assertions geprüft. Kein
+0-Test-Erfolg oder nachträglich erfundener Lauf. Diese Lücke ist damit geschlossen.
+
+Offen bleiben technische Kaltstartklärung ungeklärter Altprozesse, vollständige
+Altbestands-/Workspace-Anbindung, Browser-Recallbedienung und reale Geräte-/
+Dienste-/Modellabnahme. Keine produktive Migration, Installation, Dienst-
+oder Modellumstellung und keine erneute Sleep-Messserie.

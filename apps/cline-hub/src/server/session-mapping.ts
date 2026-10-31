@@ -3,11 +3,15 @@ import {
 	resolveMessageDisplayRole,
 } from "@cline/core";
 import {
+	commandExecutionStatusText,
 	formatDisplayUserInput,
+	isCommandTool,
 	isGeneratedMedia,
 	type MessageWithMetadata,
+	projectCommandExecution,
 	validateImageMedia,
 } from "@cline/shared";
+import { commandPartState } from "../command-tool-state";
 import type {
 	WebviewActionSessionSummary,
 	WebviewChatMessage,
@@ -209,6 +213,7 @@ function pushReasoningBlock(
 
 export function mapHistoryToWebviewMessages(
 	history: unknown[],
+	context: { sessionId?: string; journal?: unknown } = {},
 ): WebviewChatMessage[] {
 	const mapped: WebviewChatMessage[] = [];
 	const toolLocations = new Map<string, HistoryToolLocation>();
@@ -365,17 +370,32 @@ export function mapHistoryToWebviewMessages(
 							: undefined;
 				const existingToolEvent =
 					existing?.type === "tool" ? existing.toolEvent : undefined;
+				const effectiveName = existingToolEvent?.name ?? name;
+				const execution = isCommandTool(effectiveName)
+					? projectCommandExecution(
+							output,
+							context.sessionId ?? "",
+							toolCallId,
+							context.journal,
+							true,
+						)
+					: undefined;
 				const toolEvent = {
 					id: existingToolEvent?.id ?? `${messageKey}:${toolCallId}`,
 					toolCallId,
 					name: existingToolEvent?.name ?? name,
-					text: isError
-						? `${existingToolEvent?.name ?? name} failed`
-						: `${existingToolEvent?.name ?? name} completed`,
-					state: isError
-						? ("output-error" as const)
-						: ("output-available" as const),
+					text: execution
+						? `${effectiveName}: ${commandExecutionStatusText(execution.state)}`
+						: isError
+							? `${existingToolEvent?.name ?? name} failed`
+							: `${existingToolEvent?.name ?? name} completed`,
+					state: execution
+						? commandPartState(execution)
+						: isError
+							? ("output-error" as const)
+							: ("output-available" as const),
 					input: existingToolEvent?.input,
+					...(execution ? { execution } : {}),
 					output,
 					error: isError ? stringifyContent(output) : undefined,
 				};
