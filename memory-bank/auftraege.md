@@ -152,3 +152,40 @@ Phase 4 und sämtliche bisherigen Arbeiten bleiben erhalten.
 Benutzer: Ein vorhandener Session-Hub/Übergabedienst ist nicht nachgewiesen; kein bestätigter Endpunkt oder Konfigurationspfad liegt vor. Port 11436 bleibt Coding-Agent und wird nicht zum Session-Hub umgedeutet. Gemeinsame laufende Sitzung VS Code/Android im eigenen Fork noch implementieren und Ende-zu-Ende prüfen. Bestehende Sitzungen, Recall, Coding-/Learning-Agent und Modellzugänge erhalten. Die fehlende Bestätigung eines vorhandenen Hubs ersetzt die noch ausstehende Implementierung nicht. Keine fremden Projekte untersuchen und keine willkürlichen Ablageorte anlegen.
 
 Die zuvor zwischen Phase 2 und 3 beauftragte eigene Fork-Identität ist weiterhin offen und darf nicht aus dem Arbeitsstand verschwinden. Die bisherige endgültige Benennung ist nicht freigegeben. Belegte Prüfung und verbindliche Folgearbeit: [fork-identitaet.md](fork-identitaet.md).
+
+
+31.10.2026 — verbindliche Präzisierung des Benutzers: eigener Fork heißt
+`NetAigis Chat`, Publisher `netaigis`, Paket `netaigis-chat`, ID
+`netaigis.netaigis-chat`. Eigene Startversion `0.1.0`, unabhängiges SemVer,
+`1.0.0` erst nach produktiver Abnahme. Gesamte sichtbare VS-Code-Oberfläche
+anpassen, zuvor Auswirkungen auf Sitzungen/Settings/Secrets/Kommandos/Daten
+prüfen und Migration belegen. Backend NetAigis Coding Agent auf Acer nicht
+umbenennen; Publisher-Verfügbarkeit vor Veröffentlichung gesondert bestätigen.
+
+Der eigenständige Learning-Agent ist `ai-agent.service`, Unit
+`/etc/systemd/system/ai-agent.service`, Anwendung `/opt/ai-agent/`, Konfiguration
+`/opt/ai-agent/config.yaml`, Lernspeicher `/srv/ai-learning`, Port `11435`,
+Health `http://127.0.0.1:11435/health`. Ausschließlich diesen bestehenden Dienst
+gezielt prüfen; keine zusätzliche Instanz oder Konfigurationsersetzung.
+
+
+31.10.2026 — unmittelbar folgende Namenskorrektur des Benutzers:
+„Mach doch lieber NetAigis Coding Chat“. Der Anzeigename wird deshalb
+**NetAigis Coding Chat**. Die zuvor ausdrücklich freigegebenen technischen
+Werte bleiben `publisher: netaigis`, `name: netaigis-chat`, Extension-ID
+`netaigis.netaigis-chat`, Startversion `0.1.0`, eigenes SemVer. Der
+Acer-Backenddienst wird weiterhin nicht umbenannt. Diese Auslegung wurde
+im laufenden Chat ausdrücklich mitgeteilt; keine andere technische ID
+wurde eigenmächtig ausgewählt.
+
+
+31.10.2026 — verbindliche Korrektur der vorigen Assistentenauslegung:
+Der Benutzer legt vollständig fest: `displayName: NetAigis Coding Chat`,
+`publisher: netaigis`, `name: netaigis-coding-chat`,
+Extension-ID `netaigis.netaigis-coding-chat`, `version: 0.1.0`.
+Die Behauptung, die alte technische ID sei für die neue Kombination
+freigegeben, wird ausdrücklich zurückgenommen. Vor der technischen
+Umstellung Auswirkungen auf Extension-Daten, Sitzungen, Einstellungen,
+Secrets und Migration anhand des tatsächlichen Codes prüfen. Konkrete
+Probleme mit Nachweis benennen; keine alternative Identität eigenmächtig
+festlegen. Acer-Backend unverändert. Keine Phasen/Projektarbeiten wiederholen.

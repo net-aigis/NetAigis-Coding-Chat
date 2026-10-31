@@ -8,6 +8,7 @@ export interface ClineHubServerOptions {
 	workspaceRoot: string;
 	/** Explicit existing shared runtime; distinct from the browser HTTP listener. */
 	sessionHub?: { endpoint: string; authToken: string };
+	tls?: { certFile: string; keyFile: string };
 }
 
 const DEFAULT_HOST = "127.0.0.1";
@@ -76,7 +77,24 @@ export function resolveClineHubServerOptions(
 ): ClineHubServerOptions {
 	const host = normalizeHost(env.HOST);
 	const port = parsePort(env[DASHBOARD_PORT_ENV]);
+	const certFile = env.CLINE_HUB_DASHBOARD_TLS_CERT_FILE?.trim(),
+		keyFile = env.CLINE_HUB_DASHBOARD_TLS_KEY_FILE?.trim();
+	let tls: ClineHubServerOptions["tls"];
+	if (
+		env.CLINE_HUB_DASHBOARD_TLS_CERT_FILE !== undefined ||
+		env.CLINE_HUB_DASHBOARD_TLS_KEY_FILE !== undefined
+	) {
+		if (!certFile || !keyFile)
+			throw new Error(
+				"Dashboard TLS requires both existing certificate and private key files",
+			);
+		tls = { certFile, keyFile };
+	}
 	const publicUrl = normalizePublicUrl(env.PUBLIC_URL, host, port);
+	const tlsPublicUrl =
+		tls && !env.PUBLIC_URL ? publicUrl.replace(/^http:/, "https:") : publicUrl;
+	if (tls && new URL(tlsPublicUrl).protocol !== "https:")
+		throw new Error("A TLS dashboard requires an HTTPS public URL");
 	const roomSecret = normalizeRoomSecret(env.ROOM_SECRET);
 	const endpoint = env.CLINE_SHARED_SESSION_HUB_ENDPOINT;
 	const authToken = env.CLINE_SHARED_SESSION_HUB_TOKEN;
@@ -110,10 +128,11 @@ export function resolveClineHubServerOptions(
 	return {
 		host,
 		port,
-		publicUrl,
+		publicUrl: tlsPublicUrl,
 		roomSecret,
 		workspaceRoot: env.WORKSPACE_ROOT?.trim() || process.cwd(),
 		...(sessionHub ? { sessionHub } : {}),
+		...(tls ? { tls } : {}),
 	};
 }
 

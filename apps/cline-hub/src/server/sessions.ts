@@ -18,6 +18,10 @@ import {
 	trackSession,
 	webviewSessionsPayload,
 } from "./session-mapping";
+import {
+	runtimeForPeer,
+	updateBrowserSessionControl,
+} from "./shared-session-access";
 import type { HubContext } from "./state";
 import { broadcastHubState, hubStatePayload } from "./state-payloads";
 import type { BrowserPeer, SessionContext } from "./types";
@@ -206,6 +210,8 @@ export async function selectSession(
 		modelId: tracked?.model,
 		messages: mapHistoryToWebviewMessages(history),
 	});
+	if (ctx.externalHub && peer.actorRuntime)
+		await updateBrowserSessionControl(ctx, peer, "get", sessionId);
 }
 
 export async function createSession(
@@ -215,10 +221,14 @@ export async function createSession(
 	config?: WebviewConfig,
 	attachments?: { userImages?: string[] },
 ): Promise<void> {
-	if (!ctx.cline) throw new Error("Hub is not connected.");
+	if (ctx.externalHub)
+		throw new Error(
+			"Select the existing VS Code session; this shared browser does not create a separate task",
+		);
+	const runtime = runtimeForPeer(ctx, peer);
 	const context = resolveLaunchContext(ctx, config);
 	const mode = config?.mode === "plan" ? "plan" : "act";
-	const result = await ctx.cline.start(
+	const result = await runtime.start(
 		buildSessionStartInput(context, {
 			mode,
 			systemPrompt: config?.systemPrompt,
@@ -257,7 +267,7 @@ export async function createSession(
 		messages: [],
 	});
 	broadcastHubState(ctx);
-	await ctx.cline.send({
+	await runtime.send({
 		sessionId: result.sessionId,
 		prompt,
 		mode,
@@ -272,12 +282,12 @@ export async function sendMessage(
 	config?: WebviewConfig,
 	attachments?: { userImages?: string[] },
 ): Promise<void> {
-	if (!ctx.cline) throw new Error("Hub is not connected.");
+	const runtime = runtimeForPeer(ctx, peer);
 	if (!peer.selectedSessionId) {
 		await createSession(ctx, peer, text, config, attachments);
 		return;
 	}
-	await ctx.cline.send({
+	await runtime.send({
 		sessionId: peer.selectedSessionId,
 		prompt: text,
 		mode: config?.mode === "plan" ? "plan" : "act",
@@ -290,8 +300,8 @@ export async function deleteSession(
 	peer: BrowserPeer,
 	sessionId: string,
 ): Promise<void> {
-	if (!ctx.cline) throw new Error("Hub is not connected.");
-	const deleted = await ctx.cline.delete(sessionId);
+	const runtime = runtimeForPeer(ctx, peer);
+	const deleted = await runtime.delete(sessionId);
 	if (!deleted) {
 		ctx.send(peer, {
 			type: "status",
@@ -313,7 +323,7 @@ export async function resetPeer(
 	peer: BrowserPeer,
 ): Promise<void> {
 	peer.selectionGeneration = (peer.selectionGeneration ?? 0) + 1;
-	if (peer.selectedSessionId) {
+	if (peer.selectedSessionId && !ctx.externalHub) {
 		rejectPendingApprovalsForSession(
 			ctx,
 			peer.selectedSessionId,
@@ -329,13 +339,14 @@ export async function abortPeerTurn(
 	ctx: HubContext,
 	peer: BrowserPeer,
 ): Promise<void> {
-	if (!ctx.cline || !peer.selectedSessionId) return;
+	if (!peer.selectedSessionId) return;
+	const runtime = runtimeForPeer(ctx, peer);
 	rejectPendingApprovalsForSession(
 		ctx,
 		peer.selectedSessionId,
 		"Turn aborted before approval was resolved.",
 	);
-	await ctx.cline.abort(peer.selectedSessionId);
+	await runtime.abort(peer.selectedSessionId);
 	ctx.send(peer, { type: "status", text: "Abort requested." });
 }
 
@@ -344,14 +355,14 @@ export async function forkPeerSession(
 	peer: BrowserPeer,
 	syncHubClientsAndSessions: () => Promise<void>,
 ): Promise<void> {
-	if (!ctx.cline) throw new Error("Hub is not connected.");
+	const runtime = runtimeForPeer(ctx, peer);
 	const forkedFromSessionId = peer.selectedSessionId;
 	if (!forkedFromSessionId) {
 		ctx.send(peer, { type: "fork_error", text: "No active session to fork." });
 		return;
 	}
 	try {
-		const rawMessages = (await ctx.cline.readMessages(
+		const rawMessages = (await runtime.readMessages(
 			forkedFromSessionId,
 		)) as MessageWithMetadata[];
 		if (rawMessages.length === 0) {
@@ -361,7 +372,7 @@ export async function forkPeerSession(
 			});
 			return;
 		}
-		const sourceSession = await ctx.cline.get(forkedFromSessionId);
+		const sourceSession = await runtime.get(forkedFromSessionId);
 		if (!sourceSession) {
 			ctx.send(peer, {
 				type: "fork_error",
@@ -370,7 +381,7 @@ export async function forkPeerSession(
 			return;
 		}
 		const checkpointMetadata = sourceSession.metadata?.checkpoint;
-		const result = await ctx.cline.start(
+		const result = await runtime.start(
 			buildStartInputFromSession(sourceSession, {
 				initialMessages: rawMessages,
 				sessionMetadata: {
@@ -387,7 +398,7 @@ export async function forkPeerSession(
 			}),
 		);
 		peer.selectedSessionId = result.sessionId;
-		const newSession = await ctx.cline.get(result.sessionId);
+		const newSession = await runtime.get(result.sessionId);
 		const tracked = newSession ? trackSession(newSession) : undefined;
 		if (tracked) ctx.sessions.set(tracked.sessionId, tracked);
 		ctx.send(peer, { type: "session_started", sessionId: result.sessionId });
@@ -420,13 +431,13 @@ export async function restorePeerSession(
 	checkpointRunCount: number,
 	syncHubClientsAndSessions: () => Promise<void>,
 ): Promise<void> {
-	if (!ctx.cline) throw new Error("Hub is not connected.");
+	const runtime = runtimeForPeer(ctx, peer);
 	const sourceSessionId = peer.selectedSessionId;
 	if (!sourceSessionId) {
 		ctx.send(peer, { type: "error", text: "No active session to restore." });
 		return;
 	}
-	const sourceSession = await ctx.cline.get(sourceSessionId);
+	const sourceSession = await runtime.get(sourceSessionId);
 	if (!sourceSession) {
 		ctx.send(peer, {
 			type: "error",
@@ -434,7 +445,7 @@ export async function restorePeerSession(
 		});
 		return;
 	}
-	const result = await ctx.cline.restore({
+	const result = await runtime.restore({
 		sessionId: sourceSessionId,
 		checkpointRunCount,
 		cwd: sourceSession.cwd,
@@ -455,7 +466,7 @@ export async function restorePeerSession(
 		return;
 	}
 	peer.selectedSessionId = result.sessionId;
-	const restoredSession = await ctx.cline.get(result.sessionId);
+	const restoredSession = await runtime.get(result.sessionId);
 	const tracked = restoredSession ? trackSession(restoredSession) : undefined;
 	if (tracked) ctx.sessions.set(tracked.sessionId, tracked);
 	const messages =

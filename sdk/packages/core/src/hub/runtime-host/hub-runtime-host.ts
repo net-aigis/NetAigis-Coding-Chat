@@ -1662,6 +1662,9 @@ export class HubRuntimeHost implements RuntimeHost {
 		);
 		return this.confirmSessionControl(reply, sessionId);
 	}
+	getAuthenticatedActorId(): string | undefined {
+		return this.client.getAuthenticatedActorId();
+	}
 	async claimSessionControl(
 		sessionId: string,
 		expectedRevision: number,
@@ -2373,6 +2376,11 @@ export class HubRuntimeHost implements RuntimeHost {
 	private async handleApprovalRequested(
 		event: HubEventEnvelope,
 	): Promise<void> {
+		if (
+			typeof event.payload?.targetClientId === "string" &&
+			event.payload.targetClientId !== this.client.getClientId()
+		)
+			return;
 		const sessionId = event.sessionId?.trim();
 		if (!sessionId) {
 			return;

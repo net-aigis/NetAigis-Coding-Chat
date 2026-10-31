@@ -2,6 +2,7 @@ import type {
 	ChatMessage as CoreChatMessage,
 	ProviderListItem,
 	ProviderModel,
+	SessionWriterControl,
 } from "@cline/core";
 import type { GeneratedMedia } from "@cline/shared";
 
@@ -221,6 +222,7 @@ export type WebviewHubEvent = {
 };
 
 export type WebviewHubState = {
+	sharedRuntime?: boolean;
 	type: "hub_state";
 	connected: boolean;
 	hubUrl?: string;
@@ -237,6 +239,13 @@ export type WebviewHubState = {
 };
 
 export type WebviewInboundMessage =
+	| { type: "authenticateActor"; credential: string }
+	| {
+			type: "sessionControl";
+			action: "get" | "claim" | "release";
+			sessionId: string;
+			expectedRevision?: number;
+	  }
 	| { type: "ready" }
 	| { type: "restart_hub" }
 	| {
@@ -280,6 +289,12 @@ export type WebviewInboundMessage =
 	| { type: "forkSession" };
 
 export type WebviewOutboundMessage =
+	| { type: "shared_actor"; actorId?: string }
+	| {
+			type: "session_control";
+			sessionId: string;
+			control: SessionWriterControl;
+	  }
 	| { type: "status"; text: string }
 	/**
 	 * `recoverable: true` marks an in-run notice (e.g. a MistakeTracker

@@ -435,6 +435,7 @@ export class ClineCore {
 	get: RuntimeHost["getSession"] = (...args) => this.host.getSession(...args);
 	/** Explicit writer coordination. Attaching/reading alone never grants write access. */
 	readonly sessionControl = {
+		actorId: () => this.host.getAuthenticatedActorId?.(),
 		get: (sessionId: string) => {
 			if (!this.host.getSessionControl)
 				throw new Error("This runtime has no authenticated session control");

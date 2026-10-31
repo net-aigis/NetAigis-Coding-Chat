@@ -408,6 +408,7 @@ export interface RuntimeHost {
 	readonly runtimeAddress?: string;
 	startSession(input: StartSessionInput): Promise<StartSessionResult>;
 	runTurn(input: SendSessionInput): Promise<AgentResult | undefined>;
+	getAuthenticatedActorId?(): string | undefined;
 	getSessionControl?(
 		sessionId: string,
 	): Promise<import("../../hub/session-control").SessionWriterControl>;

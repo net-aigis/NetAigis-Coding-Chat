@@ -696,3 +696,74 @@ Die abschließende direkte VS-Code-Typprüfung war ebenfalls erfolgreich
 und `git diff --check` bestanden. Die Pre-Commit-Prüfungen werden explizit
 vor dem Commit ausgeführt; `HUSKY=0` gilt nur für den einzelnen Commit,
 um den bereits untersagten automatischen lint-staged-Stash/Reset zu vermeiden.
+
+
+## Fortsetzung — persönliche Browser-Akteure und aktuelle Acer-Prüfung
+
+Auf `5c15e5857` aufbauend: persönliche Browserverbindungen erhalten jeweils
+einen eigenen remote Core-Client. Die vom Server bestätigte Actor-ID kommt
+aus der Registrierungsantwort, nicht aus Namen oder Browser-Payload. Der
+Dashboard-Zugang wird für persönliche Schreibbefehle nicht als Ersatz benutzt.
+Anmelden, Writer-Zustand lesen, ausdrücklich übernehmen/freigeben sind in der
+vorhandenen Browseroberfläche ergänzt. Credentials bleiben im Speicher der
+Verbindung und werden nicht in URLs oder persistiertem UI-Zustand abgelegt.
+Nach Verbindungstrennung muss die Person sich wieder authentifizieren.
+
+Schreiben erfolgt in der bestehenden ausgewählten Session-ID; der gemeinsame
+Browser erzeugt keinen Ersatz-Chat. Mutierende globale Dashboard-Kommandos,
+Modell-/Provider-Änderungen und Dienstaktionen sind im ausdrücklich gewählten
+Shared-Modus gesperrt. Die lokale bisherige Betriebsart bleibt erhalten.
+Beobachtende Clients dürfen keine fremden Freigaben beantworten. Entscheidungen
+werden dem aktuellen Writer zugeordnet und vor einer Antwort gegen den
+wirklichen Pending-Approval der Sitzung geprüft. Tatsächliche Tool-Beobachtungen
+bleiben dagegen beim ursprünglichen Ausführungsakteur. Der Host beachtet das
+serverseitige Freigabeziel, statt bei anderen Teilnehmern ebenfalls zu fragen.
+
+Der Actor-Modus verweigert nun auch den früheren anonymen Localhost-Origin-
+Sonderzugang. Credentials benötigen HTTPS zum Browser und verschlüsselten oder
+Loopback-Transport zum Hub. Der bestehende Browser-Server unterstützt dafür
+optional ausdrücklich gewählte vorhandene Zertifikat-/Schlüsseldateien
+(`CLINE_HUB_DASHBOARD_TLS_CERT_FILE` / `_TLS_KEY_FILE`). Keine Zertifikate,
+Keys, produktiven Pfade oder Dienste erzeugt. Der private Schlüssel muss eine
+reguläre, eigene Datei ohne Gruppen-/Fremdrechte sein; kein chmod im Produkt.
+Fehler beim Listenerstart geben die zuvor geöffneten Verbindungen wieder frei.
+
+Belegte Prüfungen:
+- 55/55 gezielte Browser-/TLS-/Kompatibilitätsprüfungen bestanden.
+- 98/98 Core-Prüfungen einschließlich Writer-Freigaben bestanden.
+- Ein zusätzlicher Test mit **echtem Bun-Dashboard als Kindprozess**, echtem
+  SDK-Hub und browserkompatiblem WebSocket bestand. Schreiben ohne persönlichen
+  Login wurde verweigert, jimmi übernahm die bestehende ID mit ursprünglicher
+  Historie, der alte Writer wurde abgewiesen, und Browser-Abbruch während der
+  laufenden Fixture-Arbeit stoppte/abortierte diese nicht. Nach tatsächlichem
+  Ende konnte Friseer ausdrücklich übernehmen. Keine produktive Modellausführung.
+- Ergänzte tatsächliche Origin-Sperre am realen Hub bestanden; dieser Lauf
+  ersetzt denselben Socket-Test und wird nicht zusätzlich gezählt.
+- Core-Build, Core-/Browser-Server-/Webview-Typprüfungen und Vite-Webview-Build
+  erfolgreich. Erste Prüffehler waren zwei unbenutzte Testimporte, ein im
+  App-Paket nicht direkt verfügbares `ws` und ein falscher Root-Vite-Pfad.
+  Korrigiert mit vorhandenem nativen Node-WebSocket und Paket-Vite; keine
+  neue Abhängigkeit installiert. Vorläufe bleiben erhalten.
+
+Damit 154 unterschiedliche gezielte Tests in diesem zweiten Schritt,
+einschließlich erneut betroffener Bestandstests; nicht 154 neue Tests und
+keine Addition der wiederholten Läufe. Ein physisches Android-Gerät, reale
+VS-Code-Bedienung, echte 125B-Ausführung, durchgehende Recall-Wiederaufnahme
+und der alte Datenbestand sind damit noch nicht produktiv abgenommen.
+
+Die Benutzerauskunft zum Learning-Agent wurde gezielt geprüft:
+`ai-agent.service` ist aktuell `active/running`, User `ollama`, mit vorhandener
+Unit und `model-router.conf`. `/opt/ai-agent/config.yaml` und `/srv/ai-learning`
+existieren. GET `127.0.0.1:11435/health` auf Acer lieferte HTTP 200,
+`status: ok`, `model: learning`. Konfiguration nicht ausgegeben/geändert;
+keine zusätzliche Instanz und kein Neustart. Das ergänzt den bereits
+bestätigten Coding-Agent-Health auf Port 11436 und ersetzt keinen Modelltest.
+
+Die endgültige Benutzerpräzisierung der Fork-Identität lautet vollständig:
+**NetAigis Coding Chat**, Publisher `netaigis`, Paket `netaigis-coding-chat`,
+ID `netaigis.netaigis-coding-chat`, Version `0.1.0`, eigenes SemVer; `1.0.0`
+erst nach produktiver Abnahme. Die frühere Assistentenauslegung mit alter
+Paket-ID war nicht freigegeben und ist zurückgenommen. Aktuelle konkrete
+Migrations-/Command-Befunde stehen in [fork-identitaet.md](fork-identitaet.md).
+Noch keine technische ID-Umstellung, keine Publisher-Verfügbarkeitsbehauptung,
+keine produktive Installation. Backend NetAigis Coding Agent bleibt unverändert.

@@ -1,4 +1,4 @@
-import type { SaveProviderSettingsActionRequest } from "@cline/core";
+import type { ClineCore, SaveProviderSettingsActionRequest } from "@cline/core";
 import type { ToolApprovalResult } from "@cline/shared";
 import type {
 	WebviewInboundMessage,
@@ -53,6 +53,11 @@ export type SessionContext = {
 };
 
 export type BrowserPeer = {
+	/** Private, connection-scoped actor client; never the dashboard's observer credential. */
+	actorRuntime?: ClineCore;
+	actorGeneration?: number;
+	closed?: boolean;
+	secureTransport?: boolean;
 	socket: Bun.ServerWebSocket<BrowserPeer>;
 	displayName: string;
 	selectedSessionId?: string;
@@ -63,6 +68,7 @@ export type BrowserPeer = {
 };
 
 export type PendingToolApproval = {
+	ownerPeer?: BrowserPeer;
 	sessionId: string;
 	resolve: (result: ToolApprovalResult) => void;
 	timeout: ReturnType<typeof setTimeout>;

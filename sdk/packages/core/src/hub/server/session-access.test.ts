@@ -60,6 +60,8 @@ function fixture() {
 	const ctx = {
 		sessionHost: runtime,
 		clients: new Map(),
+		pendingApprovals: new Map(),
+		pendingCapabilityRequests: new Map(),
 	} as unknown as HubTransportContext;
 	const policy = new HubSessionAccess(ctx);
 	const dispatch = vi.fn(async (e: HubCommandEnvelope) => ({
@@ -87,6 +89,39 @@ function fixture() {
 	return { row, messages, runtime, ctx, policy, dispatch, command };
 }
 describe("authenticated writer handover in existing session metadata", () => {
+	it("keeps approvals with the new writer and actual tool observations with the original execution actor", async () => {
+		const f = fixture();
+		await f.command("session.control.claim", jimmi, { expectedRevision: 1 });
+		f.ctx.pendingApprovals.set("approval", {
+			sessionId: "same-session",
+			resolve: () => {},
+		});
+		expect(
+			await f.command("approval.respond", friseer, {
+				approvalId: "approval",
+				controlRevision: 1,
+			}),
+		).toMatchObject({ ok: false, error: { code: "approval_writer_mismatch" } });
+		expect(
+			await f.command("approval.respond", jimmi, {
+				approvalId: "approval",
+				controlRevision: 2,
+			}),
+		).toMatchObject({ ok: true });
+		expect(
+			await f.command("approval.respond", jimmi, {
+				approvalId: "another-session-approval",
+				controlRevision: 2,
+			}),
+		).toMatchObject({ ok: false });
+		expect(await f.command("capability.respond", jimmi, {})).toMatchObject({
+			ok: false,
+			error: { code: "capability_actor_mismatch" },
+		});
+		expect(await f.command("capability.respond", friseer, {})).toMatchObject({
+			ok: true,
+		});
+	});
 	it("rejects a claimed name without a server-authenticated actor", async () => {
 		const f = fixture();
 		expect(

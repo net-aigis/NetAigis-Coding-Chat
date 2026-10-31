@@ -2,6 +2,7 @@ import type { ToolApprovalRequest, ToolApprovalResult } from "@cline/shared";
 import type { WebviewInboundMessage } from "../webview-protocol";
 import type { HubContext } from "./state";
 import { broadcastHubState } from "./state-payloads";
+import type { BrowserPeer } from "./types";
 
 function createApprovalId(): string {
 	return `approval-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -49,7 +50,11 @@ export function rejectAllPendingApprovals(
 
 export function rejectOrphanedApprovals(ctx: HubContext): void {
 	for (const [approvalId, pending] of [...ctx.pendingToolApprovals.entries()]) {
-		if (!ctx.hasSelectedPeer(pending.sessionId)) {
+		if (
+			pending.ownerPeer
+				? !ctx.peers.has(pending.ownerPeer)
+				: !ctx.hasSelectedPeer(pending.sessionId)
+		) {
 			resolveToolApproval(ctx, approvalId, {
 				approved: false,
 				reason: "Cline Hub webview disconnected before approval was resolved.",
@@ -61,8 +66,13 @@ export function rejectOrphanedApprovals(ctx: HubContext): void {
 export function requestToolApprovalFromWebview(
 	ctx: HubContext,
 	request: ToolApprovalRequest,
+	ownerPeer?: BrowserPeer,
 ): Promise<ToolApprovalResult> {
-	if (!ctx.hasSelectedPeer(request.sessionId)) {
+	if (
+		ownerPeer
+			? ownerPeer.closed || ownerPeer.selectedSessionId !== request.sessionId
+			: !ctx.hasSelectedPeer(request.sessionId)
+	) {
 		return Promise.resolve({
 			approved: false,
 			reason: "No Cline Hub webview is attached to this session.",
@@ -85,12 +95,13 @@ export function requestToolApprovalFromWebview(
 			});
 		}, 10 * 60_000);
 		ctx.pendingToolApprovals.set(approvalId, {
+			...(ownerPeer ? { ownerPeer } : {}),
 			sessionId: request.sessionId,
 			resolve,
 			timeout,
 		});
-		ctx.sendToSelectedPeers(request.sessionId, {
-			type: "approval_request",
+		const payload = {
+			type: "approval_request" as const,
 			approvalId,
 			sessionId: request.sessionId,
 			agentId: request.agentId,
@@ -100,16 +111,24 @@ export function requestToolApprovalFromWebview(
 			toolName: request.toolName,
 			input: request.input,
 			policy: request.policy as Record<string, unknown> | undefined,
-		});
+		};
+		if (ownerPeer) ctx.send(ownerPeer, payload);
+		else ctx.sendToSelectedPeers(request.sessionId, payload);
 	});
 }
 
 export function handleToolApprovalResponse(
 	ctx: HubContext,
 	frame: Extract<WebviewInboundMessage, { type: "approval_response" }>,
+	peer?: BrowserPeer,
 ): void {
 	const approvalId = frame.approvalId.trim();
 	if (!approvalId) return;
+	const pending = ctx.pendingToolApprovals.get(approvalId);
+	if (pending?.ownerPeer && pending.ownerPeer !== peer)
+		throw new Error(
+			"This approval belongs to another authenticated browser connection",
+		);
 	const resolved = resolveToolApproval(ctx, approvalId, {
 		approved: frame.approved,
 		reason:

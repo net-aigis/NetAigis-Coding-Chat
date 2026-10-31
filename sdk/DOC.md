@@ -662,3 +662,13 @@ canonical user-message metadata records actor/client/request/time and the
 `hub-authenticated` source; unsigned legacy messages remain unsigned. Browser
 login/transfer UX, legacy import, cross-client Recall delivery and real device
 acceptance still require their separate integration work.
+
+
+After a verified Hub connection, `core.sessionControl.actorId()` returns the
+actor confirmed by registration (undefined for an observer/local host). A display
+name never grants an actor. Approval decisions use the session's current writer,
+revision and actual pending approval; execution observations retain their original
+execution owner. The existing browser UI supports separate personal credentials
+and explicit read/claim/release controls in shared mode. HTTPS can use existing
+operator-selected `CLINE_HUB_DASHBOARD_TLS_CERT_FILE` and
+`CLINE_HUB_DASHBOARD_TLS_KEY_FILE`; no credential files are generated automatically.

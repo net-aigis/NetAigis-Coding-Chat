@@ -118,6 +118,30 @@ it("authenticates Friseer/jimmi separately, hands one history both ways, and fen
 	try {
 		const invalid = peer("invalid", "fixture-incorrect-token");
 		await expect(invalid.command("hub.status")).rejects.toThrow();
+		const OriginSocket = globalThis.WebSocket as unknown as new (
+			url: string,
+			options: { headers: Record<string, string> },
+		) => WebSocket;
+		await expect(
+			new Promise<void>((resolve, reject) => {
+				const probe = new OriginSocket(server.url, {
+					headers: { Origin: "http://localhost" },
+				});
+				probe.addEventListener(
+					"open",
+					() => {
+						probe.close();
+						resolve();
+					},
+					{ once: true },
+				);
+				probe.addEventListener(
+					"error",
+					() => reject(new Error("Unauthenticated origin refused")),
+					{ once: true },
+				);
+			}),
+		).rejects.toThrow("Unauthenticated origin refused");
 		await expect(
 			observer.command("session.control.claim", { expectedRevision: 0 }, id),
 		).rejects.toMatchObject({ code: "actor_authentication_required" });
@@ -151,6 +175,9 @@ it("authenticates Friseer/jimmi separately, hands one history both ways, and fen
 			source: "hub-authenticated",
 		});
 		const old = structuredClone(messages);
+		expect(friseer.getAuthenticatedActorId()).toBe("Friseer");
+		expect(jimmi.getAuthenticatedActorId()).toBe("jimmi");
+		expect(observer.getAuthenticatedActorId()).toBeUndefined();
 		await jimmi.command("session.control.claim", { expectedRevision: 1 }, id);
 		await expect(
 			friseer.command("run.start", { prompt: "stale" }, id),

@@ -696,7 +696,9 @@ export async function startHubWebSocketServer(
 		const isAuthorized =
 			actorId !== undefined ||
 			isTokenAuthorized ||
-			(isLocalHubHostName(host) && isLocalHubOrigin(request.headers.origin));
+			(!actors &&
+				isLocalHubHostName(host) &&
+				isLocalHubOrigin(request.headers.origin));
 		if (!isAuthorized) {
 			rejectUnauthorizedUpgradeSocket(socket);
 			return;

@@ -61,6 +61,7 @@ import type {
 	WebviewOutboundMessage,
 	WebviewSessionSummary,
 } from "../../webview-protocol";
+import { SharedSessionAccess } from "./components/SharedSessionAccess";
 import { PageFrame, PageHeader } from "./components/views/page-layout";
 import type { CustomizationSection } from "./components/views/settings/extensions-view";
 import type { SettingsSection } from "./components/views/settings/settings-view";
@@ -622,7 +623,9 @@ function HomeView({
 											{[
 												client.clientType,
 												client.version ? `v${client.version}` : undefined,
-												client.pid !== undefined ? `pid ${client.pid}` : undefined,
+												client.pid !== undefined
+													? `pid ${client.pid}`
+													: undefined,
 											]
 												.filter(Boolean)
 												.join(" · ")}
@@ -1446,6 +1449,9 @@ function App() {
 
 	return (
 		<Shell onNavigate={navigate} version={hubState.coreVersion} view={view}>
+			{hubState.sharedRuntime && (
+				<SharedSessionAccess sessionId={selectedSessionId} />
+			)}
 			<Suspense fallback={<ViewLoading />}>{content}</Suspense>
 		</Shell>
 	);

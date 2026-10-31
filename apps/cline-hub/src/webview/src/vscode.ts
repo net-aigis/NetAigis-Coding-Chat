@@ -68,6 +68,7 @@ function createBrowserSocket(): WebSocket {
 	});
 	browserSocket.addEventListener("close", () => {
 		pendingMessages.splice(0);
+		dispatchHostMessage({ type: "shared_actor" });
 		dispatchHostMessage({
 			type: "status",
 			text: "Disconnected from the Cline Hub server.",

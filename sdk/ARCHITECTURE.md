@@ -1435,3 +1435,25 @@ non-destructive attachment of older local history, cross-client Recall delivery
 and real VS Code/Android/Acer-model acceptance remain separate unfinished work.
 The tests exercise actual loopback WebSockets with a fixture execution runtime;
 they do not establish productive device or model acceptance.
+
+
+The browser dashboard now creates a separate remote Core client per authenticated
+browser connection. The registry response, not supplied metadata, confirms its
+actor (`core.sessionControl.actorId()`). Shared-mode writes use that client;
+there is no fallback to the dashboard observer credential and no replacement
+chat. Explicit revision-based writer controls are available in the existing UI.
+Global service/provider mutations are refused through shared browser peers.
+Actor-mode Hub sockets require an actor or observer credential even for a
+localhost Origin; legacy local mode keeps its original behavior.
+
+A decision about tool approval belongs to the current writer, while tool
+execution observations remain with the original execution actor. The approval
+event names its target client, RuntimeHost honors that target, and the response
+must match both the current writer/revision and the actual pending approval's
+session. Dashboard approvals additionally belong to the personal browser peer.
+Browser credentials require HTTPS or loopback, and encrypted or loopback Hub
+transport. Optional operator-selected TLS files add HTTPS to the existing Bun
+listener without generating credentials or creating production paths. A failed
+listener startup closes its previously attached Hub clients. An actual Bun
+server transport test still uses a fixture executing runtime; it proves no
+physical Android, VS Code, real model, Recall or production migration acceptance.

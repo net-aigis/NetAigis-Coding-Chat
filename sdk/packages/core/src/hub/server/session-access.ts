@@ -181,6 +181,13 @@ export class HubSessionAccess {
 	}
 	private async quiescent(id: string): Promise<boolean> {
 		if (this.activeWrites.get(id)) return false;
+		if (
+			[
+				...(this.ctx.pendingApprovals?.values() ?? []),
+				...(this.ctx.pendingCapabilityRequests?.values() ?? []),
+			].some((request) => request.sessionId === id)
+		)
+			return false;
 		const { session } = await this.state(id);
 		if (
 			![
@@ -254,19 +261,22 @@ export class HubSessionAccess {
 				delete metadata.authenticatedActorId;
 				if (authority.actorId)
 					metadata.authenticatedActorId = authority.actorId;
-				return dispatch({
+				const reply = await dispatch({
 					...envelope,
 					payload: { ...envelope.payload, metadata },
 				});
+				return reply.ok && authority.actorId
+					? {
+							...reply,
+							payload: {
+								...reply.payload,
+								authenticatedActorId: authority.actorId,
+							},
+						}
+					: reply;
 			});
 		}
-		if (
-			[
-				"capability.respond",
-				"capability.progress",
-				"approval.respond",
-			].includes(command)
-		) {
+		if (["capability.respond", "capability.progress"].includes(command)) {
 			const target = extractSessionId(envelope);
 			if (!authority?.actorId || !target)
 				return errorReply(
@@ -280,6 +290,25 @@ export class HubSessionAccess {
 					envelope,
 					"capability_actor_mismatch",
 					"Another actor cannot supply this execution owner's observations",
+				);
+		}
+		if (command === "approval.respond") {
+			const target = extractSessionId(envelope),
+				{ control } = await this.state(target);
+			const pending = this.ctx.pendingApprovals.get(
+				String(envelope.payload?.approvalId ?? ""),
+			);
+			if (!this.owns(control, authority) || pending?.sessionId !== target)
+				return errorReply(
+					envelope,
+					"approval_writer_mismatch",
+					"Only the current session writer can answer its actual pending approval",
+				);
+			if (envelope.payload?.controlRevision !== control.revision)
+				return errorReply(
+					envelope,
+					"control_revision_conflict",
+					"Approval uses an outdated writer revision",
 				);
 		}
 		if (READ_COMMANDS.has(command)) return dispatch(envelope);

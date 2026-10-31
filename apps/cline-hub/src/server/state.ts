@@ -37,6 +37,7 @@ export class HubContext {
 	initialHubEventEmitted = false;
 
 	send(peer: BrowserPeer, payload: unknown): void {
+		if (peer.closed) return;
 		peer.socket.send(JSON.stringify(payload));
 	}
 

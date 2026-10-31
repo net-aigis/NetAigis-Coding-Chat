@@ -381,6 +381,7 @@ export class NodeHubClient {
 	);
 	private sawSocketClose = false;
 	private registered = false;
+	private authenticatedActorId: string | undefined;
 	private capabilities: NonNullable<HubClientRegistration["capabilities"]>;
 
 	constructor(private readonly options: HubClientOptions) {
@@ -398,6 +399,9 @@ export class NodeHubClient {
 
 	getClientId(): string {
 		return this.clientId;
+	}
+	getAuthenticatedActorId(): string | undefined {
+		return this.registered ? this.authenticatedActorId : undefined;
 	}
 
 	getUrl(): string {
@@ -453,7 +457,7 @@ export class NodeHubClient {
 		let attemptSocket: WebSocketLike | undefined;
 		this.connectPromise = connectPromise.then(async (socket) => {
 			attemptSocket = socket;
-			await this.commandOnce(
+			const registration = await this.commandOnce(
 				"client.register",
 				{
 					clientId: this.clientId,
@@ -486,6 +490,10 @@ export class NodeHubClient {
 				throw this.lastCloseError;
 			}
 			this.registered = true;
+			this.authenticatedActorId =
+				typeof registration.payload?.authenticatedActorId === "string"
+					? registration.payload.authenticatedActorId
+					: undefined;
 			for (const key of this.subscriptionCounts.keys()) {
 				this.sendSubscriptionFrame(
 					"stream.subscribe",

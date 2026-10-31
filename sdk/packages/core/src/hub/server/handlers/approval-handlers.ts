@@ -5,6 +5,7 @@ import type {
 	ToolApprovalRequest,
 } from "@cline/shared";
 import { createSessionId } from "@cline/shared";
+import { parseSessionWriterControl } from "../../session-control";
 import { errorReply, type HubTransportContext, okReply } from "./context";
 
 export async function requestToolApproval(
@@ -33,6 +34,16 @@ export async function requestToolApproval(
 		typeof session?.metadata?.agendaTaskId === "string"
 			? session.metadata.agendaTaskId
 			: undefined;
+	const control =
+		session?.metadata?.sharedSessionControl === undefined
+			? undefined
+			: parseSessionWriterControl(session.metadata.sharedSessionControl);
+	if (control && !control.writer)
+		return {
+			approved: false,
+			reason:
+				"This shared session has no authenticated writer to approve tools",
+		};
 	return await new Promise((resolve) => {
 		const requestedEvent = ctx.buildEvent(
 			"approval.requested",
@@ -47,6 +58,12 @@ export async function requestToolApproval(
 				inputJson: JSON.stringify(request.input ?? null),
 				policy: request.policy,
 				agendaTaskId,
+				...(control?.writer
+					? {
+							targetClientId: control.writer.clientId,
+							controlRevision: control.revision,
+						}
+					: {}),
 			},
 			sessionId,
 		);

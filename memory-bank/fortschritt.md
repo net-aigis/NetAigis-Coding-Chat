@@ -140,3 +140,14 @@ Coding-Agent-Health HTTP 200, Learning-Agent-Identität weiter ungeklärt.
 Browser-/VS-Code-Bedienung, alte Sitzungen, durchgehendes Recall, echte
 Android-/125B-Abnahme und eigene freizugebende Identität bleiben OFFEN.
 Details und Fehlervorläufe: [phase4-reparatur.md](phase4-reparatur.md).
+
+
+31.10.2026 — persönliche Browser-Akteure, Writer-Steuerung und getrennte
+Freigabe-/Ausführungszuständigkeit ergänzt. 154 betroffene Tests im zweiten
+Schritt bestanden, darunter echter Bun-Dashboard-/Hub-Transport mit simulierter
+Arbeit und bestätigter Fortsetzung nach Browser-Abbruch. UI-Build und Typen
+bestanden. Beide bestehenden Acer-Dienste aktuell laufend, beide Healths HTTP 200.
+Freigegebene vollständige Zielidentität nach Benutzerkorrektur:
+**NetAigis Coding Chat / netaigis.netaigis-coding-chat / 0.1.0**. Keine technische
+Umbenennung vor der dokumentierten Daten-/Secret-/Command-Migration. Echte
+Android-/125B-Abnahme, alte Daten und durchgehendes Recall bleiben OFFEN.
