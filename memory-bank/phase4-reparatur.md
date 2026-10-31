@@ -2037,3 +2037,44 @@ VS-Code-Adapter gegen das aktuelle Core-Bundle geprüft:
 p4-runtime-vscode-cross-regression **70/70** bestanden, einschließlich Terminal-
 Lifecycle, explizitem Shared-Zugang, Recall-Adapter und Prozessdarstellung. Keine
 erneute echte Sleep-Messreihe, Migration oder produktive Installation ausgeführt.
+
+### Zusätzlich reproduzierter Wettlauf zwischen Prozess-Exit und Logabschluss
+
+Auf f47870b4e fortgesetzt. Die zusammenhängende Prüfung
+p4-runtime-storage-recall-cross-regression lieferte **168 bestanden, ein Fehler,
+14 plattformbedingte Skips** (183 erfasste Tests). Alle angeforderten zehn Dateien
+wurden ausgeführt. Fehler: der bestehende detached-background-numeric-exit-Test
+las nach completed-at noch ein Log ohne abschließenden Exitdatensatz. Ursache:
+createDetachedLog schrieb den Marker synchron vor dem asynchronen stream.end/
+Schreibabschluss. Der reale Prozess-Exit im geschützten Journal war davon getrennt.
+
+Der neue deterministisch verzögerte Logschreibtest prüft genau diese Reihenfolge.
+p4-detached-log-flush-red scheiterte zunächst am nicht konfigurierbaren nativen
+ESM-Spy und zählt nicht als Fehlerreproduktion. Nach passendem modulgebundenem
+Mockaufbau reproduzierte p4-detached-log-flush-reproduction **0/1** tatsächlich
+den vorzeitigen Marker trotz noch offener Schreibquittung. Ein echter eigener
+500-ms-Kindprozess beendet sich dabei mit bestätigtem Exit 0; kein sleep-Timer
+oder erfundener Prozessstatus dient als Ersatz.
+
+Der Marker wartet jetzt sowohl auf den Prozessabschluss als auch Writable.finish.
+Ein schon geschlossener/cappierter Stream wird korrekt behandelt. Schreibfehler
+veröffentlichen keinen erfolgreich abgeschlossenen Logstand und behalten den
+unvollständigen Nachweis; kein unkontrollierter Streamfehler im Hub. Die eigentliche
+Exitbeobachtung, Signale und bestehende Timergrenzen werden nicht umdefiniert.
+1c5db6c56 und die bereits abgeschlossene echte VS-Code-Sleep-Messreihe bleiben
+erhalten und wurden nicht wiederholt.
+
+p4-detached-log-flush: **45 bestanden, 14 Skips**, kein Fehler (Executor,
+Controller, reale Prozessjournal-Persistenz und neuer deterministischer Fall).
+Nach zusätzlichem IO-Fehlerfall p4-detached-log-flush-io-failure **2/2**, ohne
+erneuten Lauf der unbetroffenen 129 bestandenen Prüfungen des ersten Verbunds.
+p4-detached-log-flush-types und p4-detached-log-flush-build Exit 0.
+Keine produktiven Terminalprozesse oder Dienste gestartet/beendet.
+
+Erhaltungsnachweis p4-original-status-after-integration.json: Originalbranch
+coding-agent-v4 weiter 624c2cd6661e100680d8b61daa3a3447f4708536, 8 geänderte und
+19 unversionierte Dateien; SHA256 der Git-Statusausgabe unverändert
+aff4aedbf69ef2f24960a735b51663df55a0a961ef0d2fb8e910293e010c9fbb.
+Das ist ein Vergleich der Referenz/Statusdarstellung, kein Inhalts-Hash aller
+Originaldateien. Eigene Schreibzugriffe bleiben auf den Reparatur-Worktree
+und seine privaten vorhandenen Prüfarbeitsbereiche begrenzt.

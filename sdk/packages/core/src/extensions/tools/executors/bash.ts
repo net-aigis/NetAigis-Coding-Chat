@@ -709,27 +709,20 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 	let capped = false;
 	let writable = true;
 	let streamClosed = false;
+	let streamFinished = false;
 	let completed = false;
+	let completionPublished = false;
 	let cleanupScheduled = false;
 	const scheduleCleanup = () => {
 		if (cleanupScheduled) return;
 		cleanupScheduled = true;
 		scheduleDetachedLogCleanup(directory, retentionMs);
 	};
-	stream.on("error", () => {
-		// The detached command has already released its caller. A late log write
-		// failure must not become an unhandled stream error in the hub process.
-		writable = false;
-	});
-	stream.once("close", () => {
-		writable = false;
-		streamClosed = true;
-		if (completed) scheduleCleanup();
-	});
-
-	const complete = () => {
-		if (completed) return;
-		completed = true;
+	const publishCompletion = () => {
+		// A confirmed process exit and a flushed output sink are separate facts.
+		// Readers must never see this marker before the final queued log writes.
+		if (!completed || !streamFinished || completionPublished) return;
+		completionPublished = true;
 		try {
 			writeLifecycleMarker(completedAtPath, String(Date.now()));
 		} catch {
@@ -741,12 +734,29 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 		} catch {
 			// Cleanup remains best effort and must not surface from a stream event.
 		}
-		if (streamClosed) {
-			scheduleCleanup();
-			return;
-		}
+		if (streamClosed) scheduleCleanup();
+	};
+	stream.on("error", () => {
+		// Keep the uncompleted log evidence for reconciliation. A failed sink
+		// cannot publish a successfully flushed log or an unhandled stream error.
 		writable = false;
-		stream.end();
+	});
+	stream.once("finish", () => {
+		streamFinished = true;
+		publishCompletion();
+	});
+	stream.once("close", () => {
+		writable = false;
+		streamClosed = true;
+		if (completionPublished) scheduleCleanup();
+	});
+
+	const complete = () => {
+		if (completed) return;
+		completed = true;
+		writable = false;
+		publishCompletion();
+		if (!streamClosed && !streamFinished) stream.end();
 	};
 
 	return {

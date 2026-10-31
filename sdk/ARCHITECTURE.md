@@ -1777,3 +1777,9 @@ identities. Reserved JavaScript object names remain valid explicit data keys;
 inherited prototypes never become phantom sessions. Malformed existing indexes
 fail reads and writes explicitly rather than appearing as an empty store or
 being replaced during an update. Recovery is a separate, verified operation.
+
+Detached command output publication separates the ChildProcess exit observation
+from the log sink's write completion. The log's completion marker and retention
+cleanup are published only after both process completion and Writable.finish;
+an errored sink retains uncompleted evidence. This does not delay or fabricate
+the protected process-exit observation, and never substitutes a timer for exit.
