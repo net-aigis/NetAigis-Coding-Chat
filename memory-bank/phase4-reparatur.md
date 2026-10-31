@@ -1882,3 +1882,38 @@ erhalten, thinking wird in dieser Quelle nicht durchgereicht. Zur gezielten
 Reparatur wurden ausschließlich zwei Protokollausdrücke und ihre AST-Positionen
 erfasst, keine vollständigen zusätzlichen Funktionen oder Moduldateien kopiert.
 Produktive HTTP-/Modellabnahme und jede produktive Adapteränderung bleiben offen.
+
+### Modellunabhängige Abschlussgründe: geprüfter Acer-Kandidat, noch nicht angewendet
+
+Auf 173d888cb fortgesetzt. Der angekündigte Wechsel auf DeepSeek 4.1 1017B
+ist eine Nutzerangabe zum bevorstehenden Betrieb, kein Nachweis eines bereits
+geladenen Modells oder seiner Parameterzahl. Keine Modellbindung oder Änderung
+der vorhandenen Modellendpunkte und Routingentscheidungen vorgenommen.
+
+sdk/scripts/netaigis-coding-agent-finish-reason.py erzeugt aus dem exakt
+belegten Adapterstand einen minimalen Kandidaten: native done_reason=length
+bleibt in completion und sse_stream als finish_reason=length erhalten. Sonst
+bleibt die bisherige stop/tool_calls-Auswahl erhalten. Die Quelle bleibt
+unverändert; Standardaufruf nur lesend, optional ausschließlich neue separate
+Kandidatendatei in vorhandenem privatem Verzeichnis mit Modus 0600. Geänderter
+Quellhash, abweichende AST-Struktur, Zweitanwendung und Überschreiben scheitern.
+p4-coding-finish-reason-synthetic 7/7; nach zusätzlichen CLI-Vertragsprüfungen
+p4-coding-finish-reason-cli **10/10 Python-Unittests**, Exit 0. Keine privaten
+Modulquellen in diesen Tests und keine Modellaufrufe.
+
+p4-acer-coding-candidate-in-memory.json belegt zusätzlich **10/10** Prüfungen
+der tatsächlichen auf Acer gelesenen reinen Adapterfunktionen. Der gesamte
+private Quelltext blieb dort im Speicher und wurde weder übertragen noch als
+Kandidat gespeichert. Getestet: completion/SSE jeweils stop und length mit/ohne
+Toolcalls sowie beide Tokenlimit-Felder. Modellwahl, dynamischer Kontext und
+Streamwahl bleiben erhalten. Datei auf Acer nach Prüfung bytegleich;
+kein Dienstimport mit Seiteneffekten, HTTP-Aufruf, Neustart oder Modellwechsel.
+
+Quell-SHA256: cdf5d6768d8fffb9e3d1d0f4b08db9784a5ce5b432003f4cf16d4f3a970c8b81.
+Nur Abschlusskorrektur: c8d16b51b0d9ab8a71c11187812204d8470ee236b6e6dfa44af0554b663015f3.
+Kombinations-SHA256: 307497023baea81eabda77d96045c81fecc605a296748dc0ad163f7e01c4ffd9.
+Reihenfolge für eine spätere geprüfte Anwendung: zuerst der auf den Originalhash
+festgelegte Finish-Rewriter, dann der vorhandene Tokenlimit-Patch mit fuzz=0.
+Dies ist keine vollständige Dateisystem-Wiederherstellungsprobe und kein Beleg
+über den im bereits laufenden Dienst geladenen Python-Code. Die zuvor genannten
+produktiven Sicherungs-/Rollback-/Freigabevoraussetzungen gelten unverändert.
