@@ -405,6 +405,10 @@ export interface ListSessionsOptions {
  * plus optional named `localRuntime` bootstrap fields before invoking a host.
  */
 export interface RuntimeHost {
+	/** Internal native import; remote adapters must establish source proof on the owning server. */
+	importSessionSnapshot?(
+		input: import("../../session/services/snapshot-import").NativeSnapshotImportInput,
+	): Promise<import("../../session/models/session-row").RootSessionArtifacts>;
 	readonly runtimeAddress?: string;
 	startSession(input: StartSessionInput): Promise<StartSessionResult>;
 	runTurn(input: SendSessionInput): Promise<AgentResult | undefined>;

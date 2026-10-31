@@ -34,14 +34,20 @@ import type {
 import { withSessionHistoryOriginMetadata } from "../history-origin";
 import type { SessionCompactionState } from "../models/session-compaction";
 import type { SessionRow } from "../models/session-row";
+import { SNAPSHOT_IMPORT_METADATA_KEY } from "../snapshot-import-state";
 import { SessionManifestStore } from "../stores/session-manifest-store";
 import { TeamChildSessionManager } from "../team";
+import {
+	importNativeSessionSnapshot,
+	type NativeSnapshotImportInput,
+} from "./snapshot-import";
 
 export type { PersistedSessionUpdateInput, SessionPersistenceAdapter };
 
 const OCC_MAX_RETRIES = 4;
 
 export class UnifiedSessionPersistenceService {
+	private readonly snapshotImportQueue = new Map<string, Promise<unknown>>();
 	private readonly manifestStore: SessionManifestStore;
 	private readonly teamChildren: TeamChildSessionManager;
 	private static readonly STALE_REASON = "failed_external_process_exit";
@@ -86,6 +92,38 @@ export class UnifiedSessionPersistenceService {
 
 	ensureSessionsDir(): string {
 		return this.manifestStore.ensureSessionsDir();
+	}
+
+	async readSessionImportMetadata(
+		sessionId: string,
+	): Promise<Record<string, unknown> | undefined> {
+		const metadata = (await this.adapter.getSession(sessionId))?.metadata;
+		return metadata && Object.hasOwn(metadata, SNAPSHOT_IMPORT_METADATA_KEY)
+			? {
+					[SNAPSHOT_IMPORT_METADATA_KEY]:
+						metadata[SNAPSHOT_IMPORT_METADATA_KEY],
+				}
+			: undefined;
+	}
+
+	async importSessionSnapshot(
+		input: NativeSnapshotImportInput,
+	): Promise<import("../models/session-row").RootSessionArtifacts> {
+		const copied = structuredClone(input);
+		const id = copied.snapshot.sessionId;
+		const previous = this.snapshotImportQueue.get(id) ?? Promise.resolve();
+		const run = previous
+			.catch(() => {})
+			.then(() =>
+				importNativeSessionSnapshot(this.adapter, this.manifestStore, copied),
+			);
+		this.snapshotImportQueue.set(id, run);
+		try {
+			return await run;
+		} finally {
+			if (this.snapshotImportQueue.get(id) === run)
+				this.snapshotImportQueue.delete(id);
+		}
 	}
 
 	writeSessionManifest(
@@ -501,6 +539,8 @@ export class UnifiedSessionPersistenceService {
 		row: SessionRow,
 	): Promise<SessionRow | undefined> {
 		if (
+			(row.pid === 0 &&
+				Object.hasOwn(row.metadata ?? {}, SNAPSHOT_IMPORT_METADATA_KEY)) ||
 			isNonTerminalSessionStatus(row.status) === false ||
 			this.isPidAlive(row.pid)
 		) {

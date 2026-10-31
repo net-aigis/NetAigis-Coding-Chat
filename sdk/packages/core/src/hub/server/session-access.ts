@@ -1,5 +1,9 @@
 import { COMMAND_OBSERVATIONS_METADATA_KEY } from "../../extensions/tools/executors/run-command-execution-controller";
 import { hasUnresolvedCommandObservation } from "../../runtime/host/command-observations";
+import {
+	assertSnapshotImportComplete,
+	SNAPSHOT_IMPORT_METADATA_KEY,
+} from "../../session/snapshot-import-state";
 
 export { hasUnresolvedCommandObservation } from "../../runtime/host/command-observations";
 
@@ -138,6 +142,7 @@ export class HubSessionAccess {
 		)
 			return false;
 		const { session } = await this.state(id);
+		assertSnapshotImportComplete(session.metadata);
 		if (
 			![
 				"idle",
@@ -336,6 +341,7 @@ export class HubSessionAccess {
 					);
 				const metadata = { ...record(envelope.payload?.metadata) };
 				delete metadata[COMMAND_OBSERVATIONS_METADATA_KEY];
+				delete metadata[SNAPSHOT_IMPORT_METADATA_KEY];
 				const control: SessionWriterControl = {
 					version: 1,
 					revision: 1,
@@ -454,6 +460,7 @@ export class HubSessionAccess {
 		const run = RUNS.has(command);
 		const admit = async (): Promise<HubReplyEnvelope | undefined> => {
 			const { session, control } = await this.state(id);
+			assertSnapshotImportComplete(session.metadata);
 			if (!this.owns(control, authority))
 				return errorReply(
 					envelope,
@@ -495,6 +502,8 @@ export class HubSessionAccess {
 								session.metadata?.hubCapabilityOwnerActorId,
 							[COMMAND_OBSERVATIONS_METADATA_KEY]:
 								session.metadata?.[COMMAND_OBSERVATIONS_METADATA_KEY],
+							[SNAPSHOT_IMPORT_METADATA_KEY]:
+								session.metadata?.[SNAPSHOT_IMPORT_METADATA_KEY],
 						},
 					},
 				};

@@ -23,12 +23,13 @@ async function fsyncBestEffort(path: string): Promise<void> {
 export async function writeFileAtomic(
 	path: string,
 	contents: string,
+	mode?: number,
 ): Promise<void> {
 	await mkdir(dirname(path), { recursive: true });
 	const tempPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
 	let handle: Awaited<ReturnType<typeof open>> | undefined;
 	try {
-		handle = await open(tempPath, "wx");
+		handle = await open(tempPath, "wx", mode);
 		await handle.writeFile(contents, "utf8");
 		await handle.sync();
 		await handle.close();

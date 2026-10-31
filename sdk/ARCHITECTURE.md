@@ -1645,3 +1645,15 @@ cannot silently fall back to upsert. SQLite admission is database-atomic; the
 file adapter serializes this decision in its owning process. A rejected insert
 removes only its own still-empty inode reservation. This primitive is distinct
 from completing or recovering a multi-artifact archive import.
+
+Canonical snapshot import uses that same native store, never the external-chat
+normalizer or another history database. A staged row blocks runtime admission
+before artifact writes. Source digest and runtime-established provenance allow
+only the identical request to complete matching files after a failed commit;
+unknown modifications are retained and rejected. The private transcript keeps
+original message objects, IDs and authors. Old writer/capability identities are
+audit data, not current authority. Atomic manifest commit precedes the indexed
+completion revision; both must be complete before canonical resume. Archived
+idle rows with pid zero are historical records, not dead live processes to be
+rewritten by PID reconciliation. This local primitive does not authenticate a
+remote request; the owning Hub must verify archive proof, actor and workspace.

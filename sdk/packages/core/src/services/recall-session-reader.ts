@@ -110,6 +110,29 @@ function validRecoveryShape(snapshot: CoreSessionSnapshot): boolean {
 	);
 }
 
+/** Structural/process eligibility only. Producer authentication is a separate gate. */
+export function sessionSnapshotRecoveryProblem(
+	snapshot: CoreSessionSnapshot,
+): TotalRecallSessionSnapshot["restoration"]["reason"] {
+	if (!snapshot || snapshot.version !== 1 || !validRecoveryShape(snapshot))
+		return "invalid_snapshot";
+	if (
+		!["idle", "completed", "cancelled", "aborted", "error", "failed"].includes(
+			snapshot.status,
+		)
+	)
+		return "active_session";
+	if (
+		hasUnresolvedCommandObservation(
+			snapshot.messages!,
+			snapshot.metadata?.runtimeCommandObservations,
+			snapshot.sessionId,
+		)
+	)
+		return "unconfirmed_process";
+	return undefined;
+}
+
 const WRITER_COORDINATION_UNAVAILABLE =
 	"TOTAL RECALL has no verified writer-ownership/handover API. A running task cannot safely be taken over through the event journal.";
 
@@ -326,25 +349,7 @@ export class TotalRecallSessionHost {
 		else if (!validRecoveryShape(recordedSnapshot)) reason = "invalid_snapshot";
 		else if (this.requireVerifiedSource && !sourceVerified)
 			reason = "unverified_source";
-		else if (
-			![
-				"idle",
-				"completed",
-				"cancelled",
-				"aborted",
-				"error",
-				"failed",
-			].includes(recordedSnapshot.status)
-		)
-			reason = "active_session";
-		else if (
-			hasUnresolvedCommandObservation(
-				recordedSnapshot.messages!,
-				recordedSnapshot.metadata?.runtimeCommandObservations,
-				conversationId,
-			)
-		)
-			reason = "unconfirmed_process";
+		else reason = sessionSnapshotRecoveryProblem(recordedSnapshot);
 		return {
 			conversationId,
 			journalSeq: conversation.lastSeq,

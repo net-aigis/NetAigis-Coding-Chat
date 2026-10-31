@@ -1280,3 +1280,44 @@ p4-session-no-overwrite-types und Build p4-session-no-overwrite-build Exit 0.
 Dies ist die Nichtüberschreiben-Voraussetzung, noch kein vollständiger
 Archivimport mit Commit-/Fehlerwiederaufnahme. Keine produktiven Daten,
 Modellrouten, Dienste oder ursprünglichen Arbeitsverzeichnisse verändert.
+
+### Kanonischer Import in die vorhandene native Persistenz
+
+Auf d293c1bf7 fortgesetzt. NativeSnapshotImport schreibt in dieselben
+Session-Zeilen, Manifeste und Transkripte. Vorhandene IDs bleiben erhalten;
+Nachrichten werden ausdrücklich nicht durch den normalen Import-Normalisierer
+neu nummeriert oder umetikettiert. Provider/Modell, Originalauftrag, Korrekturen,
+Zeitangaben und Checkpoint-Metadaten bleiben erhalten. Es werden keine Git-
+Checkpointobjekte aus einem fremden Host erfunden oder übertragen.
+Historischer Session-/Capability-Writer wird als Herkunft erhalten, erteilt
+jedoch keine Zuständigkeit in dieser Runtime; neue Kontrolle beginnt unbesetzt.
+Kein archivierter Auto-Approve-Schalter wird zur aktuellen Freigabe.
+
+Die Indexzeile trägt vor dem ersten Dateischreiben runtimeSnapshotImport=staging.
+Resume, Start, Löschen und schreibende Hub-Zugriffe akzeptieren diesen Zustand
+nicht. Exklusive private Dateien werden synchronisiert, das Manifest atomar
+committed, danach die Indexaufnahme mit Statusrevision bestätigt. Scheitert
+der Abschluss, bleiben Quelle und Ziel erhalten. Nur derselbe Quell-/Inhaltshash
+darf passende Dateien zum Abschluss bringen; fremde Änderungen werden weder
+überschrieben noch automatisch gelöscht. Erfolgreiche Wiederholung schreibt
+keine Historie erneut. Es ist weiterhin kein Remote-Endpunkt freigeschaltet:
+Der aufrufende Server muss Produzentenquelle und Actor selbst verifizieren.
+
+`p4-native-snapshot-import`: 25/26 bestanden. Der eine vorhandene Minimalbackend-
+Fall scheiterte an einer unnötig eingeführten listSessions-Abhängigkeit der
+Admission. Dafür jetzt eine optionale, gezielte native Importzustandsabfrage;
+kein aufgeweichter Prozesscheck und keine Ergänzung einer falschen Test-API.
+`p4-native-import-admission-compat` 11/11 bestanden; enthält die acht neuen
+Importfälle (File/SQLite, identische Urheber und IDs, Fehler/Retry, Manipulation,
+Parallelität, aktive Quellen verweigert). `p4-native-import-core-contracts`
+130/130 bestanden. Reader-Fälle aus dem ersten Lauf bestanden unverändert.
+Typ-Vorlauf fand drei zu eng inferierte Metadatenfelder der neuen Implementierung;
+Record-Typ korrigiert, p4-native-import-types-fixed Exit 0.
+
+Archivierte idle-Zeilen mit pid=0 und Importmarkierung werden nicht von der
+alten PID-Bereinigung zu failed/Exit 1 umgedeutet. Dieser Zustand behauptet
+keinen lebenden Prozess; unbekannte Werkzeugausführung bleibt separat gesperrt.
+`p4-native-import-idle` 1/1 bestanden, acht unbetroffene Fälle übersprungen;
+abschließender p4-native-import-build Exit 0. Nächster Schritt ist
+die serverseitig geprüfte Hub-Admission und Browser-Anbindung. Keine produktive
+API-Schreibanforderung, Installation, Migration oder Acer-Dienständerung.

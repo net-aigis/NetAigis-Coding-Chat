@@ -105,8 +105,10 @@ import {
 } from "../../session/models/session-manifest";
 import type { SessionRow } from "../../session/models/session-row";
 import type { RootSessionArtifacts } from "../../session/services/session-service";
+import type { NativeSnapshotImportInput } from "../../session/services/snapshot-import";
 import { createCoreSessionSnapshot } from "../../session/session-snapshot";
 import { SessionVersioningService } from "../../session/session-versioning-service";
+import { assertSnapshotImportComplete } from "../../session/snapshot-import-state";
 import {
 	buildTeamRunContinuationPrompt,
 	formatModePrompt,
@@ -513,6 +515,9 @@ export class LocalRuntimeHost implements RuntimeHost {
 	async startSession(input: StartSessionInput): Promise<StartSessionResult> {
 		const requestedSessionId = input.config.sessionId?.trim() ?? "";
 		const sessionId = requestedSessionId || createSessionId();
+		if (requestedSessionId) {
+			await this.assertSessionImportAdmission(sessionId);
+		}
 		// Starting a session that is mid-run must not replace it: the replaced
 		// run keeps going unreachable (no abort, no queue) and its transcript
 		// writes resolve to the replacement's stale snapshot. Reattach instead.
@@ -568,6 +573,8 @@ export class LocalRuntimeHost implements RuntimeHost {
 		}
 		const manifest = await this.readManifest(id);
 		if (!manifest) throw new SessionNotFoundError(id);
+		await this.assertSessionImportAdmission(id);
+		assertSnapshotImportComplete(manifest.metadata);
 		if (
 			![
 				"idle",
@@ -1334,6 +1341,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 	async restoreSession(
 		input: RestoreSessionInput,
 	): Promise<RestoreSessionResult> {
+		await this.assertSessionImportAdmission(input.sessionId);
 		return this.sessionVersioning.restoreCheckpoint({
 			...input,
 			telemetry: this.defaultTelemetry,
@@ -1367,6 +1375,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 
 	async runTurn(input: SendSessionInput): Promise<AgentResult | undefined> {
 		const session = this.getSessionOrThrow(input.sessionId);
+		assertSnapshotImportComplete(session.sessionMetadata);
 		// Only the input the queue drain replays carries this marker; any
 		// other input during a queued run is fresh user input.
 		const replayingQueuedPrompt = session.replayingQueuedPrompt === true;
@@ -1654,6 +1663,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 	}
 
 	async deleteSession(sessionId: string): Promise<boolean> {
+		await this.assertSessionImportAdmission(sessionId);
 		if (this.sessions.has(sessionId)) {
 			await this.stopSession(sessionId);
 		}
@@ -1666,6 +1676,16 @@ export class LocalRuntimeHost implements RuntimeHost {
 			this.aggregateUsageBySession.delete(sessionId);
 		}
 		return result.deleted;
+	}
+
+	async importSessionSnapshot(
+		input: NativeSnapshotImportInput,
+	): Promise<RootSessionArtifacts> {
+		if (this.sessions.has(input.snapshot.sessionId))
+			throw new Error(
+				"Resident session cannot be replaced by an archive import",
+			);
+		return this.invoke<RootSessionArtifacts>("importSessionSnapshot", input);
 	}
 
 	async updateSession(
@@ -3192,6 +3212,14 @@ export class LocalRuntimeHost implements RuntimeHost {
 	}
 
 	// ── Session service invocation ──────────────────────────────────────
+	private async assertSessionImportAdmission(sessionId: string): Promise<void> {
+		assertSnapshotImportComplete(
+			await this.invokeOptionalValue<Record<string, unknown>>(
+				"readSessionImportMetadata",
+				sessionId,
+			),
+		);
+	}
 
 	private invoke<T>(method: string, ...args: unknown[]): Promise<T> {
 		return invokeBackend<T>(this.sessionService, method, ...args);
