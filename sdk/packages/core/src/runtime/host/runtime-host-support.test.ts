@@ -13,6 +13,26 @@ afterEach(async () => {
 });
 
 describe("readPersistedMessagesFile", () => {
+	it("refuses missing, damaged or unsupported saved history in resume mode instead of returning an empty replacement", async () => {
+		const dir = await mkdtemp(
+			join(process.env.CLINE_DATA_DIR || tmpdir(), "resume-transcript-"),
+		);
+		tempDirs.push(dir);
+		const path = join(dir, "messages.json");
+		await expect(
+			readPersistedMessagesFile(path, { strict: true }),
+		).rejects.toThrow("not replaced");
+		for (const content of ["", "{broken", "{}", '"not a transcript"']) {
+			await writeFile(path, content);
+			await expect(
+				readPersistedMessagesFile(path, { strict: true }),
+			).rejects.toThrow("not replaced");
+		}
+		await writeFile(path, JSON.stringify({ messages: [] }));
+		await expect(
+			readPersistedMessagesFile(path, { strict: true }),
+		).resolves.toEqual([]);
+	});
 	it("returns persisted messages verbatim, wrappers included", async () => {
 		// The user_input wrapper records which mode each message was sent in
 		// and session restarts re-seed through this read path, so stripping

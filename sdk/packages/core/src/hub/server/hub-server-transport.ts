@@ -941,6 +941,7 @@ export class HubServerTransport implements NativeHubTransport {
 			case "client.list":
 				return handleClientList(this.ctx, envelope);
 			case "session.create":
+			case "session.resume":
 				return await handleSessionCreate(
 					this.ctx,
 					envelope,

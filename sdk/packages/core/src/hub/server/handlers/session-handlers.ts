@@ -287,6 +287,16 @@ export async function handleSessionCreate(
 		request: ToolApprovalRequest,
 	) => Promise<{ approved: boolean; reason?: string }>,
 ): Promise<HubReplyEnvelope> {
+	const resume = envelope.command === "session.resume";
+	const startSession = resume
+		? ctx.sessionHost.resumeSession?.bind(ctx.sessionHost)
+		: ctx.sessionHost.startSession.bind(ctx.sessionHost);
+	if (!startSession)
+		return errorReply(
+			envelope,
+			"session_resume_unavailable",
+			"This runtime cannot safely resume saved history",
+		);
 	const startedAt = performance.now();
 	const baseLogContext = {
 		command: envelope.command,
@@ -404,17 +414,18 @@ export async function handleSessionCreate(
 		(runtimeOptions.mode === "plan" || runtimeOptions.mode === "yolo"
 			? runtimeOptions.mode
 			: "act");
-	const started = await ctx.sessionHost.startSession({
+	const started = await startSession({
 		source: typeof metadata.source === "string" ? metadata.source : undefined,
 		interactive: metadata.interactive !== false,
 		sessionMetadata:
 			Object.keys(metadata as Record<string, unknown>).length > 0
 				? (metadata as Record<string, unknown>)
 				: undefined,
-		initialMessages: Array.isArray(payload.initialMessages)
-			? (payload.initialMessages as never[])
-			: undefined,
-		initialCompactionState,
+		initialMessages:
+			!resume && Array.isArray(payload.initialMessages)
+				? (payload.initialMessages as never[])
+				: undefined,
+		initialCompactionState: resume ? undefined : initialCompactionState,
 		localRuntime: {
 			modelCatalogDefaults: {
 				loadLatestOnInit: true,
@@ -1001,7 +1012,12 @@ export async function handleSessionGet(
 			: Promise.resolve(undefined),
 	]);
 	return session
-		? okReply(envelope, { session, ...(snapshot ? { snapshot } : {}) })
+		? okReply(envelope, {
+				session,
+				...(snapshot ? { snapshot } : {}),
+				runtimeResident:
+					ctx.sessionHost.isSessionResident?.(sessionId) === true,
+			})
 		: errorReply(
 				envelope,
 				"session_not_found",

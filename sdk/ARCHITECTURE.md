@@ -1457,3 +1457,37 @@ listener without generating credentials or creating production paths. A failed
 listener startup closes its previously attached Hub clients. An actual Bun
 server transport test still uses a fixture executing runtime; it proves no
 physical Android, VS Code, real model, Recall or production migration acceptance.
+
+
+### Fork: canonical shared-session resume
+
+Authenticated clients use `session.resume` for existing quiescent sessions.
+The gate requires the current actor/client/connection writer and revision and
+holds the session lock through initialization. Resume never trusts a supplied
+transcript or compaction sidecar: `LocalRuntimeHost.resumeSession` reads its own
+saved artifacts, preserving IDs, literal instructions, message authors,
+metadata, checkpoints, source, timestamps, provider/model and workspace.
+A valid empty history is retained; missing or invalid history and unconfirmed
+process observations fail before replacement. A resident runtime is reused.
+Running/pending snapshots are attached for observation without recreation;
+attaching grants no new writer permission. A first unowned saved session uses
+the existing revision-based claim, never a fabricated grant. Resume is not
+resent after an uncertain dispatch and is refused during Hub drain.
+
+The existing read helper keeps its permissive legacy default; resume explicitly
+selects strict reads so a failed load cannot become an empty new conversation.
+
+### Fork: independent Acer infrastructure watchdog
+
+`sdk/scripts/netaigis-watchdog.py` is a standalone Python program invoked by a
+separate systemd timer. It has no Cline/SDK/agent imports, extension lifecycle
+hook or model calls. The deployment assets are versioned here only; installing
+them is a separately approved Acer infrastructure change. Read-only unit
+properties, MainPID/start ticks, unchanged invocation before/after the probe and
+bounded health requests distinguish observed healthy, failed and unknown.
+It follows no HTTP redirects and logs neither arbitrary health bodies nor
+credentials. It never restarts or reconfigures monitored services. This first
+probe covers the existing Coding-Agent and Learning-Agent services; productive
+Hub/run-progress coverage still needs the deployed shared Runtime and actual
+external observability acceptance. A 200 health response alone proves no model
+turn, session recovery or complete application acceptance.

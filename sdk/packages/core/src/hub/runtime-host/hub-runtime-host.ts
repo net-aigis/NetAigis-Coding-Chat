@@ -901,8 +901,74 @@ export class HubRuntimeHost implements RuntimeHost {
 		);
 		const plannedSessionId =
 			input.config.sessionId?.trim() || createSessionId();
-		const sendCreateCommand = () =>
-			this.client.command("session.create", {
+		let resume = false;
+		if (input.config.sessionId?.trim()) {
+			await this.client.connect();
+			if (this.client.getAuthenticatedActorId()) {
+				const existing = await this.client
+					.command(
+						"session.get",
+						{ sessionId: plannedSessionId, includeSnapshot: true },
+						plannedSessionId,
+					)
+					.catch((error: unknown) => {
+						if (
+							error &&
+							typeof error === "object" &&
+							"code" in error &&
+							error.code === "session_not_found"
+						)
+							return undefined;
+						throw error;
+					});
+				const snapshot = parseCoreSessionSnapshot(existing?.payload?.snapshot);
+				if (existing && !snapshot)
+					throw new Error(
+						"Hub did not confirm the existing session snapshot; no replacement was created",
+					);
+				if (snapshot) {
+					if (snapshot.sessionId !== plannedSessionId)
+						throw new Error("Hub returned a different session while resuming");
+					if (input.prompt?.trim())
+						throw new Error(
+							"Resume attaches existing history; send a new prompt separately",
+						);
+					if (["running", "pending"].includes(snapshot.status)) {
+						if (existing?.payload?.runtimeResident !== true)
+							throw new Error(
+								"Saved running state has no confirmed resident runtime; no process recovery was claimed",
+							);
+						this.registerPlannedSession(
+							plannedSessionId,
+							capabilities,
+							clientContributions.handlers,
+						);
+						try {
+							await this.client.command(
+								"session.attach",
+								{ sessionId: plannedSessionId },
+								plannedSessionId,
+							);
+							return {
+								sessionId: plannedSessionId,
+								manifest: buildManifestFromSnapshot(snapshot, input),
+								manifestPath: "",
+								messagesPath: "",
+							};
+						} catch (error) {
+							this.cleanupPlannedSession(plannedSessionId);
+							throw error;
+						}
+					}
+					const control = await this.getSessionControl(plannedSessionId);
+					if (!control.writer)
+						await this.claimSessionControl(plannedSessionId, control.revision);
+					resume = true;
+				}
+			}
+		}
+		const sendCreateCommand = () => {
+			const payload = {
 				workspaceRoot: input.config.workspaceRoot?.trim() || input.config.cwd,
 				cwd: input.config.cwd,
 				sessionConfig: toJsonRecord(
@@ -927,11 +993,18 @@ export class HubRuntimeHost implements RuntimeHost {
 							plugins: toJsonRecord(input.plugins as Record<string, unknown>),
 						}
 					: {}),
-				initialMessages: input.initialMessages,
-				...(input.initialCompactionState
+				...(resume ? {} : { initialMessages: input.initialMessages }),
+				...(!resume && input.initialCompactionState
 					? { initialCompactionState: input.initialCompactionState }
 					: {}),
-			});
+			};
+			return resume
+				? this.client.command("session.resume", payload, plannedSessionId, {
+						retryAfterDispatch: false,
+					})
+				: this.client.command("session.create", payload);
+		};
+
 		this.registerPlannedSession(
 			plannedSessionId,
 			capabilities,

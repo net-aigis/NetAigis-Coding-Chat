@@ -89,6 +89,26 @@ function fixture() {
 	return { row, messages, runtime, ctx, policy, dispatch, command };
 }
 describe("authenticated writer handover in existing session metadata", () => {
+	it("admits a separate existing-session resume only for the confirmed writer and revision", async () => {
+		const f = fixture();
+		const resume = "session.resume" as HubCommandEnvelope["command"];
+		expect(
+			await f.command(resume, jimmi, { controlRevision: 1 }),
+		).toMatchObject({
+			ok: false,
+			error: { code: "session_not_writer" },
+		});
+		expect(
+			await f.command(resume, friseer, { controlRevision: 0 }),
+		).toMatchObject({
+			ok: false,
+			error: { code: "control_revision_conflict" },
+		});
+		expect(
+			await f.command(resume, friseer, { controlRevision: 1 }),
+		).toMatchObject({ ok: true });
+		expect(f.dispatch).toHaveBeenCalledOnce();
+	});
 	it("keeps approvals with the new writer and actual tool observations with the original execution actor", async () => {
 		const f = fixture();
 		await f.command("session.control.claim", jimmi, { expectedRevision: 1 });

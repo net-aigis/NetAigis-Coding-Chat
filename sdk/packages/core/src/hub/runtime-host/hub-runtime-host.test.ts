@@ -2,6 +2,7 @@ import type { AgentToolContext, HubEventEnvelope } from "@cline/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { version as corePackageVersion } from "../../../package.json";
 import { createSessionCompactionState } from "../../session/models/session-compaction";
+import { createCoreSessionSnapshot } from "../../session/session-snapshot";
 import { SessionSource } from "../../types/common";
 import type { HubTransportContext } from "../server/handlers/context";
 import { projectSessionEvent } from "../server/handlers/session-event-projector";
@@ -11,6 +12,9 @@ const subscribeMock = vi.hoisted(() => vi.fn());
 const closeMock = vi.hoisted(() => vi.fn());
 const disposeMock = vi.hoisted(() => vi.fn());
 const getClientIdMock = vi.hoisted(() => vi.fn(() => "client-1"));
+const actorMock = vi.hoisted(() =>
+	vi.fn<() => string | undefined>(() => undefined),
+);
 const restartLocalHubIfIdleAfterStartupTimeoutMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../client", () => ({
@@ -22,6 +26,8 @@ vi.mock("../client", () => ({
 		}
 
 		command = commandMock;
+		connect = vi.fn(async () => {});
+		getAuthenticatedActorId = actorMock;
 		subscribe = subscribeMock;
 		close = closeMock;
 		dispose = disposeMock;
@@ -73,6 +79,106 @@ function agentDoneEvents(events: unknown[]) {
 }
 
 describe("HubRuntimeHost", () => {
+	it("does not claim a saved running session is still resident after a runtime loss", async () => {
+		actorMock.mockReturnValue("Friseer");
+		const snapshot = createCoreSessionSnapshot({
+			session: {
+				sessionId: "lost-runtime",
+				source: "vscode",
+				status: "running",
+				interactive: true,
+				startedAt: "2026-10-31T10:00:00Z",
+				updatedAt: "2026-10-31T11:00:00Z",
+				provider: "local",
+				model: "local",
+				cwd: "/tmp/project",
+				workspaceRoot: "/tmp/project",
+				enableTools: true,
+				enableSpawn: false,
+				enableTeams: false,
+				isSubagent: false,
+			},
+		});
+		commandMock.mockResolvedValue({
+			ok: true,
+			payload: { snapshot, runtimeResident: false },
+		});
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
+		await expect(
+			host.startSession({
+				config: { ...createConfig(), sessionId: snapshot.sessionId },
+			}),
+		).rejects.toThrow("no confirmed resident runtime");
+		expect(commandMock.mock.calls.map(([name]) => name)).toEqual([
+			"session.get",
+		]);
+		await host.dispose();
+	});
+	it.each([
+		"idle",
+		"running",
+	] as const)("resumes shared %s sessions without replaying a stale client transcript", async (status) => {
+		actorMock.mockReturnValue("Friseer");
+		subscribeMock.mockReturnValue(() => {});
+		const snapshot = createCoreSessionSnapshot({
+			session: {
+				sessionId: "shared-existing",
+				source: "vscode",
+				status,
+				interactive: true,
+				startedAt: "2026-10-31T10:00:00Z",
+				updatedAt: "2026-10-31T11:00:00Z",
+				provider: "local-provider",
+				model: "existing-local-model",
+				cwd: "/tmp/project",
+				workspaceRoot: "/tmp/project",
+				enableTools: true,
+				enableSpawn: false,
+				enableTeams: false,
+				isSubagent: false,
+			},
+		});
+		const control = {
+			version: 1,
+			revision: 4,
+			writer: {
+				actorId: "Friseer",
+				clientId: "client-1",
+				connectionId: "socket",
+			},
+		};
+		commandMock.mockImplementation(async (command: string) => {
+			if (command === "session.control.get")
+				return {
+					ok: true,
+					payload: { sessionId: snapshot.sessionId, control },
+				};
+			return { ok: true, payload: { snapshot, runtimeResident: true } };
+		});
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
+		const result = await host.startSession({
+			config: { ...createConfig(), sessionId: snapshot.sessionId },
+			initialMessages: [{ role: "user", content: "stale client copy" }],
+			interactive: true,
+		});
+		expect(result).toMatchObject({
+			sessionId: snapshot.sessionId,
+			manifest: { model: "existing-local-model" },
+		});
+		expect(commandMock.mock.calls.map(([name]) => name)).not.toContain(
+			"session.create",
+		);
+		const selected = status === "running" ? "session.attach" : "session.resume";
+		expect(commandMock.mock.calls.map(([name]) => name)).toContain(selected);
+		const payload = commandMock.mock.calls.find(
+			([name]) => name === selected,
+		)?.[1];
+		expect(payload).not.toHaveProperty("initialMessages");
+		expect(payload).not.toHaveProperty("initialCompactionState");
+		await host.dispose();
+	});
 	it("requires a matching acknowledged control reply instead of inventing an unowned session", async () => {
 		const { HubRuntimeHost } = await import("./hub-runtime-host");
 		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
@@ -124,6 +230,7 @@ describe("HubRuntimeHost", () => {
 		closeMock.mockReset();
 		disposeMock.mockReset();
 		getClientIdMock.mockClear();
+		actorMock.mockReset();
 		restartLocalHubIfIdleAfterStartupTimeoutMock.mockReset();
 	});
 

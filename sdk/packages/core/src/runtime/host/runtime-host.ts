@@ -423,10 +423,14 @@ export interface RuntimeHost {
 		expectedRevision: number,
 	): Promise<import("../../hub/session-control").SessionWriterControl>;
 	restoreSession(input: RestoreSessionInput): Promise<RestoreSessionResult>;
+	/** Reattach a resident session, or activate canonical saved history without accepting replacement messages. */
+	resumeSession?(input: StartSessionInput): Promise<StartSessionResult>;
 	abort(sessionId: string, reason?: unknown): Promise<void>;
 	stopSession(sessionId: string): Promise<void>;
 	dispose(reason?: string): Promise<void>;
 	getSession(sessionId: string): Promise<SessionRecord | undefined>;
+	/** Residency of the agent runtime, not proof that a shell process completed. */
+	isSessionResident?(sessionId: string): boolean;
 	listSessions(
 		limit?: number,
 		options?: ListSessionsOptions,

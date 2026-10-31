@@ -52,24 +52,40 @@ export class RuntimeHostEventBus {
 // for their own formatting via formatDisplayUserInput.
 export async function readPersistedMessagesFile(
 	messagesPath?: string | null,
+	options: { strict?: boolean } = {},
 ): Promise<LlmsProviders.MessageWithMetadata[]> {
 	const path = messagesPath?.trim();
-	if (!path || !existsSync(path)) return [];
 	try {
+		if (!path || !existsSync(path)) throw new Error("Saved transcript missing");
 		const raw = (await readFile(path, "utf8")).trim();
-		if (!raw) return [];
+		if (!raw) throw new Error("Saved transcript empty");
 		const parsed = JSON.parse(raw) as unknown;
-		if (Array.isArray(parsed)) {
-			return parsed as LlmsProviders.MessageWithMetadata[];
-		}
-		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-			const messages = (parsed as { messages?: unknown }).messages;
-			if (Array.isArray(messages)) {
-				return messages as LlmsProviders.MessageWithMetadata[];
-			}
-		}
-		return [];
+		const messages = Array.isArray(parsed)
+			? parsed
+			: parsed && typeof parsed === "object"
+				? (parsed as { messages?: unknown }).messages
+				: undefined;
+		if (
+			!Array.isArray(messages) ||
+			(options.strict &&
+				messages.some(
+					(message) =>
+						!message ||
+						typeof message !== "object" ||
+						typeof message.role !== "string" ||
+						!(
+							typeof message.content === "string" ||
+							Array.isArray(message.content)
+						),
+				))
+		)
+			throw new Error("Saved transcript format invalid");
+		return messages as LlmsProviders.MessageWithMetadata[];
 	} catch {
+		if (options.strict)
+			throw new Error(
+				"Saved transcript unavailable or invalid; session was not replaced",
+			);
 		return [];
 	}
 }

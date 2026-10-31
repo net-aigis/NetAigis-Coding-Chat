@@ -131,6 +131,7 @@ import {
 import type { RuntimeBuilder } from "../orchestration/session-runtime";
 import { SessionRuntime } from "../orchestration/session-runtime-orchestrator";
 import { PendingPromptsController } from "../turn-queue/pending-prompt-service";
+import { hasUnresolvedCommandObservation } from "./command-observations";
 import { manifestToSessionRecord } from "./history";
 import { AgentEventBridge } from "./local/agent-event-bridge";
 import {
@@ -543,6 +544,82 @@ export class LocalRuntimeHost implements RuntimeHost {
 		);
 	}
 
+	/** A shared client cannot replace server-owned history by echoing an older transcript. */
+	async resumeSession(input: StartSessionInput): Promise<StartSessionResult> {
+		const id = input.config.sessionId?.trim();
+		if (!id || input.prompt?.trim())
+			throw new Error(
+				"Resume requires an existing session ID and no new prompt",
+			);
+		const live = this.sessions.get(id);
+		if (live) {
+			if (!live.artifacts) await this.ensureSessionPersisted(live);
+			return this.liveSessionStartResult(live);
+		}
+		const manifest = await this.readManifest(id);
+		if (!manifest) throw new SessionNotFoundError(id);
+		if (
+			![
+				"idle",
+				"completed",
+				"cancelled",
+				"aborted",
+				"error",
+				"failed",
+			].includes(manifest.status)
+		)
+			throw new Error(
+				"Saved process state is not confirmed quiescent; session was not replaced",
+			);
+		const initialMessages = await readPersistedMessagesFile(
+			manifest.messages_path,
+			{ strict: true },
+		);
+		if (hasUnresolvedCommandObservation(initialMessages))
+			throw new Error(
+				"Saved tool execution remains unconfirmed; session was not replaced",
+			);
+		return this.startResolvedSession(
+			{
+				...input,
+				prompt: undefined,
+				initialMessages,
+				initialCompactionState: undefined,
+				source: manifest.source,
+				interactive: manifest.interactive,
+				sessionMetadata: undefined,
+				config: {
+					...input.config,
+					// Connection material comes from this runtime's existing provider store,
+					// never from an older client's possibly unrelated model selection.
+					apiKey: undefined,
+					baseUrl: undefined,
+					headers: undefined,
+					providerConfig: undefined,
+					knownModels: undefined,
+					sessionId: id,
+					providerId: manifest.provider,
+					modelId: manifest.model,
+					enableTools: manifest.enable_tools,
+					enableSpawnAgent: manifest.enable_spawn,
+					enableAgentTeams: manifest.enable_teams,
+					teamName: manifest.team_name,
+					cwd: manifest.cwd,
+					workspaceRoot: manifest.workspace_root,
+					...(typeof manifest.metadata?.systemPrompt === "string"
+						? { systemPrompt: manifest.metadata.systemPrompt }
+						: {}),
+					...(["plan", "act", "yolo"].includes(String(manifest.metadata?.mode))
+						? { mode: manifest.metadata?.mode as "plan" | "act" | "yolo" }
+						: {}),
+				},
+			},
+			id,
+			true,
+			manifest,
+		);
+	}
+
 	private async liveSessionStartResult(
 		session: ActiveSession,
 	): Promise<StartSessionResult> {
@@ -626,9 +703,10 @@ export class LocalRuntimeHost implements RuntimeHost {
 		let resumedArtifacts: RootSessionArtifacts | undefined;
 		let resumedCompactionState: SessionCompactionState | undefined;
 		const isReadOnlyResumeStart =
-			wasSessionIdRequested &&
-			initialMessages.length > 0 &&
-			!startInput.prompt?.trim();
+			Boolean(existingResumeManifest) ||
+			(wasSessionIdRequested &&
+				initialMessages.length > 0 &&
+				!startInput.prompt?.trim());
 		if (isReadOnlyResumeStart) {
 			const existingManifest =
 				existingResumeManifest ??
@@ -1520,6 +1598,9 @@ export class LocalRuntimeHost implements RuntimeHost {
 		this.aggregateUsageBySession.clear();
 	}
 
+	isSessionResident(sessionId: string): boolean {
+		return this.sessions.has(sessionId.trim());
+	}
 	async getSession(sessionId: string): Promise<SessionRecord | undefined> {
 		const active = this.sessions.get(sessionId);
 		if (active) {
