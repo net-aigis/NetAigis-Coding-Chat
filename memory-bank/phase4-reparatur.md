@@ -2008,3 +2008,32 @@ File-/SQLite-Speicher mit den betroffenen IDs, unveränderter Daten bei fehlende
 IDs/kaputtem Index, nativer Erstellung, initialer Historie, Snapshotimport und
 Modellwahl-Persistenz. p4-file-index-types und p4-file-index-build Exit 0.
 Keine produktiven Sitzungsdateien geändert.
+
+### Tatsächlicher HTTPS-Browsertransport am vorhandenen Dashboard
+
+Auf 768dd645c fortgesetzt. Kein zweiter TLS-Server oder neuer Runtime-Speicher
+eingeführt: Das vorhandene Dashboard terminiert HTTPS/WSS bereits und verbindet
+sich im geprüften Aufbau über Loopback mit dem vorhandenen Core-Hub. Der fehlende
+Nachweis war die verschlüsselte Variante des existierenden Browser-Transporttests.
+Dieser Test ist nun zusätzlich auf HTTPS parametrisiert; die HTTP-Variante bleibt
+erhalten. Das vorhandene reine Fixture-Zertifikat wird wiederverwendet, keine
+produktiven Schlüssel erzeugt oder verändert.
+
+p4-browser-tls-shared-session und p4-browser-tls-shared-diagnostic jeweils 0/1
+ausgewählt, ein unbetroffener HTTP-Fall übersprungen. Ursache im Testclient:
+Vitest verwendet Node/undici WebSocket; die zunächst benutzte Bun-Option tls.ca
+setzt dessen Vertrauen nicht. Der Fehler wurde auf einen lesbaren Error abgebildet.
+Der Testworker verwendet jetzt Nodes eigenen temporären CA-Eintrag und setzt ihn
+im finally zurück. Keine deaktivierte Zertifikatsprüfung, kein System-Trust-Update.
+p4-browser-tls-shared-native-ca **1/1** bestanden, HTTP-Fall bewusst nicht erneut
+ausgeführt: tatsächlicher Bun-HTTPS-Server, zertifikatsgeprüfter WSS-Client,
+Actor-Anmeldung als jimmi, Schreibübergabe derselben ID, Ablehnung des alten
+Writers und laufender Turn trotz Browsertrennung; Historie/Urheberschaft erhalten.
+Agent/Modell sind weiterhin Fixtures, physisches Android noch nicht abgenommen.
+p4-browser-tls-shared-types Exit 0.
+
+Nach den neuen Core-Persistenz-/Resume-Korrekturen außerdem die betroffenen
+VS-Code-Adapter gegen das aktuelle Core-Bundle geprüft:
+p4-runtime-vscode-cross-regression **70/70** bestanden, einschließlich Terminal-
+Lifecycle, explizitem Shared-Zugang, Recall-Adapter und Prozessdarstellung. Keine
+erneute echte Sleep-Messreihe, Migration oder produktive Installation ausgeführt.

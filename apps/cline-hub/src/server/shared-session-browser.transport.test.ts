@@ -1,9 +1,11 @@
 /** Real Bun dashboard, browser-compatible WebSocket, SDK hub and client. Model execution is a fixture. */
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { createPrivateKey } from "node:crypto";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { getCACertificates, setDefaultCACertificates } from "node:tls";
 import { fileURLToPath } from "node:url";
 import type { SendSessionInput, SessionMessageAuthor } from "@cline/core";
 import { NodeHubClient, startHubWebSocketServer } from "@cline/core/hub";
@@ -14,9 +16,35 @@ const BrowserSocket = globalThis.WebSocket as unknown as new (
 	options: { headers: Record<string, string> },
 ) => WebSocket;
 
-it("the real browser server uses jimmi's credential for the existing session and survives that browser disconnecting during a turn", async () => {
+it.each([
+	"http",
+	"https",
+] as const)("%s browser transport uses jimmi's credential for the existing session and survives that browser disconnecting during a turn", async (protocol) => {
 	const root = await mkdtemp(join(tmpdir(), "cline-browser-actor-")),
 		id = "same-existing-session";
+	let certificate: Buffer | undefined;
+	const certFile = join(root, "fixture-cert.pem"),
+		keyFile = join(root, "fixture-key.pem");
+	if (protocol === "https") {
+		certificate = await readFile(
+			new URL(
+				"../../../../sdk/packages/core/src/hub/client/__fixtures__/localhost-cert.pem",
+				import.meta.url,
+			),
+		);
+		const key = createPrivateKey({
+			key: await readFile(
+				new URL(
+					"../../../../sdk/packages/core/src/hub/client/__fixtures__/localhost-key.der",
+					import.meta.url,
+				),
+			),
+			format: "der",
+			type: "pkcs8",
+		}).export({ format: "pem", type: "pkcs8" });
+		await writeFile(certFile, certificate, { mode: 0o600 });
+		await writeFile(keyFile, key, { mode: 0o600 });
+	}
 	const row = {
 		sessionId: id,
 		source: "vscode",
@@ -111,10 +139,10 @@ it("the real browser server uses jimmi's credential for the existing session and
 		env: {
 			...process.env,
 			HOST: "127.0.0.1",
-			CLINE_HUB_DASHBOARD_TLS_CERT_FILE: undefined,
-			CLINE_HUB_DASHBOARD_TLS_KEY_FILE: undefined,
+			CLINE_HUB_DASHBOARD_TLS_CERT_FILE: certificate ? certFile : undefined,
+			CLINE_HUB_DASHBOARD_TLS_KEY_FILE: certificate ? keyFile : undefined,
 			CLINE_HUB_DASHBOARD_PORT: String(port),
-			PUBLIC_URL: `http://127.0.0.1:${port}`,
+			PUBLIC_URL: `${protocol}://127.0.0.1:${port}`,
 			ROOM_SECRET: "",
 			WORKSPACE_ROOT: root,
 			CLINE_SHARED_SESSION_HUB_ENDPOINT: hub.url,
@@ -122,11 +150,14 @@ it("the real browser server uses jimmi's credential for the existing session and
 		},
 		stdio: ["ignore", "pipe", "pipe"],
 	});
-	let output = "";
+	let output = "",
+		stderr = "";
 	child.stdout.on("data", (chunk) => {
 		output += String(chunk);
 	});
-	child.stderr.on("data", () => {});
+	child.stderr.on("data", (chunk) => {
+		stderr += String(chunk);
+	});
 	const vscode = new NodeHubClient({
 		url: hub.url,
 		clientId: "vscode",
@@ -134,25 +165,48 @@ it("the real browser server uses jimmi's credential for the existing session and
 		workspaceRoot: root,
 	});
 	let browser: WebSocket | undefined, resolveRun: (() => void) | undefined;
+	let previousCas: string[] | undefined;
 	try {
 		await vi.waitFor(
 			() => {
-				expect(child.exitCode).toBeNull();
+				expect(child.exitCode, stderr).toBeNull();
 				expect(output).toContain("DASHBOARD_READY");
 			},
 			{ timeout: 15_000 },
 		);
 		await vscode.command("session.control.claim", { expectedRevision: 0 }, id);
-		browser = new BrowserSocket(`ws://127.0.0.1:${port}/browser`, {
-			headers: { Origin: `http://127.0.0.1:${port}` },
-		});
+		if (certificate) {
+			// The Vitest worker uses Node's browser-compatible WebSocket, not Bun's
+			// constructor. Trust the existing fixture CA only in this worker, and
+			// restore it below; no disabled TLS validation or system trust change.
+			previousCas = getCACertificates();
+			setDefaultCACertificates([...previousCas, certificate.toString("utf8")]);
+		}
+		browser = new BrowserSocket(
+			`${certificate ? "wss" : "ws"}://127.0.0.1:${port}/browser`,
+			{
+				headers: { Origin: `${protocol}://127.0.0.1:${port}` },
+			},
+		);
 		const frames: Array<Record<string, unknown>> = [];
 		browser.addEventListener("message", (event) =>
 			frames.push(JSON.parse(String(event.data))),
 		);
 		await new Promise<void>((resolve, reject) => {
 			browser!.addEventListener("open", () => resolve(), { once: true });
-			browser!.addEventListener("error", reject, { once: true });
+			browser!.addEventListener(
+				"error",
+				(event) =>
+					reject(
+						new Error(
+							String(
+								(event as ErrorEvent).message ??
+									"Browser TLS/WebSocket connection failed",
+							),
+						),
+					),
+				{ once: true },
+			);
 		});
 		const send = (value: unknown) => browser!.send(JSON.stringify(value));
 		send({ type: "attachSession", sessionId: id });
@@ -228,6 +282,7 @@ it("the real browser server uses jimmi's credential for the existing session and
 		expect(messages[0].content).toBe("Original task remains");
 		expect(messages.at(-1)?.metadata?.author?.actorId).toBe("jimmi");
 	} finally {
+		if (previousCas) setDefaultCACertificates(previousCas);
 		resolveRun?.();
 		browser?.close();
 		vscode.close();
