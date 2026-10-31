@@ -1583,3 +1583,18 @@ Prüfung ist nun auf ausdrücklich abgewiesene Ersetzung erweitert.
 p4-explicit-runtime-types und p4-explicit-runtime-core-build Exit 0.
 p4-explicit-runtime-app 13/13, p4-explicit-runtime-app-types Exit 0. Keine produktive
 Runtime gestartet, ersetzt oder neu gestartet; keine Endpunkte verändert.
+
+### Ältere Hub-Antworten erfinden weder Abschluss noch Exitcode
+
+Auf c749f9a77 fortgesetzt. p4-legacy-lifecycle-red: 2/8 bestanden, sechs Fehler
+belegen idle→completed, pending→running, künstliches exitCode 0/1 bei completed/
+failed sowie fehlende/ungültige Statusangabe→running. 45 unbetroffene übersprungen.
+Die Legacy-Projektion bewahrt nun idle/running/pending getrennt, schreibt für
+nichtterminale Sitzungen kein endedAt und leitet keinen Prozess-Exitcode aus
+einem Sitzungslabel ab. Fehlender/unbekannter Status wird zurückgewiesen.
+Bestätigte vollständige Snapshots behalten ihre tatsächlichen Exitdaten.
+
+p4-legacy-lifecycle 53/53 bestanden, einschließlich vorheriger vollständiger
+Snapshot-/Runtimeverträge; p4-legacy-lifecycle-types Exit 0. Keine erneute
+Sleep-Messreihe und kein Eingriff in produktive Prozesse. SDK-Bundle wird mit
+dem nächsten geprüften Core-Schritt aktualisiert; diese Tests laufen am Source.

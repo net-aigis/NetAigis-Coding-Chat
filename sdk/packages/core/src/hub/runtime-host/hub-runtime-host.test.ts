@@ -83,6 +83,69 @@ function agentDoneEvents(events: unknown[]) {
 }
 
 describe("HubRuntimeHost", () => {
+	it.each([
+		["idle", "idle"],
+		["running", "running"],
+		["pending", "pending"],
+		["completed", "completed"],
+		["failed", "failed"],
+		["aborted", "cancelled"],
+	] as const)("preserves legacy %s lifecycle without inventing a process exit", async (status, expected) => {
+		const session = {
+			sessionId: "legacy-session",
+			status,
+			createdAt: 1_700_000_000_000,
+			updatedAt: 1_700_000_001_000,
+			workspaceRoot: "/fixture/workspace",
+			cwd: "/fixture/workspace",
+		};
+		commandMock.mockResolvedValue({
+			ok: true,
+			payload: { session, sessions: [session] },
+		});
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
+		try {
+			for (const record of [
+				await host.getSession(session.sessionId),
+				...(await host.listSessions()),
+			]) {
+				expect(record?.status).toBe(expected);
+				expect(record?.exitCode).toBeUndefined();
+				if (["idle", "running", "pending"].includes(expected))
+					expect(record?.endedAt).toBeUndefined();
+			}
+		} finally {
+			await host.dispose();
+		}
+	});
+	it.each([
+		undefined,
+		"invalid",
+	])("refuses an unconfirmed legacy lifecycle %s instead of claiming running", async (status) => {
+		const session = {
+			sessionId: "legacy-session",
+			status,
+			createdAt: Date.now(),
+			updatedAt: Date.now(),
+		};
+		commandMock.mockResolvedValue({
+			ok: true,
+			payload: { session, sessions: [session] },
+		});
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
+		try {
+			await expect(host.getSession(session.sessionId)).rejects.toThrow(
+				"unconfirmed session status",
+			);
+			await expect(host.listSessions()).rejects.toThrow(
+				"unconfirmed session status",
+			);
+		} finally {
+			await host.dispose();
+		}
+	});
 	it("does not claim a saved running session is still resident after a runtime loss", async () => {
 		actorMock.mockReturnValue("Friseer");
 		const snapshot = createCoreSessionSnapshot({

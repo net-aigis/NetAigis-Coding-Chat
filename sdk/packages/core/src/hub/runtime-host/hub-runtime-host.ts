@@ -618,18 +618,20 @@ function mapStatus(
 ): SessionStatus {
 	switch (status) {
 		case "idle":
+		case "running":
+		case "pending":
 		case "completed":
-			return "completed";
 		case "failed":
-			return "failed";
+			return status;
 		case "aborted":
 			return "cancelled";
 		default:
-			return "running";
+			throw new Error("Hub returned an unconfirmed session status");
 	}
 }
 
 function toSessionRecord(session: HubSessionRecord): SessionRecord {
+	const status = mapStatus(session.status);
 	const metadata =
 		session.metadata && typeof session.metadata === "object"
 			? JSON.parse(JSON.stringify(session.metadata))
@@ -659,17 +661,12 @@ function toSessionRecord(session: HubSessionRecord): SessionRecord {
 				: SessionSource.CORE,
 		pid: typeof metadata?.pid === "number" ? metadata.pid : undefined,
 		startedAt: new Date(session.createdAt).toISOString(),
-		endedAt:
-			mapStatus(session.status) === "running"
-				? undefined
-				: new Date(session.updatedAt).toISOString(),
-		exitCode:
-			mapStatus(session.status) === "completed"
-				? 0
-				: mapStatus(session.status) === "failed"
-					? 1
-					: undefined,
-		status: mapStatus(session.status),
+		endedAt: isNonTerminalSessionStatus(status)
+			? undefined
+			: new Date(session.updatedAt).toISOString(),
+		// A legacy lifecycle label carries no confirmed OS process exit code.
+		exitCode: undefined,
+		status,
 		interactive: metadata?.interactive === true,
 		provider:
 			typeof metadata?.provider === "string" ? metadata.provider : "hub",

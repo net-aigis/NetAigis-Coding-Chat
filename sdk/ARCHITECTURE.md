@@ -1709,3 +1709,8 @@ adapter disable local recovery at both transport and session-create layers;
 the runtime factory enforces the same rule for explicit hub endpoints, including
 auto mode. Same-endpoint subscription reconnect remains enabled. Managed local
 discovery retains its existing recovery behavior when no endpoint was selected.
+
+Legacy Hub replies preserve idle/running/pending lifecycle states separately.
+Lifecycle labels alone cannot supply an OS exit code; only richer confirmed
+snapshot/process evidence can carry it. Unknown legacy lifecycle labels fail
+validation rather than being projected as running or completed.
