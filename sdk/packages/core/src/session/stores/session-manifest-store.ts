@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import {
 	appendFileSync,
 	existsSync,
+	lstatSync,
 	mkdirSync,
 	readFileSync,
 	writeFileSync,
@@ -31,6 +33,7 @@ import {
 	SessionManifestSchema,
 } from "../models/session-manifest";
 import type { SessionRow } from "../models/session-row";
+import { SNAPSHOT_IMPORT_METADATA_KEY } from "../snapshot-import-state";
 import { writeFileAtomic } from "./atomic-file";
 
 function isNotFoundError(error: unknown): boolean {
@@ -88,6 +91,44 @@ function sessionRowFromManifest(
 
 export class SessionManifestStore {
 	readonly artifacts: SessionArtifacts;
+	private readonly initialHistoryReceipts = new Map<
+		string,
+		{ inputDigest: string; contentsDigest: string; path: string }
+	>();
+
+	verifyInitialHistoryWrite(sessionId: string, inputDigest: string): string {
+		const receipt = this.initialHistoryReceipts.get(sessionId);
+		const path = this.artifacts.sessionMessagesPath(sessionId);
+		if (
+			!receipt ||
+			receipt.inputDigest !== inputDigest ||
+			receipt.path !== path
+		)
+			throw new Error(
+				"Initial history write was not confirmed; target retained",
+			);
+		for (const target of [
+			this.artifacts.sessionArtifactsDir(sessionId),
+			this.artifacts.sessionManifestPath(sessionId),
+			path,
+		])
+			if (lstatSync(target).isSymbolicLink())
+				throw new Error(
+					"Initial history target was redirected; target retained",
+				);
+		const contents = readFileSync(path, "utf8");
+		if (
+			createHash("sha256").update(contents).digest("hex") !==
+			receipt.contentsDigest
+		)
+			throw new Error(
+				"Initial history changed after its write; target retained",
+			);
+		return contents;
+	}
+	forgetInitialHistoryWrite(sessionId: string): void {
+		this.initialHistoryReceipts.delete(sessionId);
+	}
 
 	constructor(
 		private readonly adapter: SessionPersistenceAdapter,
@@ -231,8 +272,24 @@ export class SessionManifestStore {
 		sessionId: string,
 		messages: LlmsProviders.MessageWithMetadata[],
 		systemPrompt?: string,
+		resolveInputDigest?: () => string,
 	): Promise<void> {
 		const row = await this.resolveSessionRow(sessionId);
+		const marker = row.metadata?.[SNAPSHOT_IMPORT_METADATA_KEY] as
+			| Record<string, unknown>
+			| undefined;
+		const initialHistory =
+			marker?.state === "staging" &&
+			(marker.source as Record<string, unknown> | undefined)?.kind ===
+				"initial-history";
+		const inputDigest = initialHistory
+			? (resolveInputDigest?.() ??
+				createHash("sha256").update(JSON.stringify(messages)).digest("hex"))
+			: undefined;
+		if (initialHistory && inputDigest !== marker?.digest)
+			throw new Error(
+				"Initial history does not match its accepted input; target retained",
+			);
 		const path =
 			typeof row.messagesPath === "string" && row.messagesPath.trim().length > 0
 				? row.messagesPath
@@ -246,6 +303,12 @@ export class SessionManifestStore {
 		const contents = `${JSON.stringify(payload, null, 2)}\n`;
 		mkdirSync(dirname(path), { recursive: true });
 		writeFileSync(path, contents, "utf8");
+		if (inputDigest)
+			this.initialHistoryReceipts.set(sessionId, {
+				inputDigest,
+				path,
+				contentsDigest: createHash("sha256").update(contents).digest("hex"),
+			});
 		if (!this.messagesArtifactUploader) {
 			return;
 		}

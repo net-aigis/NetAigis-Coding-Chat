@@ -1740,3 +1740,13 @@ not echoed client data. Starting an existing ID with a new prompt is refused;
 resume and new input remain separate. A corrupt or unconfirmed saved state is
 not replaced by the client's copy. Seeded creation remains available for an ID
 without native saved history, with exclusive native admission.
+
+Fresh initial-history materialization uses the existing protected import fence
+while its transcript is written and published. Accepted input and exact stored
+bytes have separate digest receipts because normal persistence assigns missing
+message IDs. Receipts are ephemeral write acknowledgements in the existing
+manifest store, not a parallel journal. Symlinks, changed bytes, changed paths
+and missing acknowledgements prevent publication. Manifest commits before the
+index revision releases the fence. Failed starts release only their new agent,
+runtime and sandbox, retain source/partial artifacts and surface the original
+error without a fabricated successful start or automatic resume of empty history.

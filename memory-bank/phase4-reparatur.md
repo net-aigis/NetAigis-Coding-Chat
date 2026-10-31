@@ -1764,3 +1764,53 @@ dies sind Adapter-/Fixturetests, keine reale Geräteabnahme. Originalbranch und
 Originalarbeitsstand erneut nur auf Unverändertheit geprüft: coding-agent-v4
 weiter 624c2cd6661e100680d8b61daa3a3447f4708536, Status-SHA256 mit allen
 unversionierten Dateien unverändert aff4aedbf69ef2f24960a735b51663df55a0a961ef0d2fb8e910293e010c9fbb.
+
+### Fehlgeschlagene Übernahme von Anfangshistorie ist kein erfolgreicher Start
+
+Auf 8fb742c6e fortgesetzt. p4-initial-history-failure-red 0/2 (zwei bestehende
+übersprungen) reproduziert in File und SQLite: ein fehlgeschlagener initialer
+Transkript-Schreibzugriff wurde nur geloggt und start bestätigte trotzdem Erfolg.
+Initialhistorie verwendet nun die vorhandene geschützte Import-Zwischenstufe mit
+source.kind=initial-history; keine neue Datenbank, Outbox oder Speicherarchitektur.
+Ein Start bestätigt erst nach erfolgreichem Schreiben und Freigeben der Historie.
+Bei Fehler werden nur neu erzeugter Agent, Runtime und Sandbox freigegeben;
+die ursprüngliche Fehlermeldung bleibt erhalten. Keine Ziel- oder Quelldateien
+gelöscht, keine Modellturns und kein künstlicher Completed-/Exitcode-Abschluss.
+Unvollständige Ziele bleiben inspizierbar und gegen Start/Resume/Schreibübergabe
+gesperrt. Das ist keine behauptete automatische Reparatur eines IO-Fehlers.
+
+p4-initial-history-failure und p4-initial-history-publication jeweils 107/113:
+die neuen nativen Fehlerfälle bestanden; sechs eng begrenzte Mock-Backends
+kannten die erforderliche Freigabequittung noch nicht. Sie geben jetzt diesen
+API-Vertrag zurück; keine Assertion entfernt oder übersprungen. Native Freigabe
+ist zusätzlich mit tatsächlichen File-/SQLite-Speichern geprüft, nicht aus
+Mock-Erfolgen abgeleitet. p4-initial-history-publication-contract 140/140 bestanden.
+Die endgültige Freigabe schreibt zuerst atomar das Manifest und danach die
+Indexrevision. Ein absichtlich fehlendes Index-Ack lässt den Index gesperrt,
+auch wenn das Manifest bereits vollständig geschrieben ist; kaltes Resume
+bleibt dann vor Agentanlage blockiert.
+
+p4-initial-history-integrity-red 0/2 (sechs übersprungen) zeigte zusätzlich:
+eine zwischen Schreiben und Freigabe durch Symlink oder andere gleich lange
+Historie ersetzte Datei hätte die Freigabe passieren können. Der vorhandene
+ManifestStore führt jetzt ausschließlich für initiale Zwischenstufen eine
+flüchtige Schreibquittung mit SHA256 von akzeptierter Eingabe und tatsächlich
+geschriebenen Bytes. Eigener reservierter Pfad, Identität, Symlinks und geänderte
+Bytes werden vor Freigabe geprüft. Die Quittung wird danach entfernt. Vorige
+vollständige Import-Herkunft wird bei normalem Abschluss wiederhergestellt;
+der vorübergehende Marker bleibt nicht als neue erfundene Historie zurück.
+
+p4-initial-history-integrity zunächst 161/162: der echte Agent-Startup-Fall ohne
+Nachrichten-IDs machte die bestehende Normalisierung sichtbar. Der Native-Wrapper
+übergibt jetzt die lazily berechnete Eingabequittung vor dieser Normalisierung;
+Dateiquittung bleibt an den tatsächlich geschriebenen normalisierten Bytes.
+Keine Abschwächung des Hashvergleichs und kein zusätzlicher Hashaufwand bei
+gewöhnlichen späteren Nachrichtenwrites. Initiale JSON-Daten werden vor den
+asynchronen Schreibschritten separat eingefroren. p4-initial-history-integrity-final
+**162/162** bestanden, p4-initial-history-types und p4-initial-history-core-build
+Exit 0. p4-initial-history-shared-contract **9/9** bestanden über tatsächliche
+lokale WebSocket-Transporte (Resume, Recall-Recovery/Archivierung, gegenseitige
+Live-Übernahme und Actor-Bindung). Recall-HTTP und Agenten bleiben Fixtures;
+kein Acer-/Android-/Modelllauf wird daraus abgeleitet. Authentifizierte Remote-
+Neuanlage lehnt fremde initialMessages weiterhin mit session_import_required ab;
+der vorhandene Import-/Provenienzvertrag wurde nicht aufgeweicht.

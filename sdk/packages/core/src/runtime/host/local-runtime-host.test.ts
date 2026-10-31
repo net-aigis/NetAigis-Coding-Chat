@@ -1497,6 +1497,9 @@ describe("LocalRuntimeHost", () => {
 				manifest,
 			}),
 			persistSessionMessages: vi.fn(),
+			commitInitialHistory: vi
+				.fn()
+				.mockResolvedValue({ updated: true, manifest }),
 			updateSessionStatus: vi.fn().mockResolvedValue({
 				updated: true,
 				endedAt: "2026-01-01T00:00:05.000Z",
@@ -2932,6 +2935,9 @@ describe("LocalRuntimeHost", () => {
 				manifest,
 			}),
 			persistSessionMessages: vi.fn(),
+			commitInitialHistory: vi
+				.fn()
+				.mockResolvedValue({ updated: true, manifest }),
 			updateSession,
 			updateSessionStatus: vi.fn().mockResolvedValue({ updated: true }),
 			writeSessionManifest: vi.fn(),
@@ -6806,6 +6812,9 @@ describe("LocalRuntimeHost", () => {
 				manifest,
 			}),
 			persistSessionMessages: vi.fn(),
+			commitInitialHistory: vi
+				.fn()
+				.mockResolvedValue({ updated: true, manifest }),
 			persistSessionCompactionState: vi.fn(),
 			updateSessionStatus: vi.fn().mockResolvedValue({ updated: true }),
 			writeSessionManifest: vi.fn(),
@@ -6901,6 +6910,9 @@ describe("LocalRuntimeHost", () => {
 				manifest,
 			}),
 			persistSessionMessages: vi.fn(),
+			commitInitialHistory: vi
+				.fn()
+				.mockResolvedValue({ updated: true, manifest }),
 			persistSessionCompactionState: vi.fn(),
 			updateSessionStatus: vi.fn().mockResolvedValue({ updated: true }),
 			writeSessionManifest: vi.fn(),
@@ -7302,6 +7314,9 @@ describe("LocalRuntimeHost", () => {
 					manifest,
 				}),
 				persistSessionMessages: vi.fn(),
+				commitInitialHistory: vi
+					.fn()
+					.mockResolvedValue({ updated: true, manifest }),
 				persistSessionCompactionState: vi.fn(),
 				updateSessionStatus: vi.fn().mockResolvedValue({ updated: true }),
 				writeSessionManifest: vi.fn(),
@@ -7468,6 +7483,9 @@ describe("LocalRuntimeHost", () => {
 				manifest,
 			}),
 			persistSessionMessages: vi.fn(),
+			commitInitialHistory: vi
+				.fn()
+				.mockResolvedValue({ updated: true, manifest }),
 			persistSessionCompactionState: vi.fn(),
 			updateSessionStatus: vi.fn().mockResolvedValue({ updated: true }),
 			writeSessionManifest: vi.fn(),

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { lstatSync, mkdirSync, rmdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type * as LlmsProviders from "@cline/llms";
@@ -261,6 +262,78 @@ export class UnifiedSessionPersistenceService {
 		return { manifestPath, messagesPath, compactionPath, manifest };
 	}
 
+	/** Publish initial history only after files are durable; a staged index blocks admission. */
+	async commitInitialHistory(input: {
+		sessionId: string;
+		digest: string;
+	}): Promise<{
+		updated: boolean;
+		manifest?: import("../models/session-manifest").SessionManifest;
+	}> {
+		assertSafeSessionArtifactId(input.sessionId);
+		const row = await this.adapter.getSession(input.sessionId);
+		const current = this.manifestStore.readManifestFile(input.sessionId);
+		if (!row || !current.manifest) return { updated: false };
+		const marker = row.metadata?.[SNAPSHOT_IMPORT_METADATA_KEY] as
+			| Record<string, unknown>
+			| undefined;
+		const diskMarker = current.manifest.metadata?.[
+			SNAPSHOT_IMPORT_METADATA_KEY
+		] as Record<string, unknown> | undefined;
+		if (
+			marker?.version !== 1 ||
+			marker.state !== "staging" ||
+			marker.digest !== input.digest ||
+			(marker.source as Record<string, unknown> | undefined)?.kind !==
+				"initial-history" ||
+			JSON.stringify(diskMarker) !== JSON.stringify(marker)
+		)
+			throw new Error("Initial-history reservation changed; target retained");
+		const expectedPath = this.manifestStore.artifacts.sessionMessagesPath(
+			input.sessionId,
+		);
+		if (
+			current.manifest.session_id !== input.sessionId ||
+			current.manifest.messages_path !== expectedPath ||
+			row.messagesPath !== expectedPath
+		)
+			throw new Error("Initial history path changed; target retained");
+		const payload = JSON.parse(
+			this.manifestStore.verifyInitialHistoryWrite(
+				input.sessionId,
+				input.digest,
+			),
+		) as { messages?: unknown[] };
+		if (
+			!Array.isArray(payload.messages) ||
+			payload.messages.length !== marker.messageCount ||
+			!payload.messages.length
+		)
+			throw new Error("Initial history is incomplete; target retained");
+		const metadata = { ...row.metadata, ...current.manifest.metadata };
+		if (marker.previousImport === undefined)
+			delete metadata[SNAPSHOT_IMPORT_METADATA_KEY];
+		else metadata[SNAPSHOT_IMPORT_METADATA_KEY] = marker.previousImport;
+		const manifest = { ...current.manifest, metadata };
+		// The still-staged row fences a crash or failed revision after this atomic file commit.
+		await writeFileAtomic(
+			current.path,
+			`${JSON.stringify(manifest, null, 2)}\n`,
+			0o600,
+		);
+		const result = await this.adapter.updateSession({
+			sessionId: row.sessionId,
+			metadata,
+			expectedStatusLock: row.statusLock,
+		});
+		if (!result.updated)
+			throw new Error(
+				"Initial history index commit was not confirmed; target retained",
+			);
+		this.manifestStore.forgetInitialHistoryWrite(input.sessionId);
+		return { updated: true, manifest };
+	}
+
 	async updateSessionStatus(
 		sessionId: string,
 		status: SessionStatus,
@@ -458,6 +531,7 @@ export class UnifiedSessionPersistenceService {
 			sessionId,
 			normalizedMessages,
 			systemPrompt,
+			() => createHash("sha256").update(JSON.stringify(messages)).digest("hex"),
 		);
 	}
 

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
@@ -111,7 +112,10 @@ import type { RootSessionArtifacts } from "../../session/services/session-servic
 import type { NativeSnapshotImportInput } from "../../session/services/snapshot-import";
 import { createCoreSessionSnapshot } from "../../session/session-snapshot";
 import { SessionVersioningService } from "../../session/session-versioning-service";
-import { assertSnapshotImportComplete } from "../../session/snapshot-import-state";
+import {
+	assertSnapshotImportComplete,
+	SNAPSHOT_IMPORT_METADATA_KEY,
+} from "../../session/snapshot-import-state";
 import {
 	buildTeamRunContinuationPrompt,
 	formatModePrompt,
@@ -1247,13 +1251,44 @@ export class LocalRuntimeHost implements RuntimeHost {
 		// conversation. Brand-new empty sessions stay lazy.
 		if (initialMessages.length > 0 && !resumedArtifacts) {
 			try {
+				assertSnapshotImportComplete(active.sessionMetadata);
+				const initialHistoryJson = JSON.stringify(initialMessages);
+				const initialHistory = JSON.parse(
+					initialHistoryJson,
+				) as LlmsProviders.MessageWithMetadata[];
+				const previousImport =
+					active.sessionMetadata?.[SNAPSHOT_IMPORT_METADATA_KEY];
+				const staging = {
+					version: 1,
+					state: "staging",
+					source: { kind: "initial-history" },
+					messageCount: initialMessages.length,
+					digest: createHash("sha256").update(initialHistoryJson).digest("hex"),
+					...(previousImport !== undefined ? { previousImport } : {}),
+				};
+				active.sessionMetadata = {
+					...active.sessionMetadata,
+					[SNAPSHOT_IMPORT_METADATA_KEY]: staging,
+				};
 				await this.ensureSessionPersisted(active);
 				await this.invoke<void>(
 					"persistSessionMessages",
 					sessionId,
-					initialMessages,
+					initialHistory,
 					active.config.systemPrompt,
 				);
+				const published = await this.queueManifestMutation(sessionId, () =>
+					this.invoke<{ updated: boolean; manifest?: SessionManifest }>(
+						"commitInitialHistory",
+						{ sessionId, digest: staging.digest },
+					),
+				);
+				if (!published.updated || !published.manifest)
+					throw new Error(
+						"Initial history publication was not confirmed; target retained",
+					);
+				active.sessionMetadata = published.manifest.metadata;
+				active.artifacts!.manifest = published.manifest;
 			} catch (error) {
 				active.config.logger?.error?.(
 					"Failed to persist seeded session messages at start",
@@ -1263,14 +1298,36 @@ export class LocalRuntimeHost implements RuntimeHost {
 					component: "core",
 					operation: "session.persist_seeded_messages",
 					error,
-					severity: "warn",
-					handled: true,
+					severity: "error",
+					handled: false,
 					context: {
 						sessionId,
 						providerId: active.config.providerId,
 						modelId: active.config.modelId,
 					},
 				});
+				// No turn has started. Release only this newly constructed runtime;
+				// retain source/partial artifacts and never finalize or delete another target.
+				if (this.sessions.get(sessionId) === active) {
+					this.sessions.delete(sessionId);
+					this.usageBySession.delete(sessionId);
+					this.aggregateUsageBySession.delete(sessionId);
+				}
+				for (const release of [
+					() => active.agent.shutdown("initial_history_persistence_failed"),
+					() => active.runtime.shutdown("initial_history_persistence_failed"),
+					() => active.pluginSandboxShutdown?.(),
+				]) {
+					try {
+						await release();
+					} catch (cleanupError) {
+						active.config.logger?.error?.(
+							"Initial-history runtime cleanup failed",
+							{ sessionId, cleanupError },
+						);
+					}
+				}
+				throw error;
 			}
 		}
 		this.emitStatus(sessionId, active.status);
