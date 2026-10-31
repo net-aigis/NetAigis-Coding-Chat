@@ -1002,11 +1002,11 @@ export {
 	type BuiltinToolAvailabilityContext,
 	CommandAbortError,
 	CommandCompletionUnknownError,
-	CommandNotStartedError,
-	CommandTimeoutError,
 	CommandExitError,
+	CommandNotStartedError,
 	CommandSpawnError,
 	CommandTerminationError,
+	CommandTimeoutError,
 	type CreateBuiltinToolsOptions,
 	type CreateDefaultToolsOptions,
 	computePatchChanges,
@@ -1053,6 +1053,7 @@ export {
 	truncateCommandOutput,
 } from "./extensions/tools";
 export { createHubPluginCommandsApi } from "./hub/client/plugin-commands";
+export type { SessionWriterControl } from "./hub/session-control";
 export * from "./remote/remote-environments";
 export { ensureLoginShellPath } from "./remote/shell-path";
 export { isClineAccountFeatureEnabled } from "./services/feature-flags/cline-account-feature-flags";
@@ -1195,6 +1196,7 @@ export {
 export type {
 	SessionHistoryMetadata,
 	SessionHistoryRecord,
+	SessionMessageAuthor,
 	SessionRecord,
 	SessionRef,
 } from "./types/sessions";

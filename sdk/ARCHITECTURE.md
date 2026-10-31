@@ -1388,3 +1388,50 @@ The VS Code host can select the existing SDK remote Hub transport using an expli
 `session.messages` keeps its original persisted-history contract. The additive `live: true` request reads the runtime's canonical in-memory conversation and acknowledges `view: live`; a runtime without this capability refuses it. `HubRuntimeHost.readLiveSessionMessages` subscribes before reading, validates the acknowledgement and session ID, and rejects an older Hub that ignores the request. This joins the stream without replacing the session or changing the tool capability owner. The browser hydrates the existing ID only after successful reads, retains its previous selection on failure, and fences superseded selections. The existing UI merges live updates arriving during hydration.
 
 Transport tests use two actual authenticated loopback WebSocket connections and a fixture execution runtime. They verify one resident session, shared messages/status events, unchanged authorship metadata and survival of a peer disconnect. This is not a physical Android/local-125B acceptance test. Actor-authenticated writer transfer, safe recovery of older local sessions into a shared runtime and deployment remain separate unfinished work on the existing components; no new transcript database or AI monitoring service is introduced.
+
+
+### Fork: authenticated session writer control
+
+An explicitly configured Hub actor registry binds separate WebSocket credentials
+server-side to the original actor IDs. Embedded hosts supply `actorTokens`; the
+detached daemon can read the operator-selected `CLINE_HUB_ACTOR_TOKENS_FILE`.
+The file must be a private regular file owned by the process user, not a symlink.
+No default credential or production path is created. Omission preserves existing
+local Hub behavior. In actor mode a discovery/master token is an observer, not a
+writer. Client-supplied actor metadata cannot authenticate a connection.
+
+Writer state lives in the existing session metadata as `sharedSessionControl`
+(version, revision, actor/client/connection, last change). The additive
+`session.control.get/claim/release` commands and `Core.sessionControl` facade
+use explicit expected revisions. A per-session critical section admits at most
+one claim for a revision and fences in-flight writes before the runtime marks
+itself busy. Handover requires an idle runtime, no pending prompts and no
+unresolved tool calls or explicitly unknown/unconfirmed command observations.
+Disconnect never releases a writer or invents a process completion. Reconnecting
+clients must explicitly claim a quiescent session again. Reserved capability
+owner metadata remains bound to the original execution client/actor.
+
+Authenticated registration is checked before accepting the client ID; concurrent
+registrations are serialized, duplicate connected execution IDs are refused, and
+late registration after socket close is cleaned up. Actor-mode subscriptions
+require the registered connection's client ID. An actor cannot impersonate the
+execution owner to supply another client's capability/approval responses.
+Unsupported actor-mode commands fail closed instead of inheriting the local
+Hub's global mutation privileges.
+
+The server mints request provenance outside client JSON, then passes it through
+the existing RuntimeHost, pending prompt queue, steering callback and SessionRuntime
+to canonical message metadata. Original authors are not relabelled during
+handover. Legacy unsigned messages remain unchanged. Identical text from distinct
+authenticated requests is not collapsed across authors. Runs and control changes
+are not automatically resent after uncertain dispatch. Control replies must
+confirm the requested session and valid ownership data; an absent reply cannot
+mean an unowned session. An explicit metadata write materializes a lazy session
+in the existing store before acknowledgement, and persistence errors do not
+acknowledge transfer.
+
+This implements the runtime authority boundary. Browser login/control UX,
+non-destructive attachment of older local history, cross-client Recall delivery
+and real VS Code/Android/Acer-model acceptance remain separate unfinished work.
+The tests exercise actual loopback WebSockets with a fixture execution runtime;
+they do not establish productive device or model acceptance.

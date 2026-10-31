@@ -983,12 +983,14 @@ export class LocalRuntimeHost implements RuntimeHost {
 			completionPolicy: runtime.completionPolicy,
 			consumePendingUserMessage: () => {
 				const entry = this.pendingPromptsController.consumeSteer(sessionId);
-				return entry
-					? formatModePrompt(
-							entry.prompt,
-							entry.mode ?? configWithProvider.mode,
-						)
-					: undefined;
+				if (!entry) return undefined;
+				const text = formatModePrompt(
+					entry.prompt,
+					entry.mode ?? configWithProvider.mode,
+				);
+				return entry.author
+					? { text, metadata: { author: structuredClone(entry.author) } }
+					: text;
 			},
 			logger: runtime.logger ?? configWithProvider.logger,
 			extensionContext: configWithProvider.extensionContext,
@@ -1303,6 +1305,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 				delivery,
 				userImages: input.userImages,
 				userFiles: input.userFiles,
+				...(input.author ? { author: structuredClone(input.author) } : {}),
 			});
 			return undefined;
 		}
@@ -1312,6 +1315,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 				mode: input.mode,
 				userImages: input.userImages,
 				userFiles: input.userFiles,
+				...(input.author ? { author: structuredClone(input.author) } : {}),
 			});
 			if (!session.interactive) {
 				await this.finalizeSingleRun(session, result.finishReason);
@@ -1568,6 +1572,13 @@ export class LocalRuntimeHost implements RuntimeHost {
 			title?: string | null;
 		},
 	): Promise<{ updated: boolean }> {
+		const resident = this.sessions.get(sessionId.trim());
+		if (resident && !resident.artifacts) {
+			// Explicit metadata updates (including writer transfer) need the
+			// existing persistent row before acknowledging success. A new empty
+			// session otherwise remains lazy until its first user turn.
+			await this.ensureSessionPersisted(resident);
+		}
 		const result = await this.invokeOptionalValue<{
 			updated: boolean;
 			metadata?: SessionManifest["metadata"] | null;
@@ -1992,6 +2003,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 			mode?: SendSessionInput["mode"];
 			userImages?: string[];
 			userFiles?: string[];
+			author?: SendSessionInput["author"];
 		},
 	): Promise<AgentResult> {
 		// An abort that arrived between turns targeted a run that had already
@@ -2037,6 +2049,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 				prompt,
 				preparedInput.userImages,
 				preparedInput.userFiles,
+				input.author,
 			);
 
 			while (shouldAutoContinueTeamRuns(session, result.finishReason)) {
@@ -2168,6 +2181,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 		prompt: string,
 		userImages?: string[],
 		userFiles?: string[],
+		author?: SendSessionInput["author"],
 	): Promise<AgentResult> {
 		const shouldContinue =
 			session.started || session.agent.getMessages().length > 0;
@@ -2199,9 +2213,13 @@ export class LocalRuntimeHost implements RuntimeHost {
 
 		try {
 			const runFn = () => {
-				const run = shouldContinue
-					? session.agent.continue(prompt, userImages, userFiles)
-					: session.agent.run(prompt, userImages, userFiles);
+				const run = author
+					? shouldContinue
+						? session.agent.continue(prompt, userImages, userFiles, author)
+						: session.agent.run(prompt, userImages, userFiles, author)
+					: shouldContinue
+						? session.agent.continue(prompt, userImages, userFiles)
+						: session.agent.run(prompt, userImages, userFiles);
 				// The agent drops abort() while it has no run in flight, so a Stop
 				// that landed during this turn's preparation (persistence, git
 				// metadata, credential sync) never reached it and the turn would

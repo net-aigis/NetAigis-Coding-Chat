@@ -73,6 +73,7 @@ export type ActiveSession = {
 };
 
 export type PendingPrompt = {
+	author?: import("./sessions").SessionMessageAuthor;
 	id: string;
 	prompt: string;
 	mode?: CoreAgentMode;

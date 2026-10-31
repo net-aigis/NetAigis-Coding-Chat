@@ -58,3 +58,4 @@ export * from "./server/command-transport";
 export * from "./server/hub-event-log";
 export * from "./server/hub-run-queue";
 export * from "./server/native-transport";
+export type { SessionWriterControl } from "./session-control";

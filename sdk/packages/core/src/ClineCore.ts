@@ -433,6 +433,25 @@ export class ClineCore {
 	 * ```
 	 */
 	get: RuntimeHost["getSession"] = (...args) => this.host.getSession(...args);
+	/** Explicit writer coordination. Attaching/reading alone never grants write access. */
+	readonly sessionControl = {
+		get: (sessionId: string) => {
+			if (!this.host.getSessionControl)
+				throw new Error("This runtime has no authenticated session control");
+			return this.host.getSessionControl(sessionId);
+		},
+		claim: (sessionId: string, expectedRevision: number) => {
+			if (!this.host.claimSessionControl)
+				throw new Error("This runtime has no authenticated session control");
+			return this.host.claimSessionControl(sessionId, expectedRevision);
+		},
+		release: (sessionId: string, expectedRevision: number) => {
+			if (!this.host.releaseSessionControl)
+				throw new Error("This runtime has no authenticated session control");
+			return this.host.releaseSessionControl(sessionId, expectedRevision);
+		},
+	};
+
 	/**
 	 * Lists recent sessions through the shared history-listing path.
 	 */

@@ -5,6 +5,7 @@ import type {
 	SessionPendingPrompt,
 } from "../../types/events";
 import type { ActiveSession, PendingPrompt } from "../../types/session";
+import type { SessionMessageAuthor } from "../../types/sessions";
 import type {
 	PendingPromptMutationResult,
 	PendingPromptsDeleteInput,
@@ -14,6 +15,7 @@ import type {
 export type PendingPromptDelivery = "queue" | "steer";
 
 export interface PendingPromptEntry {
+	author?: SessionMessageAuthor;
 	id: string;
 	prompt: string;
 	mode?: AgentMode;
@@ -35,10 +37,12 @@ export interface PendingPromptsControllerDeps {
 		mode?: AgentMode;
 		userImages?: string[];
 		userFiles?: string[];
+		author?: SessionMessageAuthor;
 	}): Promise<unknown>;
 }
 
 export interface PendingPromptEnqueueInput {
+	author?: SessionMessageAuthor;
 	prompt: string;
 	mode?: AgentMode;
 	delivery: PendingPromptDelivery;
@@ -138,9 +142,11 @@ export class PendingPromptService {
 		state: PendingPromptQueueState,
 		input: PendingPromptEnqueueInput,
 	): SessionPendingPrompt[] {
-		const { prompt, mode, delivery, userImages, userFiles } = input;
+		const { prompt, mode, delivery, userImages, userFiles, author } = input;
 		const existingIndex = state.pendingPrompts.findIndex(
-			(queued) => queued.prompt === prompt,
+			(queued) =>
+				queued.prompt === prompt &&
+				queued.author?.requestId === author?.requestId,
 		);
 		if (existingIndex >= 0) {
 			const [existing] = state.pendingPrompts.splice(existingIndex, 1);
@@ -164,6 +170,7 @@ export class PendingPromptService {
 				delivery,
 				userImages,
 				userFiles,
+				...(author ? { author: structuredClone(author) } : {}),
 			};
 			if (delivery === "steer") {
 				state.pendingPrompts.unshift(newEntry);
@@ -347,6 +354,7 @@ export class PendingPromptsController {
 				...(next.mode ? { mode: next.mode } : {}),
 				userImages: next.userImages,
 				userFiles: next.userFiles,
+				...(next.author ? { author: next.author } : {}),
 			});
 			// A turn that resolves with an error finish ran (the prompt is in
 			// the conversation and the error is surfaced), so the entry is not

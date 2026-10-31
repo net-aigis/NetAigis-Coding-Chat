@@ -73,6 +73,51 @@ function agentDoneEvents(events: unknown[]) {
 }
 
 describe("HubRuntimeHost", () => {
+	it("requires a matching acknowledged control reply instead of inventing an unowned session", async () => {
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
+		for (const reply of [
+			{ ok: true, payload: {} },
+			{
+				ok: false,
+				payload: { sessionId: "s", control: { version: 1, revision: 1 } },
+			},
+			{
+				ok: true,
+				payload: { sessionId: "another", control: { version: 1, revision: 1 } },
+			},
+		]) {
+			commandMock.mockResolvedValueOnce(reply);
+			await expect(host.getSessionControl("s")).rejects.toThrow(
+				"confirm control",
+			);
+		}
+		commandMock.mockResolvedValue({
+			ok: true,
+			payload: {
+				sessionId: "s",
+				control: {
+					version: 1,
+					revision: 2,
+					writer: {
+						actorId: "jimmi",
+						clientId: "android",
+						connectionId: "socket",
+					},
+				},
+			},
+		});
+		await expect(host.claimSessionControl("s", 1)).resolves.toMatchObject({
+			revision: 2,
+			writer: { actorId: "jimmi" },
+		});
+		expect(commandMock).toHaveBeenLastCalledWith(
+			"session.control.claim",
+			{ sessionId: "s", expectedRevision: 1 },
+			"s",
+			{ retryAfterDispatch: false },
+		);
+	});
 	afterEach(() => {
 		commandMock.mockReset();
 		subscribeMock.mockReset();

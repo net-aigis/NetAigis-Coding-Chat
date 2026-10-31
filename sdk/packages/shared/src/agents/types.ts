@@ -909,7 +909,10 @@ export interface AgentConfig {
 	 * call. This allows the host to feed user input into a running loop
 	 * without waiting for the current run to finish.
 	 */
-	consumePendingUserMessage?: () => string | undefined;
+	consumePendingUserMessage?: () =>
+		| string
+		| { text: string; metadata?: Record<string, unknown> }
+		| undefined;
 
 	// -------------------------------------------------------------------------
 	// Cancellation

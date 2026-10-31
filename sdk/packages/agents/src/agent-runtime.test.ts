@@ -2282,11 +2282,17 @@ describe("AgentRuntime", () => {
 		expect(result.outputText).toBe("done");
 	});
 
-	it("injects a pending user message after tool results and before the next model request", async () => {
+	it.each([
+		false,
+		true,
+	])("injects a pending user message after tool results and preserves supplied provenance (%s)", async (withAuthor) => {
+		const author = { actorId: "jimmi", requestId: "authenticated-steer" };
 		const consumePendingUserMessage = vi
 			.fn()
 			.mockReturnValueOnce(undefined)
-			.mockReturnValueOnce("steer now");
+			.mockReturnValueOnce(
+				withAuthor ? { text: "steer now", metadata: { author } } : "steer now",
+			);
 		const model = new ScriptedModel([
 			() => [
 				{
@@ -2337,6 +2343,17 @@ describe("AgentRuntime", () => {
 		const result = await runtime.run("Start");
 
 		expect(consumePendingUserMessage).toHaveBeenCalledTimes(2);
+		if (withAuthor) {
+			expect(
+				result.messages.find((message) => message.metadata?.author)?.metadata
+					?.author,
+			).toEqual(author);
+			author.actorId = "changed after consumption";
+			expect(
+				result.messages.find((message) => message.metadata?.author)?.metadata
+					?.author,
+			).toMatchObject({ actorId: "jimmi" });
+		}
 		expect(model.requests).toHaveLength(2);
 		expect(result.status).toBe("completed");
 		expect(result.messages.map((message) => message.role)).toEqual([
@@ -3391,13 +3408,13 @@ describe("AgentRuntime", () => {
 		await runtime.run("Hi");
 
 		// Two chunks within a second report progress once.
-		expect(eventTypes.filter((type) => type === "tool-call-delta")).toHaveLength(
-			1,
-		);
+		expect(
+			eventTypes.filter((type) => type === "tool-call-delta"),
+		).toHaveLength(1);
 		const events = capture.mock.calls.map(([input]) => input);
-		expect(events.some((input) => input.event === "agent.tool-call-delta")).toBe(
-			false,
-		);
+		expect(
+			events.some((input) => input.event === "agent.tool-call-delta"),
+		).toBe(false);
 		expect(
 			events.find((input) => input.event === "agent.run-finished")?.properties,
 		).toEqual(expect.objectContaining({ maxIdleMs: 42, status: "completed" }));

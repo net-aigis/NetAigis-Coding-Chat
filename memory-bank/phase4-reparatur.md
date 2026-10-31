@@ -580,3 +580,119 @@ Extension und die Zuordnung lokaler gegenüber gemeinsamer Session-History
 zu vervollständigen. Die bisherige lokale Sitzung wird nicht automatisch
 auf eine entfernte Runtime verschoben. Die getrennte Actor-/Writer-Aufgabe
 ist durch ein erfolgreiches Beobachter-Attach ausdrücklich nicht erledigt.
+
+
+## Fortsetzung 31.10.2026 — authentifizierte Schreibzuständigkeit
+
+Auftrag unverändert ab `9477c5cef`; `8b85d65e1` und die 122 bereits belegten
+Tests bleiben Grundlage. Keine erneute Bestandsaufnahme/Sicherung, keine
+fremden Projekte, keine Installation oder produktive Dienständerung.
+
+### Implementierte Runtime-Grenze
+
+Der bestehende SDK-Hub unterstützt nun getrennte, serverseitig zugeordnete
+Akteur-Tokens. Ein übermittelter Name ist keine Authentifizierung. Die
+Daemon-Konfiguration kann einen ausdrücklich gewählten privaten Dateipfad
+`CLINE_HUB_ACTOR_TOKENS_FILE` lesen; keine Zugangsdaten oder produktiven
+Pfade wurden erzeugt oder gespeichert. Datei muss regulär, ohne Symlink,
+im Eigentum des Prozessbenutzers und ohne Gruppen-/Fremdzugriff sein.
+Ohne Auswahl bleibt das vorhandene lokale Verhalten erhalten. Bei aktivem
+Akteur-Modus ist der bestehende Discovery-/Master-Token nur Beobachter.
+
+Schreibzuständigkeit wird im vorhandenen Session-Metadatensatz gehalten,
+keine neue Datenbank: Version, Revision, Actor, Client, Verbindung und
+letzte Änderung. Get/Claim/Release verwenden die erwartete Revision.
+Schreibbefehle benötigen Actor, Client, tatsächliche Verbindung und Revision.
+Gleichzeitige Übergaben werden serialisiert; schon zugelassene Arbeit wird
+vor der ersten Runtime-Statusänderung gesperrt. Übergaben bei aktiver Arbeit,
+wartenden Eingaben, offenen Tool-Calls, unbekannter Beobachtung oder nicht
+bestätigtem Abbruch/Timeout werden verweigert. Ein fehlender Exitcode wird
+nicht ergänzt. Alte explizit ungeklärte Beobachtungen werden nicht allein
+durch einen späteren Idle-Status gelöscht; ihre echte Klärung bleibt nötig.
+
+Ein Socket-Abbau gibt kein Schreibrecht frei. Wiederverbindung mit gleicher
+Client-ID benötigt eine ausdrückliche sichere Übernahme. Der ursprüngliche
+Ausführungs-/Capability-Owner bleibt erhalten; fremde Akteure dürfen dessen
+Werkzeugbeobachtungen oder Freigaben nicht vortäuschen. Geschützte Metadaten
+können durch normale Session-Updates nicht ersetzt werden. Nicht abgedeckte
+schreibende Akteur-Kommandos werden ausdrücklich abgewiesen.
+
+Der echte WebSocket-Test deckte eine fehlende Weitergabe der beim Upgrade
+ermittelten Actor-Autorität an die erste Registrierung auf. Korrigiert:
+Registrierungsprüfung vor Annahme der ID, Schutz gegen fremde bzw. gleichzeitig
+verbundene Ausführungs-IDs, serialisierte Registrierung und Cleanup bei erst
+nach Socket-Abbau fertig werdender Anmeldung. Akteur-Modus-Subscriptions
+benötigen die eigene registrierte Client-ID. Unregistrierte Gegenstellen
+dürfen fremde Clients nicht abmelden.
+
+Urheberschaft stammt aus der serverseitigen Befehlsannahme außerhalb
+clientseitig fälschbarer JSON-Felder. Der vorhandene Pfad über RuntimeHost,
+Pending Queue, Steer und SessionRuntime erhält sie in kanonischen Nachrichten.
+Alte Einträge werden nicht umetikettiert; alte Einträge ohne authentifizierten
+Nachweis erhalten keinen erfundenen Autor. Gleicher Text verschiedener
+bestätigter Requests wird nicht über Akteure hinweg zusammengefasst.
+Run-/Übergabebefehle werden nach unklarer Zustellung nicht automatisch erneut
+ausgeführt. Eine falsche/unvollständige Control-Antwort erzeugt keinen freien
+Besitzerzustand. Metadatenänderungen einer noch leeren/lazy Sitzung werden
+vor Bestätigung im vorhandenen Sitzungsspeicher materialisiert.
+
+### Tatsächliche Prüfungen und ihre Grenzen
+
+- `p3-writer-transport-authenticated`: 73/73 bestanden. Darunter tatsächlicher
+  lokaler Hub-Server, echte WebSockets und NodeHubClient: getrennte Credentials,
+  Friseer → jimmi → Friseer unter gleicher ID/Historie, unveränderte alte Autoren,
+  Payload-Fälschung, verweigerte Übergabe während Arbeit, alte Schreibrechte,
+  Wiederverbindung sowie fremde Ausführungs-ID. Ausführende Runtime simuliert.
+- `p3-writer-host-continuity`: 249/249 bestanden. Davon 101 LocalRuntimeHost-
+  Tests werden durch den neueren Lauf `p3-writer-lazy-persistence` mit 102/102
+  ersetzt: neuer echter Dateispeichertest für zunächst scheiternde Speicherung,
+  anschließenden Erfolg und Lesen derselben Metadaten durch einen frischen Host.
+- `p3-writer-agent-provenance`: 153/153 bestanden, einschließlich zusätzlichem
+  Steer-Fall mit Metadaten und Schutz gegen nachträgliche Mutation des Inputs.
+- Damit 476 unterschiedliche gezielte Tests einschließlich betroffener
+  Bestandstests, nicht 476 neue Tests. Zwischenläufe werden nicht addiert.
+  Der erste Transportlauf hatte 314/315 Erfolge; seine echte fehlgeschlagene
+  Fremd-ID-Registrierung war Anlass der oben beschriebenen Korrektur.
+- SDK-Build erfolgreich; nach der letzten Persistenzkorrektur Core erneut
+  erfolgreich gebaut. Core-Typprüfung und Browser-Server-Typprüfung erfolgreich.
+  Neue Test-Typfehler (Promise.withResolvers/Fixture-Typen) wurden korrigiert.
+  Ein Bun-Script-Typprüfungslauf versuchte zusätzlich die lokale Shell-Initialisierung;
+  die maßgeblichen späteren Compilerläufe verwenden direkt Node/tsc.
+
+### Lesender Acer-Nachweis, keine Abnahmebehauptung
+
+Am bestehenden SSH-Ziel ist `netaigis-coding-agent.service` weiterhin
+`active/running`, Benutzer `ollama`, mit denselben drei Recall-/Router-Drop-ins.
+GET `127.0.0.1:11436/health` auf Acer antwortete HTTP 200 mit `status: ok`,
+`model: coding`. Das belegt Erreichbarkeit, keinen 125B-Modelllauf.
+Der tatsächliche Code registriert `/v1/{path:path}` und den bestehenden
+Recall-Router. Der öffentliche Health-Wert `learning_agent` ist eine
+Zeichenkette, kein nachgewiesener HTTP-Endpunkt. Unter geladenen System- und
+Benutzerdiensten wurde kein separat benannter Learning-Agent identifiziert.
+Die konkrete Dienst-/Pfadangabe wurde erfragt; keine Identität oder Route
+wird daraus erfunden. Keine produktiven Dateien/Berechtigungen geändert,
+keine Dienste gestartet oder neu gestartet.
+
+### Verbindliche Restarbeit
+
+Diese Korrektur beendet weder Phase 4 noch den Gesamtauftrag. Noch nötig:
+Browser-/VS-Code-Bedienung der getrennten Akteur-Verbindungen und Übergabe;
+verlustfreie Einbindung alter lokaler/Legacy-Sitzungen inklusive tatsächlicher
+Prozess-/Checkpoint-Zustände; Recall-Archivierung/Wiederaufnahme über wechselnde
+Clients; belegte Integration beider Acer-Dienste; danach reale VS-Code-/Android-
+und 125B-Funktionstests. Ein Fixture ist keine produktive Abnahme.
+Die eigene Extension-Identität und eigene Versionierung bleiben offen;
+die gesonderte Namens-/Versionsentscheidung wurde konkret erfragt. Kein
+Publisher/Name/Version wurde eigenmächtig festgelegt. Der getrennte externe
+Watchdog bleibt auf Acer außerhalb Cline.
+
+Nachweise ausschließlich im bereits bestehenden geschützten projektlokalen
+Phase-4-Prüfverzeichnis `tmp/phase4-checks-20261030T193507+0100`; keine neuen
+Sicherungsablagen. Die weiterhin vorhandenen alten unversionierten Artefakte
+wurden weder gelöscht noch in diese Korrektur aufgenommen.
+
+Die abschließende direkte VS-Code-Typprüfung war ebenfalls erfolgreich
+(`p3-writer-vscode-types`, Exit 0). Biome für 34 betroffene TypeScript-Dateien
+und `git diff --check` bestanden. Die Pre-Commit-Prüfungen werden explizit
+vor dem Commit ausgeführt; `HUSKY=0` gilt nur für den einzelnen Commit,
+um den bereits untersagten automatischen lint-staged-Stash/Reset zu vermeiden.

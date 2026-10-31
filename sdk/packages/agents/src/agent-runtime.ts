@@ -2120,8 +2120,12 @@ export class AgentRuntime {
 				options: {
 					...request.options,
 					metadata: {
-						...(request.options?.metadata as Record<string, unknown> | undefined),
-						...(this.config.sessionId ? { sessionId: this.config.sessionId } : {}),
+						...(request.options?.metadata as
+							| Record<string, unknown>
+							| undefined),
+						...(this.config.sessionId
+							? { sessionId: this.config.sessionId }
+							: {}),
 					},
 				},
 			});
@@ -2332,11 +2336,15 @@ export class AgentRuntime {
 		if (!consumePendingUserMessage) {
 			return undefined;
 		}
-		const pending = (await consumePendingUserMessage())?.trim();
+		const input = await consumePendingUserMessage();
+		const pending = (typeof input === "string" ? input : input?.text)?.trim();
 		if (!pending) {
 			return undefined;
 		}
 		const message = createMessage("user", [{ type: "text", text: pending }], {
+			...(typeof input === "object" && input.metadata
+				? structuredClone(input.metadata)
+				: {}),
 			userRunSpan: 0,
 		});
 		this.state.messages.push(message);

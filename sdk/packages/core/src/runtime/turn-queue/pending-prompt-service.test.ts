@@ -12,6 +12,33 @@ function createState(): PendingPromptQueueState {
 }
 
 describe("PendingPromptService", () => {
+	it("keeps separate authenticated requests with identical text and preserves authors through queue and steer", () => {
+		const service = new PendingPromptService(),
+			state = createState();
+		const author = {
+			actorId: "Friseer",
+			clientId: "vscode",
+			requestId: "one",
+			receivedAt: "2026-10-31T07:00:00Z",
+			source: "hub-authenticated" as const,
+		};
+		service.enqueue(state, { prompt: "Continue", delivery: "queue", author });
+		service.enqueue(state, {
+			prompt: "Continue",
+			delivery: "steer",
+			author: { ...author, actorId: "jimmi", requestId: "two" },
+		});
+		author.actorId = "modified outside queue";
+		expect(state.pendingPrompts).toHaveLength(2);
+		expect(service.consumeSteer(state).entry?.author).toMatchObject({
+			actorId: "jimmi",
+			requestId: "two",
+		});
+		expect(service.shiftNext(state).entry?.author).toMatchObject({
+			actorId: "Friseer",
+			requestId: "one",
+		});
+	});
 	it("deduplicates prompts and prioritizes steer delivery", () => {
 		const service = new PendingPromptService();
 		const state = createState();

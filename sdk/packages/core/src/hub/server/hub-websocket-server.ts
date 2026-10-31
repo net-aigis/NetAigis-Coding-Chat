@@ -32,6 +32,7 @@ import {
 	isHubLockHeldError,
 	resolveHubInstanceLockPath,
 } from "../discovery/instance-lock";
+import { HubActorRegistry } from "./actor-auth";
 import { BrowserWebSocketHubAdapter } from "./browser-websocket";
 import { logHubMessage } from "./hub-server-logging";
 import type {
@@ -357,6 +358,10 @@ export async function startHubWebSocketServer(
 	const buildId = resolveHubBuildId();
 	const buildEpochMs = resolveHubBuildEpochMs();
 	const authToken = createHubAuthToken();
+	const actors =
+		options.actorTokens === undefined
+			? undefined
+			: new HubActorRegistry(options.actorTokens);
 	// Singleton authority is an OS-backed exclusive lock scoped to the owner
 	// context, acquired before any resource is created. A process that cannot
 	// take it must connect to the running Hub or diagnose — never replace it.
@@ -683,11 +688,13 @@ export async function startHubWebSocketServer(
 			socket.destroy();
 			return;
 		}
-		const isTokenAuthorized = isValidHubAuthToken(
-			readWebSocketAuthToken(request.headers["sec-websocket-protocol"]),
-			authToken,
+		const socketToken = readWebSocketAuthToken(
+			request.headers["sec-websocket-protocol"],
 		);
+		const actorId = actors?.resolve(socketToken);
+		const isTokenAuthorized = isValidHubAuthToken(socketToken, authToken);
 		const isAuthorized =
+			actorId !== undefined ||
 			isTokenAuthorized ||
 			(isLocalHubHostName(host) && isLocalHubOrigin(request.headers.origin));
 		if (!isAuthorized) {
@@ -718,7 +725,10 @@ export async function startHubWebSocketServer(
 						});
 					});
 					const detach = adapter.attach(wrapWsSocket(websocket), {
-						allowRegisteredWorkspace: isTokenAuthorized,
+						allowRegisteredWorkspace:
+							isTokenAuthorized || actorId !== undefined,
+						actorId,
+						requireRegistration: actors !== undefined,
 					});
 					cleanup.add(detach);
 					websocket.once("close", () => {

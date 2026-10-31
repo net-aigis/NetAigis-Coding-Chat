@@ -266,6 +266,8 @@ export interface StartSessionResult {
 }
 
 export interface SendSessionInput {
+	/** Trusted host provenance. Remote input uses its authenticated connection. */
+	author?: import("../../types/sessions").SessionMessageAuthor;
 	sessionId: string;
 	prompt: string;
 	mode?: AgentMode;
@@ -406,6 +408,17 @@ export interface RuntimeHost {
 	readonly runtimeAddress?: string;
 	startSession(input: StartSessionInput): Promise<StartSessionResult>;
 	runTurn(input: SendSessionInput): Promise<AgentResult | undefined>;
+	getSessionControl?(
+		sessionId: string,
+	): Promise<import("../../hub/session-control").SessionWriterControl>;
+	claimSessionControl?(
+		sessionId: string,
+		expectedRevision: number,
+	): Promise<import("../../hub/session-control").SessionWriterControl>;
+	releaseSessionControl?(
+		sessionId: string,
+		expectedRevision: number,
+	): Promise<import("../../hub/session-control").SessionWriterControl>;
 	restoreSession(input: RestoreSessionInput): Promise<RestoreSessionResult>;
 	abort(sessionId: string, reason?: unknown): Promise<void>;
 	stopSession(sessionId: string): Promise<void>;

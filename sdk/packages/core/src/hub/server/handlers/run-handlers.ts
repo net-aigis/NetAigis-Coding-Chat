@@ -11,6 +11,7 @@ import {
 	type SendSessionInput,
 } from "../../../runtime/host/runtime-host";
 import { logHubMessage } from "../hub-server-logging";
+import { authenticatedTurnAuthor } from "../session-access";
 import { cancelPendingApprovals } from "./approval-handlers";
 import { cancelPendingCapabilityRequests } from "./capability-handlers";
 import {
@@ -275,6 +276,9 @@ export async function handleSessionInput(
 					userImages,
 					userFiles,
 					timeoutMs,
+					...(authenticatedTurnAuthor(envelope)
+						? { author: authenticatedTurnAuthor(envelope) }
+						: {}),
 				},
 				timeoutMs,
 			);

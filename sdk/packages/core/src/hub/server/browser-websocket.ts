@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type {
 	HubClientRegistration,
@@ -69,6 +70,8 @@ function registrationAuthority(
 	frame: HubCommandFrame,
 	serverWorkspaceRoot?: string,
 	allowRegisteredWorkspace = false,
+	actorId?: string,
+	connectionId?: string,
 ): HubConnectionAuthority {
 	const registration = (frame.envelope.payload ??
 		{}) as unknown as HubClientRegistration;
@@ -81,7 +84,8 @@ function registrationAuthority(
 	const authorizedRoot = allowRegisteredWorkspace
 		? requestedRoot || serverWorkspaceRoot?.trim()
 		: serverWorkspaceRoot?.trim();
-	if (!authorizedRoot) return { clientId };
+	if (!authorizedRoot)
+		return { clientId, ...(actorId ? { actorId, connectionId } : {}) };
 	const workspaceRoot = resolve(authorizedRoot);
 	if (
 		!allowRegisteredWorkspace &&
@@ -105,6 +109,7 @@ function registrationAuthority(
 	}
 	return {
 		clientId,
+		...(actorId ? { actorId, connectionId } : {}),
 		workspaceContext: { workspaceRoot, cwd },
 		...(allowRegisteredWorkspace ? { crossWorkspace: true } : {}),
 	};
@@ -119,9 +124,14 @@ export class BrowserWebSocketHubAdapter {
 
 	attach(
 		socket: BrowserHubSocketLike,
-		options: { allowRegisteredWorkspace?: boolean } = {},
+		options: {
+			allowRegisteredWorkspace?: boolean;
+			actorId?: string;
+			requireRegistration?: boolean;
+		} = {},
 	): () => void {
 		const subscriptions = new Map<string, () => void>();
+		const connectionId = randomUUID();
 		const registeredClientIds = new Set<string>();
 		let authority: HubConnectionAuthority | undefined;
 		let closed = false;
@@ -182,6 +192,8 @@ export class BrowserWebSocketHubAdapter {
 									frame,
 									this.workspaceRoot,
 									options.allowRegisteredWorkspace,
+									options.actorId,
+									connectionId,
 								);
 							} catch (error) {
 								sendFrame({
@@ -208,7 +220,7 @@ export class BrowserWebSocketHubAdapter {
 						}, HUB_COMMAND_SLOW_LOG_MS);
 						const commandPromise = this.transport.command(
 							frame.envelope,
-							authority ?? null,
+							registration ?? authority ?? null,
 						);
 						commandPromise.then(
 							(lateReply) => {
@@ -299,6 +311,17 @@ export class BrowserWebSocketHubAdapter {
 						}
 						if (frame.envelope.command === "client.register" && reply.ok) {
 							if (registration) {
+								if (closed) {
+									await this.transport.command(
+										{
+											version: "v1",
+											command: "client.unregister",
+											clientId: registration.clientId,
+										},
+										registration,
+									);
+									break;
+								}
 								registeredClientIds.add(registration.clientId);
 								authority = registration;
 							}
@@ -319,6 +342,11 @@ export class BrowserWebSocketHubAdapter {
 						break;
 					}
 					case "stream.subscribe": {
+						if (
+							options.requireRegistration &&
+							(!authority || frame.clientId !== authority.clientId)
+						)
+							break;
 						const key = `${frame.clientId}:${frame.sessionId ?? "*"}`;
 						if (subscriptions.has(key)) {
 							break;
@@ -481,11 +509,14 @@ export class BrowserWebSocketHubAdapter {
 			}
 			subscriptions.clear();
 			for (const clientId of registeredClientIds) {
-				void this.transport.command({
-					version: "v1",
-					command: "client.unregister",
-					clientId,
-				});
+				void this.transport.command(
+					{
+						version: "v1",
+						command: "client.unregister",
+						clientId,
+					},
+					authority,
+				);
 			}
 			registeredClientIds.clear();
 			socket.removeEventListener("message", onMessage);

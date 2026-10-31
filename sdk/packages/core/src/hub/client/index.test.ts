@@ -156,7 +156,72 @@ class FakeWebSocket {
 }
 
 describe("NodeHubClient", () => {
+	it.each([
+		"run.start",
+		"session.send_input",
+		"session.control.claim",
+		"session.control.release",
+	] as const)("never resends %s after an uncertain dispatch", async (command) => {
+		const client = new NodeHubClient({ url: "ws://127.0.0.1:25463/hub" });
+		const internals = client as unknown as {
+			commandOnce: (
+				command: string,
+				payload: unknown,
+				sessionId: unknown,
+				options: { onDispatch?: (requestId: string) => void },
+			) => Promise<never>;
+			recoverLocalHubTransport: (error: unknown) => Promise<boolean>;
+		};
+		const recovery = vi
+			.spyOn(internals, "recoverLocalHubTransport")
+			.mockResolvedValue(true);
+		const attempt = vi
+			.spyOn(internals, "commandOnce")
+			.mockImplementation(async (_command, _payload, _sessionId, options) => {
+				options.onDispatch?.("dispatched-once");
+				throw new HubTransportError(
+					"hub_connection_closed",
+					"fixture connection lost after dispatch",
+				);
+			});
+		await expect(
+			client.command(command, { prompt: "once" }, "same-session"),
+		).rejects.toThrow("fixture connection lost");
+		expect(attempt).toHaveBeenCalledOnce();
+		expect(recovery).not.toHaveBeenCalled();
+	});
 	describe("subscription re-registration", () => {
+		it("uses an acknowledged revision for writes while retaining an explicitly stale revision for server rejection", async () => {
+			vi.stubGlobal("WebSocket", MockWebSocket);
+			MockWebSocket.commandPayloads.set("session.control.claim", {
+				sessionId: "same-session",
+				control: { version: 1, revision: 7 },
+			});
+			const client = new NodeHubClient({ url: "ws://127.0.0.1:25463/hub" });
+			try {
+				await client.command(
+					"session.control.claim",
+					{ expectedRevision: 6 },
+					"same-session",
+				);
+				await client.command("run.start", { prompt: "once" }, "same-session");
+				await client.command(
+					"run.start",
+					{ prompt: "stale", controlRevision: 6 },
+					"same-session",
+				);
+				const frames = MockWebSocket.instances[0].sentFrames as Array<{
+					envelope?: { command: string; payload: Record<string, unknown> };
+				}>;
+				expect(
+					frames
+						.filter((frame) => frame.envelope?.command === "run.start")
+						.map((frame) => frame.envelope?.payload.controlRevision),
+				).toEqual([7, 6]);
+			} finally {
+				client.close();
+			}
+		});
 		afterEach(() => {
 			MockWebSocket.reset();
 			vi.unstubAllGlobals();

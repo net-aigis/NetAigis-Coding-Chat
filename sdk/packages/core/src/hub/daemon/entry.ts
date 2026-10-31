@@ -27,6 +27,7 @@ import {
 	resolveSharedHubOwnerContext,
 } from "../discovery/workspace";
 import { startHubWebSocketServer } from "../server";
+import { readProtectedActorTokens } from "../server/actor-auth";
 import { describeAddressInUse } from "./bind-diagnostics";
 import {
 	createHubDaemonShutdownCoordinator,
@@ -266,6 +267,9 @@ async function main(): Promise<void> {
 	let server: Awaited<ReturnType<typeof startHubWebSocketServer>>;
 	try {
 		server = await startHubWebSocketServerWithBindRetry(bindDeadline, {
+			actorTokens: await readProtectedActorTokens(
+				process.env.CLINE_HUB_ACTOR_TOKENS_FILE,
+			),
 			workspaceRoot: options.cwd,
 			onShutdownRequested: () => {
 				void requestOrQueueShutdown({

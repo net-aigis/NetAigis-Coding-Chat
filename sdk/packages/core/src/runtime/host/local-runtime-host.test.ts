@@ -1770,6 +1770,76 @@ describe("LocalRuntimeHost", () => {
 		expect(runtime.shutdown).not.toHaveBeenCalled();
 	});
 
+	it("persists writer changes before acknowledging an initially lazy session and can read them from a fresh host", async () => {
+		const sessionId = "lazy-writer-control";
+		const sessionService = new FileSessionService(
+			join(isolatedHomeDir, "sessions"),
+		);
+		const opts = {
+			distinctId,
+			sessionService,
+			runtimeBuilder: {
+				build: () => ({ tools: [], shutdown: () => {} }),
+			} as never,
+			createAgent: () =>
+				({
+					getMessages: () => [],
+					getAgentId: () => "agent-writer",
+					getConversationId: () => "conv-writer",
+					subscribeEvents: () => () => {},
+					canStartRun: () => true,
+					shutdown: async () => {},
+				}) as never,
+		};
+		const manager = new RuntimeHostUnderTest(opts);
+		const metadata = {
+			sharedSessionControl: {
+				version: 1,
+				revision: 2,
+				writer: {
+					actorId: "jimmi",
+					clientId: "android",
+					connectionId: "socket",
+				},
+			},
+		};
+		try {
+			await manager.startSession(
+				normalizeStartInput({
+					config: createConfig({
+						sessionId,
+						cwd: isolatedHomeDir,
+						workspaceRoot: isolatedHomeDir,
+					}),
+					interactive: true,
+				}),
+			);
+			const materialize = vi
+				.spyOn(sessionService, "createRootSessionWithArtifacts")
+				.mockRejectedValueOnce(new Error("fixture write unavailable"));
+			await expect(
+				manager.updateSession(sessionId, { metadata }),
+			).rejects.toThrow("fixture write unavailable");
+			expect(
+				(await manager.getSession(sessionId))?.metadata ?? {},
+			).not.toHaveProperty("sharedSessionControl");
+			await expect(
+				manager.updateSession(sessionId, { metadata }),
+			).resolves.toEqual({ updated: true });
+			expect(materialize).toHaveBeenCalledTimes(2);
+			const fresh = new RuntimeHostUnderTest(opts);
+			try {
+				expect((await fresh.getSession(sessionId))?.metadata).toMatchObject(
+					metadata,
+				);
+			} finally {
+				await fresh.dispose("test-fresh-reader");
+			}
+		} finally {
+			await manager.dispose("test-lazy-writer");
+		}
+	});
+
 	it("disposes idle interactive sessions without changing status", async () => {
 		const sessionId = "sess-interactive-dispose";
 		const manifest = createManifest(sessionId);

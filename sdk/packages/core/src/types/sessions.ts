@@ -1,6 +1,14 @@
 import type { SessionLineage, SessionRuntimeRecordShape } from "@cline/shared";
 import type { SessionSource, SessionStatus } from "./common";
 
+export interface SessionMessageAuthor {
+	readonly actorId: string;
+	readonly clientId: string;
+	readonly requestId: string;
+	readonly receivedAt: string;
+	readonly source: "hub-authenticated";
+}
+
 export interface SessionUsageMetadata {
 	inputTokens: number;
 	outputTokens: number;

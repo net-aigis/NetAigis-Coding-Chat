@@ -1,3 +1,4 @@
+import type { SessionMessageAuthor } from "../../types/sessions";
 /**
  * Per-session `SessionRuntime` orchestrator.
  *
@@ -23,6 +24,7 @@ import { randomUUID } from "node:crypto";
 import type { AgentRuntime } from "@cline/agents";
 import { createAgentRuntime } from "@cline/agents";
 import {
+	type AgentBeforeToolResult,
 	type AgentConfig,
 	type AgentEvent,
 	type AgentExtension,
@@ -33,7 +35,6 @@ import {
 	type AgentResult,
 	type AgentRunResult,
 	type AgentRuntimeEvent,
-	type AgentBeforeToolResult,
 	type AgentRuntimeHooks,
 	type AgentRuntimePrepareTurnContext,
 	type AgentTool,
@@ -741,6 +742,7 @@ export class SessionRuntime {
 		userMessage: string,
 		userImages?: string[],
 		userFiles?: string[],
+		author?: SessionMessageAuthor,
 	): Promise<AgentResult> {
 		const rejection = this.getRunAdmissionError();
 		if (rejection) return Promise.reject(rejection);
@@ -750,6 +752,7 @@ export class SessionRuntime {
 			userMessage,
 			userImages,
 			userFiles,
+			author,
 			isContinue: false,
 		});
 	}
@@ -758,6 +761,7 @@ export class SessionRuntime {
 		userMessage?: string,
 		userImages?: string[],
 		userFiles?: string[],
+		author?: SessionMessageAuthor,
 	): Promise<AgentResult> {
 		const rejection = this.getRunAdmissionError();
 		if (rejection) return Promise.reject(rejection);
@@ -765,6 +769,7 @@ export class SessionRuntime {
 			userMessage,
 			userImages,
 			userFiles,
+			author,
 			isContinue: true,
 		});
 	}
@@ -808,6 +813,7 @@ export class SessionRuntime {
 		userMessage?: string;
 		userImages?: string[];
 		userFiles?: string[];
+		author?: SessionMessageAuthor;
 		isContinue: boolean;
 	}): Promise<AgentResult> {
 		let activePromise!: Promise<AgentResult>;
@@ -893,6 +899,7 @@ export class SessionRuntime {
 		userMessage?: string;
 		userImages?: string[];
 		userFiles?: string[];
+		author?: SessionMessageAuthor;
 		isContinue: boolean;
 	}): Promise<AgentResult> {
 		const result = await this.executeRunInternal(input);
@@ -918,6 +925,7 @@ export class SessionRuntime {
 		userMessage?: string;
 		userImages?: string[];
 		userFiles?: string[];
+		author?: SessionMessageAuthor;
 		isContinue: boolean;
 	}): Promise<AgentResult> {
 		if (this.shutdownCalled) {
@@ -961,7 +969,7 @@ export class SessionRuntime {
 		// a falsy input as "no additional messages", per
 		// packages/agents/src/agent-runtime.ts normalizeInput path).
 		if (effectiveUserMessage !== undefined) {
-			let content;
+			let content: Awaited<ReturnType<typeof buildUserTurnContent>>;
 			try {
 				content = await buildUserTurnContent(
 					effectiveUserMessage,
@@ -975,6 +983,9 @@ export class SessionRuntime {
 					id: crypto.randomUUID(),
 					role: "user",
 					content: effectiveUserMessage,
+					...(input.author
+						? { metadata: { author: { ...input.author } } }
+						: {}),
 				});
 				throw error;
 			}
@@ -982,6 +993,7 @@ export class SessionRuntime {
 				id: crypto.randomUUID(),
 				role: "user",
 				content,
+				...(input.author ? { metadata: { author: { ...input.author } } } : {}),
 			});
 		}
 		// Admission and the user request must survive extension-startup errors.

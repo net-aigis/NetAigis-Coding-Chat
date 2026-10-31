@@ -634,3 +634,31 @@ endpoint through `CLINE_SHARED_SESSION_HUB_ENDPOINT` plus a separate
 This connection is separate from model/provider routing. It does not yet
 constitute authenticated Friseer/jimmi writer handover or production Android
 acceptance. See the fork's `memory-bank/phase4-reparatur.md` for current scope.
+
+
+## Fork: authenticated shared-session control
+
+An embedded shared Hub can explicitly set `actorTokens` on
+`startHubWebSocketServer`. The detached daemon accepts the path-only environment
+setting `CLINE_HUB_ACTOR_TOKENS_FILE`, pointing to an existing owner-private
+regular JSON file mapping exact actor IDs to distinct credentials. No default
+credentials or file locations are generated. The existing protected client
+connection token selects the actor at WebSocket authentication, independently
+of display names, client metadata and the model's API credentials.
+
+`core.sessionControl.get(sessionId)` returns the server-confirmed
+`SessionWriterControl`. `claim(sessionId, expectedRevision)` and
+`release(sessionId, expectedRevision)` require an explicitly read revision;
+mutations fail if it changed, the actor/client/connection is not the writer,
+work is active/pending or a tool observation remains unconfirmed. A transport
+failure is not an acknowledgement: read the actual state before any manual
+retry. Disconnect does not free the role or complete a process. Reconnecting
+clients claim again only after safe quiescence. Local runtimes without this
+contract reject the facade rather than pretend to grant shared control.
+
+The existing session's `sharedSessionControl` metadata holds revisions. No
+separate history store is created. Authenticated request provenance in
+canonical user-message metadata records actor/client/request/time and the
+`hub-authenticated` source; unsigned legacy messages remain unsigned. Browser
+login/transfer UX, legacy import, cross-client Recall delivery and real device
+acceptance still require their separate integration work.

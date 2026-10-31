@@ -127,6 +127,7 @@ import { logHubBoundaryError, logHubMessage } from "./hub-server-logging";
 import type { HubWebSocketServerOptions } from "./hub-server-options";
 import type { HubSessionState } from "./hub-session-records";
 import type { NativeHubTransport } from "./native-transport";
+import { HubSessionAccess } from "./session-access";
 import {
 	HubAgendaTaskCommandService,
 	isAgendaTaskCommand,
@@ -293,6 +294,7 @@ export class HubServerTransport implements NativeHubTransport {
 		Partial<PendingPromptsRuntimeService & CommandExecutionRuntimeService>;
 	private readonly hubId = createSessionId("hub_");
 	private readonly ctx: HubTransportContext;
+	private sessionAccess?: HubSessionAccess;
 	/** Durable event log; created on start(), absent in never-started tests. */
 	private eventLog?: HubEventLogStore;
 	private eventLogPruneTimer?: ReturnType<typeof setInterval>;
@@ -832,7 +834,14 @@ export class HubServerTransport implements NativeHubTransport {
 							}
 						: undefined
 					: (authority ?? undefined);
-			const reply = await this.dispatchCommand(envelope, effectiveAuthority);
+			const reply =
+				this.options.actorTokens === undefined
+					? await this.dispatchCommand(envelope, effectiveAuthority)
+					: await (this.sessionAccess ??= new HubSessionAccess(
+							this.ctx,
+						)).execute(envelope, effectiveAuthority, (e) =>
+							this.dispatchCommand(e, effectiveAuthority),
+						);
 			this.captureFailedReply(envelope, reply);
 			return reply;
 		} catch (error) {

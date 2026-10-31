@@ -129,3 +129,14 @@ Phase 4, Priorität 3: geschützte Recall-Konfiguration, bestätigte Retry-Outbo
 31.10.2026: Fortsetzung auf 0de2a6ca6. Eigene Fork-Identität ausdrücklich OFFEN und verbindlich; Paketfelder tragen noch die Original-ID. Kompatibilitätsanalyse für Daten, Secrets, Checkpoints und Recall liegt unter [fork-identitaet.md](fork-identitaet.md). Repository-Metadaten auf eigenes Forgejo berichtigt; keine Umbenennung/Versionsfestlegung. Vorhandene SDK-Hub-/Browser-Komponenten werden für die noch zu implementierende gemeinsame Runtime verwendet; produktiver Hub bleibt unbestätigt, kein Port wird erfunden.
 
 31.10.2026 — geprüft: eigene Fork-Identität als Pflichtpunkt wieder verankert, Forgejo-Metadaten und Prepublish-Schutz mit 9 Tests; noch keine endgültige Umbenennung. Vorhandene Hub-/Browser-Komponenten verbinden sich ausdrücklich mit derselben Runtime; Live-Verlaufsprotokoll und Hydrierungsfehler korrigiert. 122 unterschiedliche gezielte Tests bestanden, SDK-Build und drei Typprüfungen erfolgreich. Akteurgebundene Schreibübergabe, sichere alte Sitzungsübernahme, durchgehendes Recall und reale Android/125B-Abnahme bleiben OFFEN. Keine Fortsetzungssperre wegen eines angeblich vorhandenen, tatsächlich unbestätigten Hubs. [Fortsetzungsnachweis](phase4-reparatur.md).
+
+
+31.10.2026 — Fortsetzung auf den bestätigten Commits: serverseitig authentifizierte
+Actor-/Writer-Grenze im bestehenden Hub implementiert, Metadatenrevisionen,
+Verbindungsbindung, sichere Übergabe und unveränderte kanonische Urheberschaft
+auch für Queue/Steer. 476 unterschiedliche betroffene Tests bestanden, darunter
+echte lokale WebSockets mit ausdrücklich simulierter Ausführung. Produktiver
+Coding-Agent-Health HTTP 200, Learning-Agent-Identität weiter ungeklärt.
+Browser-/VS-Code-Bedienung, alte Sitzungen, durchgehendes Recall, echte
+Android-/125B-Abnahme und eigene freizugebende Identität bleiben OFFEN.
+Details und Fehlervorläufe: [phase4-reparatur.md](phase4-reparatur.md).

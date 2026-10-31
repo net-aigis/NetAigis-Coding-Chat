@@ -63,6 +63,54 @@ function makeAgentConfig(overrides: Partial<AgentConfig> = {}): AgentConfig {
 }
 
 describe("startup failure recovery", () => {
+	it("retains authenticated authors of original and subsequent requests without relabelling history", async () => {
+		const { runtime } = makeFakeAgentRuntime();
+		const session = new SessionRuntime(makeAgentConfig(), {
+			createAgentRuntimeImpl: () => runtime,
+		});
+		const author = {
+			actorId: "Friseer",
+			clientId: "vscode",
+			requestId: "original",
+			receivedAt: "2026-10-31T07:00:00Z",
+			source: "hub-authenticated" as const,
+		};
+		await session.run("Original order", undefined, undefined, author);
+		author.actorId = "tampered after submission";
+		await session.continue("jimmi correction", undefined, undefined, {
+			...author,
+			actorId: "jimmi",
+			requestId: "correction",
+		});
+		const users = session
+			.getMessages()
+			.filter((message) => message.role === "user");
+		expect(users).toHaveLength(2);
+		expect(users.map((message) => message.metadata?.author)).toMatchObject([
+			{ actorId: "Friseer", requestId: "original" },
+			{ actorId: "jimmi", requestId: "correction" },
+		]);
+	});
+	it("keeps the authenticated author when startup fails before a model call", async () => {
+		const session = new SessionRuntime(makeAgentConfig(), {
+			createAgentRuntimeImpl: () => {
+				throw new Error("fixture-startup");
+			},
+		});
+		await expect(
+			session.run("Keep this task", undefined, undefined, {
+				actorId: "jimmi",
+				clientId: "android",
+				requestId: "request",
+				receivedAt: "2026-10-31T07:00:00Z",
+				source: "hub-authenticated",
+			}),
+		).rejects.toThrow("fixture-startup");
+		expect(session.getMessages()[0].metadata?.author).toMatchObject({
+			actorId: "jimmi",
+			requestId: "request",
+		});
+	});
 	it("releases run admission after runtime construction fails and retains the original request", async () => {
 		const { runtime } = makeFakeAgentRuntime();
 		const factory = vi

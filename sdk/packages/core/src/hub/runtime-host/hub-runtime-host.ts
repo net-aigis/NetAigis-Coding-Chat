@@ -91,6 +91,10 @@ import {
 	restartLocalHubIfIdleAfterStartupTimeout,
 } from "../client";
 import { createHubPluginCommandsApi } from "../client/plugin-commands";
+import {
+	parseSessionWriterControl,
+	type SessionWriterControl,
+} from "../session-control";
 
 function toJsonRecord(
 	value: Record<string, unknown> | undefined,
@@ -1648,6 +1652,53 @@ export class HubRuntimeHost implements RuntimeHost {
 		}
 		return reply.payload
 			.messages as import("@cline/llms").MessageWithMetadata[];
+	}
+
+	async getSessionControl(sessionId: string): Promise<SessionWriterControl> {
+		const reply = await this.client.command(
+			"session.control.get",
+			{ sessionId },
+			sessionId,
+		);
+		return this.confirmSessionControl(reply, sessionId);
+	}
+	async claimSessionControl(
+		sessionId: string,
+		expectedRevision: number,
+	): Promise<SessionWriterControl> {
+		const reply = await this.client.command(
+			"session.control.claim",
+			{ sessionId, expectedRevision },
+			sessionId,
+			{ retryAfterDispatch: false },
+		);
+		return this.confirmSessionControl(reply, sessionId);
+	}
+	async releaseSessionControl(
+		sessionId: string,
+		expectedRevision: number,
+	): Promise<SessionWriterControl> {
+		const reply = await this.client.command(
+			"session.control.release",
+			{ sessionId, expectedRevision },
+			sessionId,
+			{ retryAfterDispatch: false },
+		);
+		return this.confirmSessionControl(reply, sessionId);
+	}
+	private confirmSessionControl(
+		reply: import("@cline/shared").HubReplyEnvelope,
+		sessionId: string,
+	): SessionWriterControl {
+		if (
+			!reply.ok ||
+			reply.payload?.sessionId !== sessionId ||
+			reply.payload.control === undefined
+		)
+			throw new Error(
+				"The selected hub did not confirm control of this session",
+			);
+		return parseSessionWriterControl(reply.payload.control);
 	}
 
 	async dispatchHookEvent(_payload: HookEventPayload): Promise<void> {

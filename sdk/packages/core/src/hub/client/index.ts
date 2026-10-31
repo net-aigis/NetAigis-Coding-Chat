@@ -359,6 +359,7 @@ export class NodeHubClient {
 	private currentUrl: string;
 	private recoveryPromise: Promise<boolean> | undefined;
 	private readonly pendingReplies = new Map<string, PendingReply>();
+	private readonly controlRevisions = new Map<string, number>();
 	private readonly listeners = new Set<SubscriptionEntry>();
 	private readonly subscriptionCounts = new Map<string, number>();
 	/**
@@ -721,10 +722,28 @@ export class NodeHubClient {
 		sessionId?: string,
 		options?: HubCommandOptions,
 	): Promise<HubReplyEnvelope> {
+		const target =
+			sessionId ??
+			(typeof payload?.sessionId === "string" ? payload.sessionId : undefined);
+		const revision = target ? this.controlRevisions.get(target) : undefined;
+		if (
+			revision !== undefined &&
+			payload?.controlRevision === undefined &&
+			!command.startsWith("session.control.")
+		)
+			payload = { ...payload, controlRevision: revision };
 		let attempt = 0;
 		let dispatched = false;
 		const dispatchOptions = {
 			...options,
+			retryAfterDispatch:
+				options?.retryAfterDispatch ??
+				![
+					"run.start",
+					"session.send_input",
+					"session.control.claim",
+					"session.control.release",
+				].includes(command),
 			onDispatch: (requestId: string) => {
 				dispatched = true;
 				options?.onDispatch?.(requestId);
@@ -743,7 +762,7 @@ export class NodeHubClient {
 			} catch (error) {
 				if (
 					!canRecoverTransport ||
-					(dispatched && options?.retryAfterDispatch === false) ||
+					(dispatched && dispatchOptions.retryAfterDispatch === false) ||
 					attempt >= 1 ||
 					!(await this.recoverLocalHubTransport(error))
 				) {
@@ -835,6 +854,20 @@ export class NodeHubClient {
 				resolved.error?.message ?? `Hub command ${command} failed`,
 			);
 		}
+		const session = resolved.payload?.session as
+			| Record<string, unknown>
+			| undefined;
+		const metadata = session?.metadata as Record<string, unknown> | undefined;
+		const control = (resolved.payload?.control ??
+			metadata?.sharedSessionControl) as Record<string, unknown> | undefined;
+		const controlledId =
+			resolved.payload?.sessionId ?? session?.sessionId ?? sessionId;
+		if (
+			typeof controlledId === "string" &&
+			control?.version === 1 &&
+			Number.isSafeInteger(control.revision)
+		)
+			this.controlRevisions.set(controlledId, Number(control.revision));
 		return resolved;
 	}
 

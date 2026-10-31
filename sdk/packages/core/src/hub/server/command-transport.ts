@@ -8,6 +8,9 @@ import type {
 /** Authority captured once by an authenticated transport connection. */
 export interface HubConnectionAuthority {
 	clientId: string;
+	/** Bound by the authenticated socket, never by a command or registration payload. */
+	actorId?: string;
+	connectionId?: string;
 	workspaceContext?: HubClientRegistration["workspaceContext"];
 	/**
 	 * Token-authenticated connections may already bind any workspace at

@@ -624,8 +624,13 @@ export interface AgentRuntimeConfig {
 	// model request.
 	consumePendingUserMessage?: () =>
 		| string
+		| { text: string; metadata?: Record<string, unknown> }
 		| undefined
-		| Promise<string | undefined>;
+		| Promise<
+				| string
+				| { text: string; metadata?: Record<string, unknown> }
+				| undefined
+		  >;
 }
 
 // =============================================================================

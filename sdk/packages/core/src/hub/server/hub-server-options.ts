@@ -18,6 +18,8 @@ import type { HubEventLogOptions } from "./hub-event-log";
 import type { HubRunQueueOptions } from "./hub-run-queue";
 
 export interface HubWebSocketServerOptions {
+	/** Protected actor-to-token mapping. Presence enables authenticated writer controls. */
+	actorTokens?: Readonly<Record<string, string>>;
 	/** Override cloud credentials/controller construction for embedded hubs. */
 	cloudSessionOptions?: Omit<HubCloudSessionServiceOptions, "publish">;
 	/** Hub-owned full-text session history index configuration. */
