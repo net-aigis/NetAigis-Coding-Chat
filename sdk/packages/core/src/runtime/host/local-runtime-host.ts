@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import type * as LlmsProviders from "@cline/llms";
+import { withNetaigisActor } from "@cline/llms";
 import {
 	type AgentConfig,
 	type AgentEvent,
@@ -2355,10 +2356,9 @@ export class LocalRuntimeHost implements RuntimeHost {
 				}
 				return run;
 			};
-			const result = await this.runWithAuthRetry(
-				session,
-				runFn,
-				baselineMessages,
+			const result = await withNetaigisActor(
+				author?.source === "hub-authenticated" ? author.actorId : undefined,
+				() => this.runWithAuthRetry(session, runFn, baselineMessages),
 			);
 
 			session.started = true;

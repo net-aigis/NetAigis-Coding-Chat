@@ -131,6 +131,10 @@ export {
 	providerOffersModelTool,
 	supportsModelTool,
 } from "./providers/model-tools";
+export {
+	getNetaigisActor,
+	withNetaigisActor,
+} from "./providers/netaigis-conversation";
 export { resolveProviderModelCatalogKeys } from "./providers/provider-keys";
 export {
 	type OpenAICodexRequestHeaderContext,

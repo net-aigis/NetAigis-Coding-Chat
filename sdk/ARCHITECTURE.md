@@ -1574,3 +1574,16 @@ field against the current queued metadata. Its older full metadata copy cannot
 roll back a writer revision, newer process exit, title or continuity fields.
 Core tests set a Git discovery ceiling at their explicit private fixture root;
 fixtures nested below a worktree cannot checkpoint their parent before git init.
+
+### Fork: model-independent authenticated actor propagation
+
+The existing Coding-Agent route on port 11436 under `/v1/` already receives
+`X-AI-Conversation`. Its user header now comes from a separate AsyncLocalStorage
+scope set by Core's trusted authenticated turn author, not from model metadata,
+prompts or the most recently configured static actor. The scope covers auth
+retry and asynchronous streaming; parallel actors cannot overwrite each other.
+Unsigned local turns explicitly clear inherited actor context and keep their
+existing configured behavior. Only the existing Coding-Agent route receives
+this scoped `X-AI-User`; other ports/paths remain unchanged. Provider/model IDs,
+endpoints, static configuration and model routing are not selected or rewritten
+by actor propagation. No particular model or parameter count is required.

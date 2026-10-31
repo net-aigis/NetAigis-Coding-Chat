@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import type { MessageWithMetadata } from "@cline/llms";
+import { getNetaigisActor, type MessageWithMetadata } from "@cline/llms";
 import {
 	type AgentConfig,
 	type AgentEvent,
@@ -1768,6 +1768,81 @@ describe("LocalRuntimeHost", () => {
 		});
 		expect(agent.shutdown).not.toHaveBeenCalled();
 		expect(runtime.shutdown).not.toHaveBeenCalled();
+	});
+
+	it("scopes each authenticated actor independently of the selected model and clears it for unsigned local turns", async () => {
+		const seen: Array<string | undefined> = [];
+		const run = vi.fn(async () => {
+			const actor = getNetaigisActor();
+			await Promise.resolve();
+			expect(getNetaigisActor()).toBe(actor);
+			seen.push(actor);
+			return createResult();
+		});
+		const manager = new RuntimeHostUnderTest({
+			distinctId,
+			sessionService: new FileSessionService(
+				join(isolatedHomeDir, "actor-sessions"),
+			),
+			runtimeBuilder: {
+				build: () => ({ tools: [], shutdown: () => {} }),
+			} as never,
+			createAgent: () =>
+				({
+					run,
+					continue: run,
+					getMessages: () => [],
+					getAgentId: () => "fixture-agent",
+					getConversationId: () => "fixture-conversation",
+					subscribeEvents: () => () => {},
+					canStartRun: () => true,
+					shutdown: async () => {},
+				}) as never,
+		});
+		try {
+			for (const [sessionId, modelId] of [
+				["actor-a", "configured-model-before"],
+				["actor-b", "configured-model-after"],
+			])
+				await manager.startSession(
+					normalizeStartInput({
+						config: createConfig({
+							sessionId,
+							modelId,
+							cwd: isolatedHomeDir,
+							workspaceRoot: isolatedHomeDir,
+						}),
+						interactive: true,
+					}),
+				);
+			await Promise.all(
+				[
+					["actor-a", "Friseer"],
+					["actor-b", "jimmi"],
+				].map(([sessionId, actorId]) =>
+					manager.runTurn({
+						sessionId,
+						prompt: "fixture",
+						author: {
+							actorId,
+							source: "hub-authenticated",
+							clientId: "fixture-client",
+							requestId: sessionId,
+							receivedAt: new Date().toISOString(),
+						},
+					}),
+				),
+			);
+			expect(seen).toEqual(expect.arrayContaining(["Friseer", "jimmi"]));
+			await manager.runTurn({
+				sessionId: "actor-a",
+				prompt: "unsigned local fixture",
+			});
+			expect(seen.at(-1)).toBeUndefined();
+			expect(getNetaigisActor()).toBeUndefined();
+		} finally {
+			await manager.dispose();
+		}
 	});
 
 	it("persists writer changes before acknowledging an initially lazy session and can read them from a fresh host", async () => {

@@ -1079,3 +1079,50 @@ roter Zwischenläufe in 84 Dateien überprüft versiegelt:
 `SHA256SUMS.runtime-0f594871e-20261031`, SHA256
 7b4a8f2aca367e2386f771c551a33417a162e4cd5b6278d5f9c3a774092a9226.
 Keine neue Sicherung oder neue Ablagewurzel. Gesamtauftrag läuft weiter.
+
+### Modellunabhängige Actor-Zuordnung bis zum bestehenden Backend
+
+Nach b80cd4943 der nächste belegte Integrationsfehler: Der vorhandene Provider
+reichte zwar die Session-ID, jedoch nicht den authentifizierten Actor an den
+Coding-Agent weiter. Ein statischer X-AI-User konnte dadurch Friseer beibehalten,
+während jimmi schrieb. `p4-actor-routing-red`: drei Fälle grün, der tatsächliche
+Adapter-/Streaming-Fall mit parallelem Friseer/jimmi und zwei beliebigen
+Modell-IDs scheiterte genau an dieser Zuordnung.
+
+Core setzt jetzt pro authentifiziertem Turn einen getrennten AsyncLocalStorage-
+Kontext um Ausführung und Auth-Retry. Der vorhandene OpenAI-kompatible Adapter
+setzt X-AI-User daraus ausschließlich auf der schon vorhandenen Route
+Port 11436 /v1/. Die Session-ID bleibt gleich. Kein Actor aus Modelltext oder
+Request-Metadaten; ungültige Headerwerte werden vor Ausführung verweigert.
+Lokale unsignierte Turns erben keinen vorherigen Actor; bestehende Konfiguration
+bleibt dafür erhalten. Keine Modell-/Endpoint-/Routingumstellung, kein fester
+Qwen-/125B-/DeepSeek-Zwang und keine neue Standardmodellwahl.
+
+Lesender Acer-Nachweis: Der zunächst aus der alten lokalen Quellstruktur
+abgeleitete /opt/netaigis-coding-agent/server/app.py existiert produktiv nicht.
+Danach gezielt nur das bekannte Backend-Verzeichnis und seine Unit-Zuordnung
+geprüft; tatsächlich /opt/netaigis-coding-agent/app.py. AST bestätigt
+x-ai-conversation in Zeile 226 sowie x-ai-user in 237/130/166, Datei-SHA256
+ca9817079d3081eff10b4020cd44b298259963321522d449eb77c0d4073d6201.
+Learning-Quelle /opt/ai-agent/app.py bestätigt X-AI-Conversation-Parameter und
+bestehende user-Felder, SHA256
+b68af9d9954b616b47d127f8d3e62d93ae86ad5d6ffcc58df7eae9a8490de7dd.
+Belege p4-acer-actor-header-readonly / p4-acer-coding-source-location /
+p4-acer-actor-header-actual im bestehenden privaten Prüfverzeichnis.
+Keine Geheimnisse oder Konfigurationen ausgegeben, keine produktive Datei oder
+Dienst verändert und kein Modellgespräch über diese Quellprüfung geführt.
+
+`p4-actor-routing-wire` **32/32** bestanden: tatsächlicher AI-SDK-Provider-Adapter
+mit gestubbtem HTTP, parallele Actor-/Session-Header, unveränderte übergebene
+Modell-IDs, andere Ports/Pfade ohne neue Header und Kontextbereinigung.
+`p4-actor-routing-core` **103/103** Host-Verträge einschließlich neuer paralleler
+Actor-Ausführung und unsigniertem Folgeturn bestanden (Agent/Modell Fixtures).
+`p4-actor-routing-sdk-build` (voller benötigter SDK-Build) und
+`p4-actor-routing-core-types` Exit 0. Keine produktive Modell- oder Geräteabnahme.
+
+Der finale Checkpoint-Fixture-Nachweis p4-checkpoint-git-discovery-config ist
+inzwischen ebenfalls **1/1** bestanden, 19 unbetroffene Fälle übersprungen.
+Nächster offener Schritt bleibt Recall-Restore/Browser über die gemeinsame
+Runtime; keine nicht vorhandenen Recall-Übernahmerouten annehmen. Reale Android-
+Abnahme erfolgt später angeleitet durch den Benutzer und mit der dann tatsächlich
+ausgewählten Modellkonfiguration.

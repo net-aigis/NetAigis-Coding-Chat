@@ -1,4 +1,3 @@
-import { netaigisConversation } from "../netaigis-conversation";
 import { createGateway } from "@ai-sdk/gateway";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModelV4 } from "@ai-sdk/provider";
@@ -12,6 +11,10 @@ import { wrapLanguageModel } from "ai";
 import { ensureFetch, resolveApiKey } from "../http";
 import { splitToolImagesMiddleware } from "../middleware/split-tool-images";
 import { isOpenAIReasoningEraModelId } from "../model-facts";
+import {
+	getNetaigisActor,
+	netaigisConversation,
+} from "../netaigis-conversation";
 import type { ProviderFactoryResult } from "./types";
 
 type FetchInput = Parameters<typeof fetch>[0];
@@ -242,36 +245,38 @@ export async function createOpenAICompatibleProviderModule(
 			})
 		: fetch;
 
-    // NETAIGIS_CONVERSATION_HEADER_V1
-    const netaigisFetch: typeof globalThis.fetch = async (input, init) => {
-        const originalFetch = providerFetch ?? globalThis.fetch;
-        const id = netaigisConversation.getStore();
-        const url = new URL(
-            typeof input === "string"
-                ? input
-                : input instanceof URL
-                  ? input.href
-                  : input.url,
-        );
+	// NETAIGIS_CONVERSATION_HEADER_V1
+	const netaigisFetch: typeof globalThis.fetch = async (input, init) => {
+		const originalFetch = providerFetch ?? globalThis.fetch;
+		const id = netaigisConversation.getStore();
+		const actor = getNetaigisActor();
+		const url = new URL(
+			typeof input === "string"
+				? input
+				: input instanceof URL
+					? input.href
+					: input.url,
+		);
 
-        if (
-            id &&
-            (url.protocol === "http:" || url.protocol === "https:") &&
-            url.port === "11436" &&
-            url.pathname.startsWith("/v1/")
-        ) {
-            const headers = new Headers(
-                init?.headers ?? (input instanceof Request ? input.headers : undefined),
-            );
-            headers.set("X-AI-Conversation", id);
+		if (
+			(id || actor) &&
+			(url.protocol === "http:" || url.protocol === "https:") &&
+			url.port === "11436" &&
+			url.pathname.startsWith("/v1/")
+		) {
+			const headers = new Headers(
+				init?.headers ?? (input instanceof Request ? input.headers : undefined),
+			);
+			if (id) headers.set("X-AI-Conversation", id);
+			if (actor) headers.set("X-AI-User", actor);
 
-            return originalFetch(input, { ...init, headers });
-        }
+			return originalFetch(input, { ...init, headers });
+		}
 
-        return originalFetch(input, init);
-    };
+		return originalFetch(input, init);
+	};
 
-    const provider = createOpenAICompatible({
+	const provider = createOpenAICompatible({
 		name: context.provider.id,
 		apiKey,
 		...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
