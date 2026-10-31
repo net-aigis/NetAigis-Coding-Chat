@@ -156,6 +156,32 @@ class FakeWebSocket {
 }
 
 describe("NodeHubClient", () => {
+	it("does not recover or redispatch through a local Hub for an explicitly selected runtime", async () => {
+		const client = new NodeHubClient({
+			url: "ws://127.0.0.1:25463/hub",
+			allowLocalHubRecovery: false,
+		} as ConstructorParameters<typeof NodeHubClient>[0]);
+		const internals = client as unknown as {
+			commandOnce: () => Promise<never>;
+			recoverLocalHubTransport: (error: unknown) => Promise<boolean>;
+		};
+		const recovery = vi
+			.spyOn(internals, "recoverLocalHubTransport")
+			.mockResolvedValue(true);
+		const attempt = vi
+			.spyOn(internals, "commandOnce")
+			.mockRejectedValue(
+				new HubTransportError(
+					"hub_connection_closed",
+					"selected runtime disconnected",
+				),
+			);
+		await expect(client.command("session.list")).rejects.toThrow(
+			"selected runtime disconnected",
+		);
+		expect(attempt).toHaveBeenCalledOnce();
+		expect(recovery).not.toHaveBeenCalled();
+	});
 	it.each([
 		"run.start",
 		"session.send_input",

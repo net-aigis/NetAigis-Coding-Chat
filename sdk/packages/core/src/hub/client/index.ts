@@ -201,6 +201,8 @@ function normalizeWebSocketConnectError(
 
 export interface HubClientOptions {
 	url: string;
+	/** False for explicitly selected runtimes: reconnect only to the same endpoint. */
+	allowLocalHubRecovery?: boolean;
 	clientId?: string;
 	clientType?: string;
 	displayName?: string;
@@ -770,7 +772,9 @@ export class NodeHubClient {
 			},
 		};
 		const canRecoverTransport =
-			command !== "client.register" && command !== "client.unregister";
+			this.options.allowLocalHubRecovery !== false &&
+			command !== "client.register" &&
+			command !== "client.unregister";
 		while (true) {
 			try {
 				return await this.commandOnce(
@@ -893,6 +897,7 @@ export class NodeHubClient {
 
 	private async recoverLocalHubTransport(error: unknown): Promise<boolean> {
 		if (
+			this.options.allowLocalHubRecovery === false ||
 			!isRecoverableLocalHubUrl(this.currentUrl) ||
 			!isHubReconnectableTransportError(error)
 		) {

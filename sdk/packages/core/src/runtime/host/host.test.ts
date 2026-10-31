@@ -266,18 +266,42 @@ describe("runtime host resolution", () => {
 		);
 	});
 
-	it("does not prewarm when using an explicit hub endpoint", async () => {
+	it("does not create a local replacement when an explicit hub endpoint cannot be resolved", async () => {
 		const { createRuntimeHost } = await import("./host");
 		resolveCompatibleLocalHubUrlMock.mockResolvedValue(undefined);
 
-		await createRuntimeHost({
-			backendMode: "auto",
-			hub: {
-				endpoint: "ws://127.0.0.1:25463/hub",
-			},
-		});
+		await expect(
+			createRuntimeHost({
+				backendMode: "auto",
+				hub: {
+					endpoint: "ws://127.0.0.1:25463/hub",
+				},
+			}),
+		).rejects.toThrow("Explicit hub endpoint is unavailable");
 
 		expect(prewarmDetachedHubServerMock).not.toHaveBeenCalled();
+		expect(sqliteInitMock).not.toHaveBeenCalled();
+	});
+	it("keeps an explicit hub connection failure instead of creating a separate local runtime", async () => {
+		const { createRuntimeHost } = await import("./host");
+		resolveCompatibleLocalHubUrlMock.mockResolvedValue(
+			"ws://127.0.0.1:25463/hub",
+		);
+		const error = new Error("selected endpoint refused connection");
+		hubConnectMock.mockRejectedValue(error);
+		await expect(
+			createRuntimeHost({
+				backendMode: "auto",
+				hub: { endpoint: "ws://127.0.0.1:25463/hub" },
+				logger,
+			}),
+		).rejects.toBe(error);
+		expect(prewarmDetachedHubServerMock).not.toHaveBeenCalled();
+		expect(sqliteInitMock).not.toHaveBeenCalled();
+		expect(logger.log).not.toHaveBeenCalledWith(
+			"Falling back to local runtime host",
+			expect.anything(),
+		);
 	});
 
 	it("uses a remote runtime host when backendMode is remote", async () => {

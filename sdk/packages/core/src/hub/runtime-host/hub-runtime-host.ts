@@ -602,6 +602,8 @@ function hubReplyErrorMessage(
 
 export interface HubRuntimeHostOptions {
 	url: string;
+	/** Disable local discovery, replacement and startup retries for a selected runtime. */
+	allowLocalHubRecovery?: boolean;
 	authToken?: string;
 	/** Header-based upgrade auth for remote proxies; see NodeHubClient. */
 	resolveConnectionHeaders?: HubClientOptions["resolveConnectionHeaders"];
@@ -808,6 +810,7 @@ export class HubRuntimeHost implements RuntimeHost {
 	) {
 		this.clientContext = clientContext;
 		this.clientOptions = {
+			allowLocalHubRecovery: options.allowLocalHubRecovery,
 			authToken: options.authToken,
 			resolveConnectionHeaders: options.resolveConnectionHeaders,
 			clientType: options.clientType ?? "core-hub-runtime",
@@ -845,7 +848,10 @@ export class HubRuntimeHost implements RuntimeHost {
 	private async recoverLocalHubStartupDeadlock(
 		error: unknown,
 	): Promise<boolean> {
-		if (!isHubCommandTimeoutError(error, "session.create")) {
+		if (
+			this.clientOptions.allowLocalHubRecovery === false ||
+			!isHubCommandTimeoutError(error, "session.create")
+		) {
 			return false;
 		}
 		const restartedUrl = await restartLocalHubIfIdleAfterStartupTimeout({

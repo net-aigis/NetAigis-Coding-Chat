@@ -1557,3 +1557,29 @@ belegt. Thinking-only Update schreibt weiterhin keine Modelldatei.
 p4-model-selection-types und abschließender p4-model-selection-build Exit 0.
 Keine Änderung produktiver Modellkennung, Parameterzahl, API-Endpunkte, Router
 oder Acer-Dienste. Alle Modellnamen der neuen Tests sind ausdrücklich Fixtures.
+
+### Ausgewählte gemeinsame Runtime wird bei Fehlern nicht lokal ersetzt
+
+Auf 14fa6cef8 fortgesetzt. p4-explicit-runtime-recovery-red reproduziert zwei
+zusätzliche Aufrufe: generische Transport-Recovery konnte einen lokal gemerkten
+Hub ersetzen; die session.create-Timeout-Recovery konnte auch beim Remote-Host
+einen lokalen Hub neu starten und das Create wiederholen. Beide neuen Fälle
+scheiterten am bisherigen Verhalten (0/2, 88 unbetroffene übersprungen).
+
+RemoteRuntimeHost deaktiviert jetzt beide lokalen Recovery-Ebenen. Der explizite
+VS-Code-Recall-Client ebenso. Die Runtime-Fabrik übernimmt das auch für explizite
+hub-Endpunkte. p4-explicit-runtime-recovery 105/105 bestanden, einschließlich
+bestehender lokaler Recovery und unveränderter Nicht-Wiederholung unsicher
+übertragener Schreibbefehle. Gleicher-Endpunkt-Reconnect bleibt erhalten.
+
+Ergänzender tatsächlicher Fehler in auto-Auflösung: sowohl nicht auflösbarer
+expliziter Endpunkt als auch dessen Connectfehler führten zu einer getrennten
+lokalen Runtime. p4-explicit-runtime-auto-red 0/2 (14 übersprungen) reproduziert;
+beide Pfade brechen jetzt mit Fehler ab, ohne lokalen Backendstart oder Prewarm.
+p4-explicit-runtime-auto 16/16 bestanden. Der frühere Test prüfte nur fehlendes
+Prewarm und erlaubte daneben den unerwünschten lokalen Backendstart; seine
+Prüfung ist nun auf ausdrücklich abgewiesene Ersetzung erweitert.
+
+p4-explicit-runtime-types und p4-explicit-runtime-core-build Exit 0.
+p4-explicit-runtime-app 13/13, p4-explicit-runtime-app-types Exit 0. Keine produktive
+Runtime gestartet, ersetzt oder neu gestartet; keine Endpunkte verändert.

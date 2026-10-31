@@ -1702,3 +1702,10 @@ index revision and is not acknowledged as success. Active agent/delegated
 connection changes occur after persistence, followed by a runtime snapshot.
 Historical message model metadata is never rewritten. Selecting a model does
 not choose or change endpoints, credentials or physical backend deployment.
+
+An explicitly selected remote/shared Hub is never replaced by local discovery,
+startup recovery or a local backend. RemoteRuntimeHost and the VS Code Recall
+adapter disable local recovery at both transport and session-create layers;
+the runtime factory enforces the same rule for explicit hub endpoints, including
+auto mode. Same-endpoint subscription reconnect remains enabled. Managed local
+discovery retains its existing recovery behavior when no endpoint was selected.

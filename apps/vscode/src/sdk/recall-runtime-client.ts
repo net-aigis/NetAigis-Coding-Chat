@@ -14,6 +14,7 @@ export class RecallRuntimeClient {
 	private async usingClient<T>(operation: (recall: HubRecallClient) => Promise<T>): Promise<T> {
 		const client = new NodeHubClient({
 			url: this.connection.endpoint,
+			allowLocalHubRecovery: false,
 			authToken: this.connection.authToken,
 			clientType: "vscode",
 			displayName: "NetAigis Coding Chat – TOTAL RECALL",

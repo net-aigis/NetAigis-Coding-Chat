@@ -196,6 +196,7 @@ export async function createRuntimeHost(
 		return new HubRuntimeHost(
 			{
 				url: hubUrl,
+				allowLocalHubRecovery: !explicitEndpoint,
 				authToken: options.hub?.authToken,
 				clientType: options.hub?.clientType,
 				displayName: options.hub?.displayName,
@@ -222,6 +223,7 @@ export async function createRuntimeHost(
 			const host = new HubRuntimeHost(
 				{
 					url: hubUrl,
+					allowLocalHubRecovery: !options.hub?.endpoint?.trim(),
 					authToken: options.hub?.authToken,
 					clientType: options.hub?.clientType,
 					displayName: options.hub?.displayName,
@@ -237,6 +239,7 @@ export async function createRuntimeHost(
 				await host.connect();
 				return host;
 			} catch (error) {
+				if (options.hub?.endpoint?.trim()) throw error;
 				options.logger?.log("Falling back to local runtime host", {
 					reason: "hub_connect_failed",
 					severity: "warn",
@@ -254,6 +257,11 @@ export async function createRuntimeHost(
 					},
 				});
 			}
+		}
+		if (options.hub?.endpoint?.trim()) {
+			throw new Error(
+				"Explicit hub endpoint is unavailable; no local replacement was created.",
+			);
 		}
 		prewarmLocalHubIfNeeded(configuredMode, options);
 		options.logger?.log("Falling back to local runtime host", {

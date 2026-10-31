@@ -32,7 +32,7 @@ it("sends only an inspected reference to the existing runtime and closes its tem
 	)
 	expect(mocks.close).toHaveBeenCalledOnce()
 	expect(mocks.construct).toHaveBeenCalledWith(
-		expect.objectContaining({ url: connection.endpoint, authToken: connection.authToken }),
+		expect.objectContaining({ url: connection.endpoint, authToken: connection.authToken, allowLocalHubRecovery: false }),
 	)
 })
 it("keeps the selected connection and propagates a lost response without fallback, retry or a claimed success", async () => {

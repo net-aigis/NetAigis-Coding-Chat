@@ -16,12 +16,14 @@ const actorMock = vi.hoisted(() =>
 	vi.fn<() => string | undefined>(() => undefined),
 );
 const restartLocalHubIfIdleAfterStartupTimeoutMock = vi.hoisted(() => vi.fn());
+const clientOptionsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../client", () => ({
 	NodeHubClient: class {
 		private readonly url: string;
 
 		constructor(options: { url: string }) {
+			clientOptionsMock(options);
 			this.url = options.url;
 		}
 
@@ -46,6 +48,7 @@ vi.mock("../client", () => ({
 			(error as { command?: unknown }).command === command),
 	restartLocalHubIfIdleAfterStartupTimeout:
 		restartLocalHubIfIdleAfterStartupTimeoutMock,
+	normalizeHubWebSocketUrl: (url: string) => url,
 }));
 
 function createConfig() {
@@ -233,6 +236,7 @@ describe("HubRuntimeHost", () => {
 		getClientIdMock.mockClear();
 		actorMock.mockReset();
 		restartLocalHubIfIdleAfterStartupTimeoutMock.mockReset();
+		clientOptionsMock.mockClear();
 	});
 
 	it("does not auto-start a run during session creation", async () => {
@@ -546,6 +550,42 @@ describe("HubRuntimeHost", () => {
 			cwd: "/tmp/project",
 		});
 		expect(disposeMock).toHaveBeenCalledOnce();
+	});
+
+	it("never restarts or replaces an explicit remote runtime after a create timeout", async () => {
+		subscribeMock.mockReturnValue(() => {});
+		const timeoutError = Object.assign(
+			new Error("selected runtime create timed out"),
+			{
+				command: "session.create",
+				code: "hub_command_timeout",
+			},
+		);
+		commandMock.mockRejectedValue(timeoutError);
+		restartLocalHubIfIdleAfterStartupTimeoutMock.mockResolvedValue(
+			"ws://127.0.0.1:25464/hub",
+		);
+		const { RemoteRuntimeHost } = await import("./remote-runtime-host");
+		const host = new RemoteRuntimeHost({
+			endpoint: "ws://127.0.0.1:25463/hub",
+		});
+		try {
+			await expect(
+				host.startSession({ config: createConfig(), prompt: "once" }),
+			).rejects.toBe(timeoutError);
+			expect(commandMock).toHaveBeenCalledOnce();
+			expect(
+				restartLocalHubIfIdleAfterStartupTimeoutMock,
+			).not.toHaveBeenCalled();
+			expect(clientOptionsMock).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					url: "ws://127.0.0.1:25463/hub",
+					allowLocalHubRecovery: false,
+				}),
+			);
+		} finally {
+			await host.dispose();
+		}
 	});
 
 	it("starts runs only through send", async () => {

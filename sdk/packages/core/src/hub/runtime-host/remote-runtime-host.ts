@@ -2,7 +2,7 @@ import { normalizeHubWebSocketUrl } from "../client";
 import { HubRuntimeHost, type HubRuntimeHostOptions } from "./hub-runtime-host";
 
 export interface RemoteRuntimeHostOptions
-	extends Omit<HubRuntimeHostOptions, "url"> {
+	extends Omit<HubRuntimeHostOptions, "url" | "allowLocalHubRecovery"> {
 	endpoint: string;
 	workspaceRoot?: string;
 	cwd?: string;
@@ -13,6 +13,7 @@ export class RemoteRuntimeHost extends HubRuntimeHost {
 		super(
 			{
 				url: normalizeHubWebSocketUrl(options.endpoint),
+				allowLocalHubRecovery: false,
 				authToken: options.authToken,
 				resolveConnectionHeaders: options.resolveConnectionHeaders,
 				clientType: options.clientType ?? "core-remote-runtime",
