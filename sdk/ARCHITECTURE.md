@@ -1542,3 +1542,22 @@ cannot inject or overwrite runtime observations; public local metadata updates
 also retain the current journal. Persisted nonterminal observations remain
 unconfirmed after loss of the owning runtime; they are not automatic recovery.
 Live/historical UI reconciliation and reconnect authority are subsequent steps.
+
+### Fork: reconnecting an authenticated writer without replaying work
+
+Actor registration now returns its server-minted connection ID alongside the
+actor ID. The client exposes these only while registered. The access policy
+tracks exclusive connected owners per client ID and serializes unregister with
+registration; a stale close cannot remove a replacement. Explicit writer claim
+may rebind the same actor/client to its new exclusively registered connection
+while work or approvals are pending. Other-client/actor handover still requires
+quiescence, revision checks and persistence before acknowledgement.
+
+A successful rebind refreshes existing approval events with the new revision,
+retaining the same approval and tool-call IDs. The RuntimeHost rebinds only its
+own actor/client when resuming its session or handling an approval replay. It
+checks server control before showing a decision, deduplicates concurrent and
+already resolved approval events, and never sends a replacement run/tool call.
+A decision-response failure is surfaced through the existing detached-event
+error path instead of silently marking the request resolved. Disconnect does
+not abort execution or relinquish another actor's role.

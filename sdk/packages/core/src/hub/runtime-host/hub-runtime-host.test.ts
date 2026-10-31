@@ -28,6 +28,7 @@ vi.mock("../client", () => ({
 		command = commandMock;
 		connect = vi.fn(async () => {});
 		getAuthenticatedActorId = actorMock;
+		getAuthenticatedConnectionId = () => "socket";
 		subscribe = subscribeMock;
 		close = closeMock;
 		dispose = disposeMock;
@@ -720,6 +721,78 @@ describe("HubRuntimeHost", () => {
 			agentId: "agent-1",
 			conversationId: "conversation-1",
 		});
+	});
+
+	it("rebinds its own authenticated writer once before showing a replayed approval, without replaying the tool", async () => {
+		actorMock.mockReturnValue("Friseer");
+		let decide!: (value: { approved: boolean }) => void;
+		const decision = new Promise<{ approved: boolean }>((resolve) => {
+			decide = resolve;
+		});
+		const requestToolApproval = vi.fn(() => decision);
+		let control = {
+			version: 1,
+			revision: 1,
+			writer: {
+				actorId: "Friseer",
+				clientId: "client-1",
+				connectionId: "old-socket",
+			},
+		};
+		commandMock.mockImplementation(async (name: string) => {
+			if (name === "session.control.claim")
+				control = {
+					...control,
+					revision: 2,
+					writer: { ...control.writer, connectionId: "socket" },
+				};
+			return { ok: true, payload: { sessionId: "same-session", control } };
+		});
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({
+			url: "ws://127.0.0.1:25463/hub",
+			capabilities: { requestToolApproval },
+		});
+		const handle = (
+			host as unknown as {
+				handleApprovalRequested: (event: HubEventEnvelope) => Promise<void>;
+			}
+		).handleApprovalRequested.bind(host);
+		const event: HubEventEnvelope = {
+			version: "v1",
+			event: "approval.requested",
+			sessionId: "same-session",
+			payload: {
+				approvalId: "same-approval",
+				toolCallId: "same-call",
+				toolName: "run_commands",
+				targetClientId: "client-1",
+				inputJson: "{}",
+			},
+		};
+		const first = handle(event);
+		await vi.waitFor(() => expect(requestToolApproval).toHaveBeenCalledOnce());
+		await handle(event);
+		expect(commandMock.mock.calls.map(([name]) => name)).toEqual([
+			"session.control.get",
+			"session.control.claim",
+		]);
+		decide({ approved: true });
+		await first;
+		await handle(event);
+		expect(requestToolApproval).toHaveBeenCalledOnce();
+		expect(commandMock.mock.calls.map(([name]) => name)).toEqual([
+			"session.control.get",
+			"session.control.claim",
+			"approval.respond",
+		]);
+		control = { ...control, writer: { ...control.writer, actorId: "jimmi" } };
+		await handle({
+			...event,
+			payload: { ...event.payload, approvalId: "other-approval" },
+		});
+		expect(requestToolApproval).toHaveBeenCalledOnce();
+		await host.dispose();
 	});
 
 	it("bridges hub approval requests through runtime capabilities", async () => {

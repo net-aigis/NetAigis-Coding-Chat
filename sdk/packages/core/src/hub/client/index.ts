@@ -382,6 +382,7 @@ export class NodeHubClient {
 	private sawSocketClose = false;
 	private registered = false;
 	private authenticatedActorId: string | undefined;
+	private authenticatedConnectionId: string | undefined;
 	private capabilities: NonNullable<HubClientRegistration["capabilities"]>;
 
 	constructor(private readonly options: HubClientOptions) {
@@ -402,6 +403,10 @@ export class NodeHubClient {
 	}
 	getAuthenticatedActorId(): string | undefined {
 		return this.registered ? this.authenticatedActorId : undefined;
+	}
+
+	getAuthenticatedConnectionId(): string | undefined {
+		return this.registered ? this.authenticatedConnectionId : undefined;
 	}
 
 	getUrl(): string {
@@ -493,6 +498,11 @@ export class NodeHubClient {
 			this.authenticatedActorId =
 				typeof registration.payload?.authenticatedActorId === "string"
 					? registration.payload.authenticatedActorId
+					: undefined;
+			this.authenticatedConnectionId =
+				this.authenticatedActorId &&
+				typeof registration.payload?.authenticatedConnectionId === "string"
+					? registration.payload.authenticatedConnectionId
 					: undefined;
 			for (const key of this.subscriptionCounts.keys()) {
 				this.sendSubscriptionFrame(

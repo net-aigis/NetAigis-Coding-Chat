@@ -975,3 +975,35 @@ Voraussetzungsprüfung eingegrenzt, keine unsichere Typumgehung. Die Quelldateie
 waren bereits beim erfolgreichen Build typgeprüft. Der neue Restore-Ausschnitt
 beweist normale Session-Persistenz und erneutes Lesen, keine behauptete
 Stromausfall-/Power-Loss-Abnahme oder produktive Migration.
+
+### Authentifizierte Writer-Wiederanbindung und offene Freigaben
+
+Auf 66546605d fortgesetzt. Zwei gezielte rote Tests (`p4-writer-rebind-red`)
+belegten die blockierte Wiederanbindung bei Pending-Arbeit und die fehlende
+Sperre für ein verspätetes Unregister. Server hält jetzt die exklusiv registrierte
+Verbindungs-ID je Client fest; altes Unregister kann den Ersatz nicht entfernen.
+Nur derselbe authentifizierte Actor und Client darf seine Writer-Verbindung
+wieder anbinden, auch bei noch laufender Arbeit. Wechsel zwischen verschiedenen
+Clients oder Friseer/jimmi bleibt bei unbestätigter Arbeit gesperrt.
+
+Die neue Connection-ID kommt aus der Serverantwort, nicht aus Clientmetadaten.
+RuntimeHost prüft sie bei Übernahme der eigenen vorhandenen Sitzung und vor
+Anzeige einer erneut zugestellten Approval. Bestehende offene Freigaben behalten
+Approval-/Tool-ID und erhalten erst nach gespeicherter Revision die neue
+Zustellung. Doppelte Zustellung erzeugt keine zweite Entscheidung oder erneute
+Werkzeugausführung. Antwortfehler gelten nicht stillschweigend als erledigt.
+
+`p4-writer-rebind-policy` **19/19**, anschließender betroffener Host-Lauf
+`p4-writer-rebind-host` **106/106** bestanden (überlappend, nicht addieren).
+Beinhaltet echte getrennt authentifizierte Loopback-WebSockets: jimmi trennt
+während laufender Fixture-Arbeit, derselbe Client bindet sich neu, Arbeit bleibt
+laufend, keine erneute runTurn-Ausführung und kein Abort. Danach Übergabe an
+Friseer und unveränderte Historie; Server-/Approval-/Clientgrenzen zusätzlich
+gezielt geprüft. Dies ist kein physischer Android- oder echter Modelltest.
+
+Typ-/Build-Vorlauf beanstandete zwei nicht eingegrenzte optionale Writer-Zugriffe;
+explizite writer-Voraussetzung korrigiert. Danach
+`p4-writer-rebind-types-narrowed` und `p4-writer-rebind-build-narrowed` Exit 0.
+Keine Dienste, produktiven Daten, Ports oder Modellrouten verändert. Nächster
+Schritt: aktuelle Prozessbelege auch in Live-/History-Anzeige abgleichen;
+Recall-Restore/Browser und reale Komponenten-/Geräteabnahme bleiben offen.

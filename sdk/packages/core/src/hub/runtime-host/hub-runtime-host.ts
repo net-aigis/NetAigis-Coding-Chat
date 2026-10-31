@@ -791,6 +791,8 @@ export class HubRuntimeHost implements RuntimeHost {
 	>();
 	private readonly sessionSubscriptions = new Map<string, () => void>();
 	private readonly pendingApprovalToolCallIds = new Set<string>();
+	private readonly handlingApprovalIds = new Set<string>();
+	private readonly resolvedApprovalIds = new Map<string, string>();
 	private readonly agentDoneEmittedForCurrentRunBySession = new Set<string>();
 	private readonly activeCapabilityAbortControllers = new Map<
 		string,
@@ -878,6 +880,8 @@ export class HubRuntimeHost implements RuntimeHost {
 	}
 
 	private cleanupPlannedSession(sessionId: string): void {
+		for (const [approvalId, target] of this.resolvedApprovalIds)
+			if (target === sessionId) this.resolvedApprovalIds.delete(approvalId);
 		this.sessionCapabilities.delete(sessionId);
 		this.sessionClientContributionHandlers.delete(sessionId);
 		this.disposeSessionSubscription(sessionId);
@@ -938,6 +942,7 @@ export class HubRuntimeHost implements RuntimeHost {
 							throw new Error(
 								"Saved running state has no confirmed resident runtime; no process recovery was claimed",
 							);
+						await this.rebindOwnWriterConnection(plannedSessionId);
 						this.registerPlannedSession(
 							plannedSessionId,
 							capabilities,
@@ -963,6 +968,7 @@ export class HubRuntimeHost implements RuntimeHost {
 					const control = await this.getSessionControl(plannedSessionId);
 					if (!control.writer)
 						await this.claimSessionControl(plannedSessionId, control.revision);
+					else await this.rebindOwnWriterConnection(plannedSessionId, control);
 					resume = true;
 				}
 			}
@@ -1749,6 +1755,28 @@ export class HubRuntimeHost implements RuntimeHost {
 	getAuthenticatedActorId(): string | undefined {
 		return this.client.getAuthenticatedActorId();
 	}
+	private async rebindOwnWriterConnection(
+		sessionId: string,
+		known?: SessionWriterControl,
+	): Promise<boolean> {
+		const actor = this.client.getAuthenticatedActorId();
+		if (!actor) return true; // Existing unauthenticated local transport contract.
+		const connection = this.client.getAuthenticatedConnectionId();
+		if (!connection) return false;
+		let control = known ?? (await this.getSessionControl(sessionId));
+		if (
+			control.writer?.actorId !== actor ||
+			control.writer.clientId !== this.client.getClientId()
+		)
+			return false;
+		if (control.writer.connectionId !== connection)
+			control = await this.claimSessionControl(sessionId, control.revision);
+		return (
+			control.writer?.actorId === actor &&
+			control.writer.clientId === this.client.getClientId() &&
+			control.writer.connectionId === connection
+		);
+	}
 	async claimSessionControl(
 		sessionId: string,
 		expectedRevision: number,
@@ -2488,57 +2516,70 @@ export class HubRuntimeHost implements RuntimeHost {
 		if (!approvalId || !toolCallId || !toolName) {
 			return;
 		}
-		const policy =
-			event.payload?.policy &&
-			typeof event.payload.policy === "object" &&
-			!Array.isArray(event.payload.policy)
-				? (event.payload.policy as ToolApprovalRequest["policy"])
-				: { autoApprove: false };
-		const input = parseApprovalInput(event.payload?.inputJson);
-		this.pendingApprovalToolCallIds.add(toolCallId);
-		this.emitToolCallContentStart({
-			sessionId,
-			toolCallId,
-			toolName,
-			toolInput: input,
-		});
-		const result = await Promise.resolve(
-			requestToolApproval({
+		if (
+			this.handlingApprovalIds.has(approvalId) ||
+			this.resolvedApprovalIds.has(approvalId)
+		)
+			return;
+		this.handlingApprovalIds.add(approvalId);
+		try {
+			if (!(await this.rebindOwnWriterConnection(sessionId))) return;
+			const policy =
+				event.payload?.policy &&
+				typeof event.payload.policy === "object" &&
+				!Array.isArray(event.payload.policy)
+					? (event.payload.policy as ToolApprovalRequest["policy"])
+					: { autoApprove: false };
+			const input = parseApprovalInput(event.payload?.inputJson);
+			this.pendingApprovalToolCallIds.add(toolCallId);
+			this.emitToolCallContentStart({
 				sessionId,
-				agentId:
-					typeof event.payload?.agentId === "string"
-						? event.payload.agentId
-						: "",
-				conversationId:
-					typeof event.payload?.conversationId === "string"
-						? event.payload.conversationId
-						: sessionId,
-				iteration:
-					typeof event.payload?.iteration === "number"
-						? event.payload.iteration
-						: 0,
 				toolCallId,
 				toolName,
-				input,
-				policy,
-			}),
-		).catch((error) => ({
-			approved: false,
-			reason:
-				error instanceof Error
-					? error.message
-					: `Tool approval request failed: ${String(error)}`,
-		}));
-		await this.client
-			.command(
-				"approval.respond",
-				{
-					approvalId,
-					approved: result.approved,
-					reason: result.reason,
-				},
-				sessionId,
-			)
-			.catch(() => {});
+				toolInput: input,
+			});
+			const result = await Promise.resolve(
+				requestToolApproval({
+					sessionId,
+					agentId:
+						typeof event.payload?.agentId === "string"
+							? event.payload.agentId
+							: "",
+					conversationId:
+						typeof event.payload?.conversationId === "string"
+							? event.payload.conversationId
+							: sessionId,
+					iteration:
+						typeof event.payload?.iteration === "number"
+							? event.payload.iteration
+							: 0,
+					toolCallId,
+					toolName,
+					input,
+					policy,
+				}),
+			).catch((error) => ({
+				approved: false,
+				reason:
+					error instanceof Error
+						? error.message
+						: `Tool approval request failed: ${String(error)}`,
+			}));
+			await this.client
+				.command(
+					"approval.respond",
+					{
+						approvalId,
+						approved: result.approved,
+						reason: result.reason,
+					},
+					sessionId,
+				)
+				.then(() => {
+					this.resolvedApprovalIds.set(approvalId, sessionId);
+				});
+		} finally {
+			this.handlingApprovalIds.delete(approvalId);
+		}
 	}
 }

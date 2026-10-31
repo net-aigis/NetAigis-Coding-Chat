@@ -89,6 +89,91 @@ function fixture() {
 	return { row, messages, runtime, ctx, policy, dispatch, command };
 }
 describe("authenticated writer handover in existing session metadata", () => {
+	it("rebinds only an exclusively registered replacement of the same actor/client while an approval is pending", async () => {
+		const f = fixture();
+		f.row.status = "running";
+		const publish = vi.fn();
+		Object.assign(f.ctx, {
+			publish,
+			buildEvent: (event: string, payload: unknown, sessionId: string) => ({
+				version: "v1",
+				event,
+				payload,
+				sessionId,
+			}),
+		});
+		f.ctx.pendingApprovals.set("pending", {
+			sessionId: "same-session",
+			resolve: () => {},
+			requestedEvent: {
+				version: "v1",
+				event: "approval.requested",
+				sessionId: "same-session",
+				payload: {
+					approvalId: "pending",
+					targetClientId: "vscode",
+					controlRevision: 1,
+				},
+			},
+		});
+		const replacement = { ...friseer, connectionId: "new-socket" };
+		expect(
+			await f.command("session.control.claim", replacement, {
+				expectedRevision: 1,
+			}),
+		).toMatchObject({ ok: false, error: { code: "session_not_quiescent" } });
+		await f.command("client.register", replacement, {});
+		expect(
+			await f.command("session.control.claim", replacement, {
+				expectedRevision: 1,
+			}),
+		).toMatchObject({
+			ok: true,
+			payload: {
+				control: {
+					revision: 2,
+					writer: { connectionId: "new-socket", actorId: "Friseer" },
+				},
+			},
+		});
+		expect(publish).toHaveBeenCalledWith(
+			expect.objectContaining({
+				event: "approval.requested",
+				payload: expect.objectContaining({
+					approvalId: "pending",
+					controlRevision: 2,
+					targetClientId: "vscode",
+				}),
+			}),
+		);
+		expect(
+			await f.command("approval.respond", friseer, {
+				approvalId: "pending",
+				controlRevision: 2,
+			}),
+		).toMatchObject({ ok: false });
+		expect(
+			await f.command("approval.respond", replacement, {
+				approvalId: "pending",
+				controlRevision: 2,
+			}),
+		).toMatchObject({ ok: true });
+		expect(
+			await f.command("session.control.claim", jimmi, { expectedRevision: 2 }),
+		).toMatchObject({ ok: false, error: { code: "session_not_quiescent" } });
+	});
+	it("fences a stale unregister after a replacement connection registers", async () => {
+		const f = fixture();
+		const replacement = { ...friseer, connectionId: "new-socket" };
+		await f.command("client.register", replacement, {});
+		f.dispatch.mockClear();
+		expect(await f.command("client.unregister", friseer, {})).toMatchObject({
+			ok: false,
+			error: { code: "client_connection_mismatch" },
+		});
+		expect(f.dispatch).not.toHaveBeenCalled();
+	});
+
 	it("admits a separate existing-session resume only for the confirmed writer and revision", async () => {
 		const f = fixture();
 		const resume = "session.resume" as HubCommandEnvelope["command"];

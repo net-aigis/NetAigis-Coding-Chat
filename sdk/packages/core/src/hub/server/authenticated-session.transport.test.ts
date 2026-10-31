@@ -192,27 +192,41 @@ it("authenticates Friseer/jimmi separately, hands one history both ways, and fen
 		gate = new Promise<void>((r) => {
 			resolve = r;
 		});
-		const running = jimmi.command("run.start", { prompt: "running task" }, id);
+		const running = jimmi
+			.command("run.start", { prompt: "running task" }, id)
+			.catch(() => undefined);
 		await vi.waitFor(() => expect(runtime.runTurn).toHaveBeenCalledTimes(3));
+		await jimmi.dispose();
+		const reconnected = peer("android", "fixture-jimmi-token");
+		await reconnected.command(
+			"session.control.claim",
+			{ expectedRevision: 2 },
+			id,
+		);
+		expect(reconnected.getAuthenticatedConnectionId()).toBeTruthy();
+		expect(row.status).toBe("running");
+		expect(runtime.runTurn).toHaveBeenCalledTimes(3);
+		expect(runtime.abort).not.toHaveBeenCalled();
 		await expect(
-			friseer.command("session.control.claim", { expectedRevision: 2 }, id),
+			friseer.command("session.control.claim", { expectedRevision: 3 }, id),
 		).rejects.toMatchObject({ code: "session_not_quiescent" });
 		resolve();
 		await running;
+		await vi.waitFor(() => expect(row.status).toBe("idle"));
 		gate = undefined;
-		await friseer.command("session.control.claim", { expectedRevision: 2 }, id);
+		await friseer.command("session.control.claim", { expectedRevision: 3 }, id);
 		await friseer.dispose();
 		const replacement = peer("vscode", "fixture-friseer-token");
 		await expect(
 			replacement.command(
 				"run.start",
-				{ prompt: "copied client id", controlRevision: 3 },
+				{ prompt: "copied client id", controlRevision: 4 },
 				id,
 			),
 		).rejects.toMatchObject({ code: "session_not_writer" });
 		await replacement.command(
 			"session.control.claim",
-			{ expectedRevision: 3 },
+			{ expectedRevision: 4 },
 			id,
 		);
 		await replacement.command(
@@ -224,7 +238,7 @@ it("authenticates Friseer/jimmi separately, hands one history both ways, and fen
 		await expect(impersonator.command("hub.status")).rejects.toMatchObject({
 			code: "client_actor_mismatch",
 		});
-		for (const client of [jimmi, replacement])
+		for (const client of [reconnected, replacement])
 			expect(
 				(await client.command("session.messages", { live: true }, id)).payload,
 			).toMatchObject({ sessionId: id, view: "live", messages });

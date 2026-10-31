@@ -95,6 +95,7 @@ export class HubSessionAccess {
 	private readonly locks = new Map<string, Promise<unknown>>();
 	private readonly activeWrites = new Map<string, number>();
 	private readonly clientActors = new Map<string, string>();
+	private readonly connectedConnections = new Map<string, string>();
 	constructor(private readonly ctx: HubTransportContext) {}
 	private async locked<T>(id: string, operation: () => Promise<T>): Promise<T> {
 		const previous = this.locks.get(id) ?? Promise.resolve();
@@ -172,11 +173,39 @@ export class HubSessionAccess {
 				"client_not_registered",
 				"Register this connection before accessing the shared runtime",
 			);
+		const isStaleConnection = () =>
+			this.connectedConnections.has(authority.clientId) &&
+			this.connectedConnections.get(authority.clientId) !==
+				authority.connectionId;
+		if (command !== "client.register" && isStaleConnection())
+			return errorReply(
+				envelope,
+				"client_connection_mismatch",
+				"This connection no longer owns the registered client",
+			);
+		if (command === "client.unregister")
+			return this.locked(`client/${authority.clientId}`, async () => {
+				if (isStaleConnection())
+					return errorReply(
+						envelope,
+						"client_connection_mismatch",
+						"A stale connection cannot unregister its replacement",
+					);
+				const reply = await dispatch(envelope);
+				if (reply.ok) this.connectedConnections.delete(authority.clientId);
+				return reply;
+			});
 		if (
 			(command === "client.register" || command === "client.update") &&
 			authority
 		) {
 			return this.locked(`client/${authority.clientId}`, async () => {
+				if (command !== "client.register" && isStaleConnection())
+					return errorReply(
+						envelope,
+						"client_connection_mismatch",
+						"This connection no longer owns the registered client",
+					);
 				const previous = this.clientActors.get(authority.clientId);
 				if (previous && previous !== authority.actorId)
 					return errorReply(
@@ -215,12 +244,18 @@ export class HubSessionAccess {
 					...envelope,
 					payload: { ...envelope.payload, metadata },
 				});
+				if (reply.ok && command === "client.register" && authority.connectionId)
+					this.connectedConnections.set(
+						authority.clientId,
+						authority.connectionId,
+					);
 				return reply.ok && authority.actorId
 					? {
 							...reply,
 							payload: {
 								...reply.payload,
 								authenticatedActorId: authority.actorId,
+								authenticatedConnectionId: authority.connectionId,
 							},
 						}
 					: reply;
@@ -345,7 +380,18 @@ export class HubSessionAccess {
 						"session_not_writer",
 						"Only the current writer can release this session",
 					);
-				if (!(await this.quiescent(id)))
+				// Reconnecting the same authenticated execution client is not a handover.
+				// Exclusive registration fenced its old socket; active work remains owned
+				// by the runtime and is neither aborted nor replayed by this rebind.
+				const rebind =
+					command === "session.control.claim" &&
+					control.writer !== undefined &&
+					control.writer.actorId === authority.actorId &&
+					control.writer.clientId === authority.clientId &&
+					control.writer.connectionId !== authority.connectionId &&
+					this.connectedConnections.get(authority.clientId) ===
+						authority.connectionId;
+				if (!rebind && !(await this.quiescent(id)))
 					return errorReply(
 						envelope,
 						"session_not_quiescent",
@@ -382,6 +428,21 @@ export class HubSessionAccess {
 						"control_persistence_failed",
 						"Session control was not persisted; handover was not acknowledged",
 					);
+				if (rebind) {
+					for (const pending of this.ctx.pendingApprovals.values()) {
+						if (pending.sessionId !== id || !pending.requestedEvent) continue;
+						pending.requestedEvent = this.ctx.buildEvent(
+							"approval.requested",
+							{
+								...pending.requestedEvent.payload,
+								targetClientId: next.writer!.clientId,
+								controlRevision: next.revision,
+							},
+							id,
+						);
+						this.ctx.publish(pending.requestedEvent);
+					}
+				}
 				return okReply(envelope, { sessionId: id, control: next });
 			});
 		if (!WRITES.has(command))
