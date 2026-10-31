@@ -712,6 +712,7 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 	let streamFinished = false;
 	let completed = false;
 	let completionPublished = false;
+	let failed = false;
 	let cleanupScheduled = false;
 	const scheduleCleanup = () => {
 		if (cleanupScheduled) return;
@@ -721,7 +722,14 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 	const publishCompletion = () => {
 		// A confirmed process exit and a flushed output sink are separate facts.
 		// Readers must never see this marker before the final queued log writes.
-		if (!completed || !streamFinished || completionPublished) return;
+		if (
+			!completed ||
+			!streamFinished ||
+			!streamClosed ||
+			failed ||
+			completionPublished
+		)
+			return;
 		completionPublished = true;
 		try {
 			writeLifecycleMarker(completedAtPath, String(Date.now()));
@@ -740,6 +748,7 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 		// Keep the uncompleted log evidence for reconciliation. A failed sink
 		// cannot publish a successfully flushed log or an unhandled stream error.
 		writable = false;
+		failed = true;
 	});
 	stream.once("finish", () => {
 		streamFinished = true;
@@ -748,6 +757,7 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 	stream.once("close", () => {
 		writable = false;
 		streamClosed = true;
+		publishCompletion();
 		if (completionPublished) scheduleCleanup();
 	});
 
@@ -785,6 +795,11 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 			}
 		},
 		complete,
+		fail(): void {
+			failed = true;
+			writable = false;
+			if (!streamClosed && !streamFinished) stream.end();
+		},
 	};
 }
 
@@ -1301,8 +1316,16 @@ function spawnAndCollect(
 		child.on("error", (error) => {
 			if (killed) return;
 			if (detached) {
+				const execution = {
+					state: "unknown",
+					observationFailed: true,
+					pid: childPid,
+					observedAtMs: Date.now(),
+				} as const;
+				observe(execution);
+				context.emitUpdate?.({ executionId, execution });
 				detachedLog?.write(`\n[Command failed: ${error.message}]\n`);
-				detachedLog?.complete();
+				detachedLog?.fail();
 				return;
 			}
 			progress.stop({ flush: true });

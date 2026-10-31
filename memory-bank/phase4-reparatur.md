@@ -1975,9 +1975,11 @@ eingeben, niemals im Chat. Ausgabe enthält nur Nachweispfade/Prüfsummen/Flags.
 ```sh
 python3 - <<'PY'
 from pathlib import Path
-import shlex, subprocess
-source = Path('/home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-coding-agent-adapter-preflight.py').read_text()
-command = 'sudo python3 -c ' + shlex.quote(source)
+import hashlib, shlex, subprocess
+source = Path('/home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-coding-agent-adapter-preflight.py').read_bytes()
+if hashlib.sha256(source).hexdigest() != '375e9970252e9a79ddd40466f2a32a5fbe459fb7f1888e1d1bbfb5999e060f95':
+    raise SystemExit('Pruefskript geaendert; nicht als Root ausfuehren')
+command = 'sudo python3 -c ' + shlex.quote(source.decode())
 with open('/dev/tty') as terminal:
     raise SystemExit(subprocess.call([
         'ssh', '-t', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
@@ -2078,3 +2080,35 @@ aff4aedbf69ef2f24960a735b51663df55a0a961ef0d2fb8e910293e010c9fbb.
 Das ist ein Vergleich der Referenz/Statusdarstellung, kein Inhalts-Hash aller
 Originaldateien. Eigene Schreibzugriffe bleiben auf den Reparatur-Worktree
 und seine privaten vorhandenen Prüfarbeitsbereiche begrenzt.
+
+### Beobachtungsfehler eines abgekoppelten Prozesses bleiben ausdrücklich unbekannt
+
+Auf 7339d43da fortgesetzt. Der zusätzliche Fehlerpfad wurde am eigenen realen
+Kindprozess mit einem eingespeisten ChildProcess-error ohne Exit geprüft.
+p4-detached-observation-error-red **0/1**, zwei unbetroffene Fälle übersprungen:
+das Journal behielt running und der Fehlerpfad rief den gewöhnlichen Logabschluss
+auf. Nun meldet er unknown/observationFailed ohne künstlichen Code und schließt
+den Log-Sink als fehlgeschlagen. finish und erfolgreicher close sind beide
+Voraussetzung für einen normalen Abschlussmarker. Ein späterer tatsächlicher
+SIGTERM-Exit aktualisiert ausschließlich den wirklichen Prozessnachweis; der
+fehlgeschlagene Logstand wird dadurch nicht nachträglich als vollständig verkauft.
+Der Test signalisiert und beendet ausschließlich sein selbst erzeugtes Kind.
+
+p4-detached-observation-error **47 bestanden, 14 plattformbedingte Skips**, kein
+Fehler (61 Tests): einschließlich Ausgabe-Flush, IO-Fehler, Beobachtungsfehler,
+Executorbestand, Prozesscontroller und tatsächlichem persistentem Journal.
+p4-detached-observation-error-types und p4-detached-observation-error-build
+Exit 0. Keine produktiven Prozesse oder Dienste verändert.
+Der angefragte Betreiber-Prüfbefehl prüft zusätzlich vor sudo den SHA256 seines
+öffentlichen Prüfscripts; Syntax und Übereinstimmung lokal geprüft, nicht ausgeführt.
+
+Unmittelbarer externer Blocker für die vorbereitete Acer-Adapteranwendung und
+deren tatsächliche Modellabnahme bleibt der fehlende privilegierte Zugang.
+Der Root-Sicherungs-/Wiederherstellungsnachweis wurde gezielt angefragt; ein
+Zeitablauf ersetzt weder diesen Nachweis noch die separate produktive Freigabe.
+Nach dessen Prüfung sind exakter Kandidatenabgleich, ruhende Wartungsphase und
+gesonderte Freigabe vor Modulwechsel/gezieltem Coding-Agent-Neustart erforderlich.
+Der externe Watchdog bleibt eine getrennte Acer-Installation. Physisches Android,
+laufendes tatsächliches Modell, produktive Migration, vollständige Abnahme und
+abgesicherter VSIX-Rollout bleiben offen. Phase 4 und der Gesamtauftrag sind
+ausdrücklich nicht abgeschlossen.

@@ -1783,3 +1783,7 @@ from the log sink's write completion. The log's completion marker and retention
 cleanup are published only after both process completion and Writable.finish;
 an errored sink retains uncompleted evidence. This does not delay or fabricate
 the protected process-exit observation, and never substitutes a timer for exit.
+The sink must also close successfully before publishing completion. A detached
+ChildProcess error reports unknown observation state and closes its log without
+a success marker; a later real exit may resolve process state independently,
+while the failed log evidence remains available for inspection.
