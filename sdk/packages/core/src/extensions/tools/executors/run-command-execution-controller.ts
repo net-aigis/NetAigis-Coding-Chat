@@ -18,8 +18,9 @@ export interface RuntimeCommandObservation extends CommandProcessObservation {
 export function isConfirmedCommandExit(
 	execution: CommandProcessObservation["execution"],
 ): boolean {
+	if (execution.observationFailed === true) return false;
 	if (["completed", "failed"].includes(execution.state))
-		return Number.isInteger(execution.exitCode);
+		return Number.isSafeInteger(execution.exitCode);
 	if (execution.state === "terminated") return Boolean(execution.signal);
 	return (
 		["aborted", "timed_out"].includes(execution.state) &&

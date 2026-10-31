@@ -1762,3 +1762,12 @@ session ID. Only one runtime is constructed; later callers reattach to that
 resident after publication. Already admitted residents remain attachable while
 the first prompt is still executing, without waiting for that model turn or
 restarting it. Failed admission is propagated rather than implicitly retried.
+
+Cold resume, archive restoration and writer handover share the same command
+admission rule: a returned tool result or legacy terminal text is not exit proof.
+Missing/malformed execution evidence remains unknown. A protected journal may
+resolve legacy results only for their matching tool-call identity; another
+call's exit cannot release the fence. Confirmed failures, signal exits and
+confirmed cancellations are quiescent without being relabelled as successes.
+An explicit never-started result needs no invented exit code. Reads and stored
+history remain intact when write admission is refused.

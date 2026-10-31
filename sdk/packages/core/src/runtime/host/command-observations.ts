@@ -114,17 +114,25 @@ export function hasUnresolvedCommandObservation(
 				try {
 					content = JSON.parse(content);
 				} catch {
-					continue;
+					content = undefined;
 				}
 			}
+			const matchingExit = observations.some(
+				(entry) =>
+					entry.toolCallId === id && isConfirmedCommandExit(entry.execution),
+			);
 			const output = record(content),
 				results = Array.isArray(content)
 					? content
 					: Array.isArray(output.results)
 						? output.results
 						: [output];
+			if (!results.length && !matchingExit) return true;
 			for (const result of results) {
 				const execution = record(record(result).execution);
+				// Legacy text and empty records cannot prove an exit. The protected
+				// journal may independently identify this exact tool call's processes.
+				if (!Object.keys(execution).length && matchingExit) continue;
 				const confirmed = observations.find(
 					(entry) =>
 						entry.executionId === execution.executionId &&
@@ -137,13 +145,16 @@ export function hasUnresolvedCommandObservation(
 				);
 				if (confirmed) continue;
 				if (
-					execution.state === "unknown" ||
-					execution.state === "running" ||
-					execution.observationFailed === true ||
-					(["aborted", "timed_out"].includes(String(execution.state)) &&
-						execution.terminationConfirmed !== true) ||
-					(execution.state === "completed" &&
-						!Number.isInteger(record(result).exitCode ?? execution.exitCode))
+					execution.state === "not_started" &&
+					execution.pid === undefined &&
+					execution.observationFailed !== true
+				)
+					continue;
+				if (
+					!isConfirmedCommandExit({
+						...execution,
+						exitCode: execution.exitCode ?? record(result).exitCode,
+					} as RuntimeCommandObservation["execution"])
 				)
 					return true;
 			}

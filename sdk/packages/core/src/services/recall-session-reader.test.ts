@@ -116,6 +116,31 @@ it.each([
 		reason: "incomplete_tail",
 	},
 	{ value: { ...snapshot(), status: "running" }, reason: "active_session" },
+	{
+		value: {
+			...snapshot(),
+			messages: [
+				...snapshot().messages!,
+				{
+					role: "assistant",
+					content: [
+						{ type: "tool_use", id: "legacy-command", name: "execute_command" },
+					],
+				},
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "legacy-command",
+							content: "Completed",
+						},
+					],
+				},
+			],
+		},
+		reason: "unconfirmed_process",
+	},
 	{ value: { ...snapshot(), lineage: undefined }, reason: "invalid_snapshot" },
 	{
 		value: { ...snapshot(), createdAt: "invalid-time" },

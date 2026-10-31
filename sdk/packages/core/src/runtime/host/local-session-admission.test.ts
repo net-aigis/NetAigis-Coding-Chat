@@ -17,6 +17,90 @@ import type { SessionPersistenceAdapter } from "../../session/services/persisten
 import { CoreSessionService } from "../../session/services/session-service";
 import { LocalRuntimeHost } from "./local-runtime-host";
 
+it.each([
+	"files",
+	"sqlite",
+] as const)("retains but refuses cold %s history with an unverified legacy terminal return", async (kind) => {
+	const root = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "legacy-command-admission-"),
+	);
+	const db =
+		kind === "sqlite"
+			? new SqliteSessionStore({ sessionsDir: join(root, "db") })
+			: undefined;
+	const service = db
+		? new CoreSessionService(db, {
+				sessionArtifactsDir: join(root, "sessions"),
+			})
+		: new FileSessionService(join(root, "sessions"));
+	const build = vi.fn(),
+		createAgent = vi.fn();
+	const host = new LocalRuntimeHost({
+		sessionService: service,
+		distinctId: "fixture-legacy-command",
+		createAgent,
+		runtimeBuilder: { build } as never,
+	});
+	try {
+		const artifacts = await service.createRootSessionWithArtifacts({
+			sessionId: "legacy-session",
+			source: "vscode",
+			status: "idle",
+			pid: 0,
+			interactive: true,
+			provider: "configured-provider",
+			model: "interchangeable-model",
+			cwd: root,
+			workspaceRoot: root,
+			enableTools: false,
+			enableSpawn: false,
+			enableTeams: false,
+		});
+		await service.persistSessionMessages("legacy-session", [
+			{
+				role: "user",
+				content: "Original order",
+				metadata: { author: { actorId: "Friseer" } },
+			},
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "legacy-call",
+						name: "execute_command",
+						input: {},
+					},
+				],
+			},
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "legacy-call",
+						content: "Completed",
+					},
+				],
+				metadata: { author: { actorId: "jimmi" } },
+			},
+		] as never);
+		const history = await readFile(artifacts.messagesPath),
+			manifest = await readFile(artifacts.manifestPath);
+		await expect(
+			host.resumeSession({ config: { sessionId: "legacy-session" } as never }),
+		).rejects.toThrow("Saved tool execution remains unconfirmed");
+		expect(build).not.toHaveBeenCalled();
+		expect(createAgent).not.toHaveBeenCalled();
+		expect(await readFile(artifacts.messagesPath)).toEqual(history);
+		expect(await readFile(artifacts.manifestPath)).toEqual(manifest);
+	} finally {
+		await host.dispose();
+		db?.close();
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
 it("reattaches during the initial prompt without waiting for or ending that pending turn", async () => {
 	const root = await mkdtemp(
 		join(process.env.CLINE_DATA_DIR || tmpdir(), "initial-turn-reattach-"),

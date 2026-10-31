@@ -1917,3 +1917,30 @@ festgelegte Finish-Rewriter, dann der vorhandene Tokenlimit-Patch mit fuzz=0.
 Dies ist keine vollständige Dateisystem-Wiederherstellungsprobe und kein Beleg
 über den im bereits laufenden Dienst geladenen Python-Code. Die zuvor genannten
 produktiven Sicherungs-/Rollback-/Freigabevoraussetzungen gelten unverändert.
+
+### Unbelegter alter Terminaltext gibt keine Schreibzuständigkeit frei
+
+Auf 978b9d7b5 fortgesetzt. p4-legacy-command-admission-red **10/19**, neun neue
+Fehler reproduziert: nicht parsebarer Alttext, leere Ergebnisse, fehlender
+Prozessnachweis, failed ohne Exitcode, terminated ohne Signal und unbekannte
+Statusbezeichnungen konnten als erledigt gelten. Der gemeinsame Core-Prüfpfad
+für Kaltstart, Recall-Wiederaufnahme und Schreibübergabe verlangt jetzt einen
+bestätigten Abschluss oder ein ausdrückliches not_started ohne PID. Fehlgeschlagene
+Beobachtung hebt einen scheinbar numerischen Abschluss nicht auf. Passende
+geschützte Journalbelege dürfen einen alten Rückgabetext auflösen; ein anderer
+Toolcall darf das nicht. Keine Interpretation von stdout als Prozessbeweis,
+keine künstlichen Exitcodes und keine Veränderung der alten Historie.
+
+p4-legacy-command-admission **54/55**: die neuen Nachweisfälle bestanden;
+der bestehende reale Kindprozess-/Journaltest überschritt in der Prozess-Sandbox
+20 Sekunden. Der gezielte Lauf außerhalb dieser Sandbox
+p4-legacy-command-journal-host **1/1** bestand, ohne Timeränderung. Die erste
+Zeitüberschreitung bleibt dokumentiert; eine genauere Ursache wird daraus nicht
+behauptet. p4-legacy-command-native-contract **71/71** bestanden: einschließlich
+tatsächlicher File-/SQLite-Kaltstarts vor Agentanlage, unveränderter Transkript-
+und Manifestbytes, verweigerter und nach passendem Exit zugelassener Friseer→jimmi-
+Übergabe sowie nicht schreibbar angebotener Recall-Althistorie. Das sind gezielte
+Regressionen, keine produktive Geräteabnahme. p4-legacy-command-types und
+p4-legacy-command-build jeweils Exit 0. Die bereits abgeschlossene echte
+Sleep-Messreihe wurde nicht wiederholt. Nicht belegte historische Prozesse
+bleiben lesbar, ihre technische Klärung bleibt für sichere Schreibaufnahme offen.

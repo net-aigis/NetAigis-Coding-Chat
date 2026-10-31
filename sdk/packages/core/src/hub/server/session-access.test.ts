@@ -89,6 +89,58 @@ function fixture() {
 	return { row, messages, runtime, ctx, policy, dispatch, command };
 }
 describe("authenticated writer handover in existing session metadata", () => {
+	it("keeps legacy terminal text read-only until protected matching process exits permit handover", async () => {
+		const f = fixture();
+		f.messages.push(
+			{
+				role: "assistant",
+				content: [
+					{ type: "tool_use", id: "legacy-command", name: "run_commands" },
+				],
+			},
+			{
+				role: "user",
+				content: [
+					{
+						type: "tool_result",
+						tool_use_id: "legacy-command",
+						content: "Completed",
+					},
+				],
+			},
+		);
+		const history = structuredClone(f.messages);
+		expect(
+			await f.command("session.control.claim", jimmi, { expectedRevision: 1 }),
+		).toMatchObject({
+			ok: false,
+			error: { code: "session_not_quiescent" },
+		});
+		expect(f.dispatch).not.toHaveBeenCalled();
+		Object.assign(f.row.metadata, {
+			runtimeCommandObservations: {
+				version: 1,
+				entries: [
+					{
+						sessionId: "same-session",
+						toolCallId: "legacy-command",
+						executionId: "owned-command",
+						source: "child_process",
+						runtimeInstanceId: "owning-runtime",
+						sequence: 2,
+						execution: { state: "completed", exitCode: 0, observedAtMs: 20 },
+					},
+				],
+			},
+		});
+		expect(
+			await f.command("session.control.claim", jimmi, { expectedRevision: 1 }),
+		).toMatchObject({
+			ok: true,
+			payload: { control: { revision: 2, writer: { actorId: "jimmi" } } },
+		});
+		expect(f.messages).toEqual(history);
+	});
 	it("rebinds only an exclusively registered replacement of the same actor/client while an approval is pending", async () => {
 		const f = fixture();
 		f.row.status = "running";
