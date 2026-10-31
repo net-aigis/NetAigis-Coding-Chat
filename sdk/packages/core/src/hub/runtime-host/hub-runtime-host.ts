@@ -91,6 +91,7 @@ import {
 	restartLocalHubIfIdleAfterStartupTimeout,
 } from "../client";
 import { createHubPluginCommandsApi } from "../client/plugin-commands";
+import { HubRecallClient } from "../client/recall-client";
 import {
 	parseSessionWriterControl,
 	type SessionWriterControl,
@@ -1712,6 +1713,19 @@ export class HubRuntimeHost implements RuntimeHost {
 				(reply.payload?.recall as { configured?: unknown } | undefined)
 					?.configured === true,
 		};
+	}
+
+	listRecallConversations() {
+		return new HubRecallClient(this.client).listConversations();
+	}
+	readRecallSession(conversationId: string) {
+		return new HubRecallClient(this.client).getSessionSnapshot(conversationId);
+	}
+	restoreRecallSession(conversationId: string, expectedJournalSeq: number) {
+		return new HubRecallClient(this.client).restoreSession(
+			conversationId,
+			expectedJournalSeq,
+		);
 	}
 
 	async readLiveSessionMessages(

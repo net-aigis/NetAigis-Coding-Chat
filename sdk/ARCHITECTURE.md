@@ -1686,3 +1686,11 @@ is never downgraded, and a lost browser connection makes running state unknown.
 Dashboard history and late snapshots update existing UI rows while preserving
 canonical transcripts, output and authors. This is client projection of the
 runtime's own normal error/process interface, not independent monitoring.
+
+HubRecallClient owns the common archive RPC contract. HubRuntimeHost exposes it
+through ClineCore.recall; the VS Code archive adapter delegates to the same
+client rather than maintaining another response/parser contract. The existing
+dashboard uses the authenticated peer's Core facade, binds inspected references
+to its actor and latest selection generation, and opens the imported ID through
+its existing session UI. Observer credentials never perform archive writes.
+Import, writer claim, activation and model execution remain separate operations.

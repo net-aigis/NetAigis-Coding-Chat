@@ -1476,3 +1476,47 @@ Offen bleiben technische Kaltstartklärung ungeklärter Altprozesse, vollständi
 Altbestands-/Workspace-Anbindung, Browser-Recallbedienung und reale Geräte-/
 Dienste-/Modellabnahme. Keine produktive Migration, Installation, Dienst-
 oder Modellumstellung und keine erneute Sleep-Messserie.
+
+### Recall-Bedienung im vorhandenen gemeinsamen Browser
+
+Auf 76e62576e fortgesetzt. Der vorhandene HubRecallClient ist jetzt der eine
+RPC-Vertrag für App-Adapter und HubRuntimeHost; ClineCore.recall.list/read/restore
+delegiert ausschließlich an die ausgewählte owning Runtime. Kein lokaler
+Ersatzspeicher oder Browser-eigener Modellchat. VS-Code-Adapter behält seinen
+temporären Client und schließt ihn nach jeder Operation, verwendet aber dieselbe
+Antwortprüfung wie der Browser. Restore bleibt ohne automatische Wiederholung.
+
+Das vorhandene Dashboard bietet nach bestätigtem Actor-Login einen Recall-
+Bereich zum Listen, Lesen und Bereitstellen gespeicherter Sitzungen. Server
+bindet eine geprüfte Auswahl an Actor/Verbindung und letzte Auswahlgeneration;
+Journalgrenze kommt aus dem serverseitigen Read, nicht aus dem Browserframe.
+Actorwechsel und später eintreffende alte Reads verwerfen die frühere Auswahl.
+Eine noch laufende Anfrage darf nicht durch den Import einer anderen Sitzung
+ersetzt werden. Nach Bestätigung öffnet das Dashboard dieselbe Session-ID über
+seinen vorhandenen Chat-/Attach-Pfad. Es erteilt dabei kein Schreibrecht und
+startet keinen Prozess; vorhandene Übernehmen-/Freigeben-Steuerung bleibt nötig.
+Originale Nachrichten und Urheber erscheinen als Text, nicht als ausführbares HTML.
+
+p4-browser-recall-binding **12/12** bestanden: neue Framebindung und bestehende
+Actor-Verträge, kein Observer-Schreibfallback, kein Restore vor Inspektion,
+Actorwechsel und verspätete Auswahl. p4-recall-core-facade-wire **1/1**
+bestanden, vier unbetroffene Fälle übersprungen: tatsächliche ClineCore-Fassade,
+authentifizierte lokale WebSockets und File-Persistenz, Lesen/Import unter jimmi,
+gleiche Session-ID und beide Originalurheber, kein neu gestarteter Agent.
+Recall-HTTP und Modell bleiben Fixtures. App-Vertrag mit derselben tatsächlichen
+Core-RPC-Klasse p4-recall-client-shared-contract **3/3** bestanden.
+
+p4-recall-facade-core-build, p4-recall-facade-types, p4-browser-recall-types
+und p4-browser-recall-web-types Exit 0. Neuer UI-Lint verlangte output statt
+p role=status; gezielt korrigiert. Keine produktive Konfiguration, Schlüssel,
+Dienste oder Ports verändert. Browserbundle p4-browser-recall-bundle Exit 0
+im vorhandenen privaten Prüfroot. App-Typprüfung p4-recall-facade-app-types
+fand eine verletzte Paketgrenze der neuen Testhilfe: direkter SDK-Source-Import
+zog Source außerhalb des App-rootDir in die Prüfung. Der veröffentlichte
+Paketvertrag wird jetzt über importOriginal verwendet. Zwischenversuch mit
+dist/Leaf-JS konnte nicht laden (nur Leaf-d.ts vorhanden; 0 Tests, Exit 1).
+p4-recall-client-public-package 3/3 mit tatsächlichem kompilierten Hub-Export
+bestanden; keine selbst nachgebaute RPC-Mockimplementierung. Typprüfung der
+Dist-Grenze p4-recall-facade-app-types-boundary Exit 0; abschließender öffentlicher
+Paketimport p4-recall-facade-app-public-types ebenfalls Exit 0. Physisches Android, produktiver Recall-Import
+und Modell-/Diensteabnahme bleiben ausdrücklich offen.

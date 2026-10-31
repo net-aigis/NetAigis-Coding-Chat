@@ -42,6 +42,8 @@ export async function authenticateBrowserActor(
 		);
 	const generation = (peer.actorGeneration ?? 0) + 1;
 	peer.actorGeneration = generation;
+	peer.selectionGeneration = (peer.selectionGeneration ?? 0) + 1;
+	peer.recallSelection = undefined;
 	const previous = peer.actorRuntime;
 	peer.actorRuntime = undefined;
 	await previous?.dispose();
@@ -119,6 +121,7 @@ export async function updateBrowserSessionControl(
 }
 
 export async function disposeBrowserActor(peer: BrowserPeer): Promise<void> {
+	peer.recallSelection = undefined;
 	peer.closed = true;
 	peer.actorGeneration = (peer.actorGeneration ?? 0) + 1;
 	const runtime = peer.actorRuntime;
@@ -143,6 +146,7 @@ export function assertSharedBrowserFrame(ctx: HubContext, type: string): void {
 			"approval_response",
 			"authenticateActor",
 			"sessionControl",
+			"recallSessions",
 		].includes(type)
 	)
 		throw new Error(

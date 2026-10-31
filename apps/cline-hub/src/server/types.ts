@@ -56,6 +56,12 @@ export type BrowserPeer = {
 	/** Private, connection-scoped actor client; never the dashboard's observer credential. */
 	actorRuntime?: ClineCore;
 	actorGeneration?: number;
+	recallGeneration?: number;
+	recallSelection?: {
+		conversationId: string;
+		journalSeq: number;
+		eligible: boolean;
+	};
 	closed?: boolean;
 	secureTransport?: boolean;
 	socket: Bun.ServerWebSocket<BrowserPeer>;

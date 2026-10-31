@@ -3,6 +3,8 @@ import type {
 	ProviderListItem,
 	ProviderModel,
 	SessionWriterControl,
+	TotalRecallConversation,
+	TotalRecallSessionSnapshot,
 } from "@cline/core";
 import type {
 	CommandExecution,
@@ -245,6 +247,12 @@ export type WebviewHubState = {
 };
 
 export type WebviewInboundMessage =
+	| { type: "recallSessions"; action: "list" }
+	| {
+			type: "recallSessions";
+			action: "inspect" | "restore";
+			conversationId: string;
+	  }
 	| { type: "authenticateActor"; credential: string }
 	| {
 			type: "sessionControl";
@@ -295,6 +303,9 @@ export type WebviewInboundMessage =
 	| { type: "forkSession" };
 
 export type WebviewOutboundMessage =
+	| { type: "recall_sessions"; conversations: TotalRecallConversation[] }
+	| { type: "recall_snapshot"; snapshot: TotalRecallSessionSnapshot }
+	| { type: "recall_restored"; sessionId: string }
 	| { type: "command_observations"; sessionId: string; journal: unknown }
 	| { type: "shared_actor"; actorId?: string }
 	| {

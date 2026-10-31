@@ -35,6 +35,7 @@ import {
 	saveProviderSettings,
 	sendProviderCatalog,
 } from "./server/providers";
+import { handleBrowserRecall } from "./server/recall-sessions";
 import {
 	abortPeerTurn,
 	deleteSession,
@@ -188,6 +189,10 @@ export async function startClineHubDashboardServer(): Promise<ClineHubDashboardS
 								frame.sessionId,
 								frame.expectedRevision,
 							);
+							return;
+						}
+						if (frame.type === "recallSessions") {
+							await handleBrowserRecall(ctx, peer, frame);
 							return;
 						}
 						if (frame.type === "desktopCommand") {

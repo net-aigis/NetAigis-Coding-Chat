@@ -2,9 +2,16 @@ import type { SessionWriterControl } from "@cline/core";
 import { useEffect, useState } from "react";
 import type { WebviewOutboundMessage } from "../../../webview-protocol";
 import { postToHost } from "../vscode";
+import { RecallSessions } from "./RecallSessions";
 
 /** Actor credentials stay in this connection's memory, outside URLs and persisted UI state. */
-export function SharedSessionAccess({ sessionId }: { sessionId?: string }) {
+export function SharedSessionAccess({
+	sessionId,
+	onOpenSession,
+}: {
+	sessionId?: string;
+	onOpenSession?: (id: string) => void;
+}) {
 	const [credential, setCredential] = useState("");
 	const [actorId, setActorId] = useState<string>();
 	const [control, setControl] = useState<SessionWriterControl>();
@@ -80,6 +87,7 @@ export function SharedSessionAccess({ sessionId }: { sessionId?: string }) {
 				{actorId ? `Bestätigter Akteur: ${actorId}` : "Lesender Zugang"}
 			</span>
 			{!secure && <span>Für die Anmeldung ist HTTPS erforderlich.</span>}
+			{actorId && <RecallSessions onOpenSession={onOpenSession} />}
 			{sessionId && actorId && (
 				<>
 					<span>

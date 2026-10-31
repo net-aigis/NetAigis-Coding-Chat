@@ -436,6 +436,24 @@ export class ClineCore {
 	 * ```
 	 */
 	get: RuntimeHost["getSession"] = (...args) => this.host.getSession(...args);
+	/** Runtime-owned Recall. Recovery persists history; writer claim and activation remain explicit. */
+	readonly recall = {
+		list: () => {
+			if (!this.host.listRecallConversations)
+				throw new Error("Selected runtime has no shared Recall interface");
+			return this.host.listRecallConversations();
+		},
+		read: (conversationId: string) => {
+			if (!this.host.readRecallSession)
+				throw new Error("Selected runtime has no shared Recall interface");
+			return this.host.readRecallSession(conversationId);
+		},
+		restore: (conversationId: string, expectedJournalSeq: number) => {
+			if (!this.host.restoreRecallSession)
+				throw new Error("Selected runtime has no shared Recall interface");
+			return this.host.restoreRecallSession(conversationId, expectedJournalSeq);
+		},
+	};
 	/** Explicit writer coordination. Attaching/reading alone never grants write access. */
 	readonly sessionControl = {
 		actorId: () => this.host.getAuthenticatedActorId?.(),

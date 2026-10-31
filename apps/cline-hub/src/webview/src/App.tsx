@@ -1450,7 +1450,10 @@ function App() {
 	return (
 		<Shell onNavigate={navigate} version={hubState.coreVersion} view={view}>
 			{hubState.sharedRuntime && (
-				<SharedSessionAccess sessionId={selectedSessionId} />
+				<SharedSessionAccess
+					sessionId={selectedSessionId}
+					onOpenSession={openSession}
+				/>
 			)}
 			<Suspense fallback={<ViewLoading />}>{content}</Suspense>
 		</Shell>

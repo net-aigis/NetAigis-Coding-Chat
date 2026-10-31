@@ -2,7 +2,8 @@ import { beforeEach, expect, it, vi } from "vitest"
 import { RecallRuntimeClient } from "./recall-runtime-client"
 
 const mocks = vi.hoisted(() => ({ command: vi.fn(), close: vi.fn(), construct: vi.fn() }))
-vi.mock("@cline/core/hub", () => ({
+vi.mock("@cline/core/hub", async (original) => ({
+	...(await original<typeof import("@cline/core/hub")>()),
 	NodeHubClient: class {
 		constructor(options: unknown) {
 			mocks.construct(options)

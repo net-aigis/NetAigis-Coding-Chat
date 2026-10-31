@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentConfig } from "@cline/shared";
 import { expect, it, vi } from "vitest";
+import { ClineCore } from "../../ClineCore";
 import { LocalRuntimeHost } from "../../runtime/host/local-runtime-host";
 import { signRuntimeRecallRecord } from "../../services/recall-archive-proof";
 import { FileSessionService } from "../../session/services/file-session-service";
@@ -166,6 +167,7 @@ async function fixture() {
 		clientType: "vscode",
 	});
 	return {
+		url: server.url,
 		root,
 		id,
 		service,
@@ -311,6 +313,31 @@ it("recovers one verified canonical session through authenticated writer admissi
 		expect(f.createAgent).toHaveBeenCalledOnce();
 		expect(await readFile(path)).toEqual(canonical);
 	} finally {
+		await f.close();
+	}
+});
+
+it("exposes the owning runtime's Recall through the actual Core facade without a replacement conversation", async () => {
+	const f = await fixture();
+	let core: ClineCore | undefined;
+	try {
+		core = await ClineCore.create({
+			backendMode: "remote",
+			remote: {
+				endpoint: f.url,
+				authToken: "fixture-login-jimmi",
+				clientType: "fixture-browser-facade",
+			},
+		});
+		expect((await core.recall.list())[0].conversationId).toBe(f.id);
+		const saved = await core.recall.read(f.id);
+		expect(saved.sourceVerified).toBe(true);
+		expect(await core.recall.restore(f.id, saved.journalSeq)).toBe(f.id);
+		expect(await core.readMessages(f.id)).toEqual(f.snapshot.messages);
+		expect(f.createAgent).not.toHaveBeenCalled();
+		expect(f.readActors.every((actor) => actor === "jimmi")).toBe(true);
+	} finally {
+		await core?.dispose();
 		await f.close();
 	}
 });
