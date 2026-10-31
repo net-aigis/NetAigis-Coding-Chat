@@ -14,7 +14,15 @@
 	"publisher": "saoudrizwan",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/cline/cline"
+		"url": "https://git.wittmer.software/AIGIS/cline.git"
+	},
+	"fork": {
+		"repository": "https://git.wittmer.software/AIGIS/cline.git",
+		"upstream": {
+			"version": "4.1.26",
+			"commit": "a459f1d04dea030833b558be645011ab739c463b"
+		},
+		"release": null
 	},
 	"homepage": "https://cline.bot",
 	"categories": [
@@ -353,7 +361,7 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "bun run package",
+		"vscode:prepublish": "node scripts/verify-fork-release.mjs && bun run package",
 		"compile": "bun run check-types && bun run lint && bun esbuild.mjs",
 		"compile-standalone": "bun run check-types && bun run lint && bun esbuild.mjs --standalone",
 		"postcompile-standalone": "node scripts/package-standalone.mjs",

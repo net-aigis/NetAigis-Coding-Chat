@@ -1,5 +1,7 @@
 This is the **Cline** monorepo. Toolchain is **Bun 1.4.2** (package manager + task runner) with **Node >=22** as the runtime. Do not use npm/yarn/pnpm.
 
+This checkout is the user's independently maintained fork at `https://git.wittmer.software/AIGIS/cline.git`. Upstream is an external code source, not the product identity. The still-open identity/versioning and data-migration requirements are tracked in [memory-bank/fork-identitaet.md](memory-bank/fork-identitaet.md) and must remain in handoffs. Final extension naming and release tags remain subject to the user's separate decision. Productive installation is already commissioned for Phase 6 after evidenced acceptance and verified rollback; it is forbidden during the current development work. Routine repair work remains authorized. Preserve the local model routes and independent Coding-Agent, Learning-Agent and TOTAL RECALL. The independent watchdog belongs outside Cline.
+
 Don't add `.changeset/` files or other per-PR changelog entries; changesets aren't used here. Release notes are written into the relevant `CHANGELOG.md` at release time.
 
 ## Cloud Agent Instructions
