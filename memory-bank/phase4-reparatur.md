@@ -1682,3 +1682,40 @@ unbekannter Ausgang bleibt im Index null und im Manifest ohne numerische Angabe.
 Explizite Codes bleiben unverändert. p4-native-unknown-exit **64/64** bestanden
 einschließlich bestehender Persistenz-/Importerfälle; p4-native-unknown-exit-build
 Exit 0. Kein behaupteter Prozessabschluss durch einen Sitzungslabel-Default.
+
+### Geprüfter Integrationspatch für angeforderte Tokenbegrenzung, noch nicht produktiv
+
+Auf 593628158 fortgesetzt. Der bestehende Acer-Adapter verliert nachgewiesen
+beide OpenAI-Längenparameter, obwohl der restliche Request unverändert geroutet
+wird. sdk/scripts/netaigis-coding-agent-token-limit.patch ergänzt ausschließlich
+deren Übersetzung nach options.num_predict. Ohne angeforderte Grenze ist das
+Payload unverändert. Ungültige oder widersprüchliche Grenzen werden ausdrücklich
+abgelehnt; keine Modell-, Endpunkt-, Kontextgrößen- oder Dienstidentität geändert.
+Patch-SHA256: 4607e260ddd664af584d8097cb4ba7e8f7214e0ac6b82760ab706d169b697be9.
+
+p4-coding-agent-token-limit-staged **7/7 Python-Unittests** bestanden. Die neue
+Testdatei im selben sdk/scripts-Verzeichnis verwendet die bereits zugelassene
+gezielte native_request-Extraktion, prüft deren Funktionshash und den belegten
+Modulhash. Die tatsächliche Patch-Anwendung erfolgt mit fuzz=0 auf der isolierten
+Funktion mit erhaltenem Zeilenversatz. Getestet: beide Parameter, ungültige Werte,
+übereinstimmende/widersprüchliche Doppelangaben, unveränderte Modell-/Stream-/
+Kontextwahl und Eingabedaten, bytegenaue Rücknahme dieser Funktion sowie
+zurückgewiesene Zweitanwendung ohne Dateiänderung. Kein vollständiger Modul-
+Rollback oder produktiver HTTP-/Modelltest wird daraus behauptet.
+
+Die automatische Freigabeprüfung hat das zusätzliche vollständige unredigierte
+Lesen/Kopieren des privaten Acer-Moduls in lokale Prüflogs abgelehnt: mehr
+potenziell sensible Quelldaten als für den Nachweis erforderlich. Dieser Schritt
+wurde nicht ausgeführt und nicht umgangen. Die vorhandene gezielte Extraktion
+genügt für den obigen lokalen Patchnachweis; keine erneute Vollkopie angefordert.
+
+Vor tatsächlicher Anwendung erforderlich und noch NICHT freigegeben/ausgeführt:
+erneuter exakter Modulhashabgleich auf Acer, zugriffsgeschützte Sicherung und
+vollständige Wiederherstellungsprobe des betroffenen Moduls auf Acer, Erhalt
+seiner bestehenden Eigentümer-/Berechtigungswerte, exakte Patch-Vorprüfung am
+vollständigen Modul und gesondert freigegebene ruhende Wartungsphase für einen
+gezielten Coding-Agent-Neustart. Learning-Agent, Recall, Modellrouter und Modell
+werden dadurch nicht geändert. Bei abweichendem Hash, fehlendem Rollback oder
+aktiver Arbeit keine Anwendung. Der vorhandene unprivilegierte SSH-Zugang allein
+belegt keine Berechtigung für diese produktiven Eingriffe. Test der tatsächlichen
+Backendbegrenzung und reale VS-Code-/Android-Abnahme bleiben offen.
