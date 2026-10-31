@@ -6,12 +6,18 @@ import type { RuntimeHost } from "../runtime/host/runtime-host";
 import { createCoreSessionSnapshot } from "../session/session-snapshot";
 import type { CoreSessionEvent } from "../types/events";
 import {
+	copyRecallArchiveKey,
+	recallArchiveKeyId,
+} from "./recall-archive-proof";
+import {
 	DurableRecallOutbox,
 	type RecallConfiguration,
 	type RecallFetch,
 } from "./recall-outbox";
 
 export interface RuntimeRecallArchiveOptions {
+	/** Runtime-only producer key; independent of actor/API/login credentials. */
+	archiveSigningKey?: Uint8Array;
 	getConfiguration: () => Promise<RecallConfiguration | undefined>;
 	/** Recall API keys, independent of the Hub's own login tokens. No key reuse is inferred. */
 	actorTokens?: Readonly<Record<string, string>>;
@@ -20,6 +26,7 @@ export interface RuntimeRecallArchiveOptions {
 }
 export class RuntimeRecallArchive {
 	private readonly queue: DurableRecallOutbox;
+	private readonly signingKey?: Buffer;
 	private captures = Promise.resolve();
 	private readonly writers = new Map<string, string>();
 	private stopReplay?: () => void;
@@ -34,6 +41,9 @@ export class RuntimeRecallArchive {
 		>,
 		private readonly options: RuntimeRecallArchiveOptions,
 	) {
+		this.signingKey = options.archiveSigningKey
+			? copyRecallArchiveKey(options.archiveSigningKey)
+			: undefined;
 		this.queue = new DurableRecallOutbox(
 			options.directory ?? join(resolveClineDir(), "netaigis-recall-outbox"),
 			options.fetch,
@@ -60,6 +70,15 @@ export class RuntimeRecallArchive {
 			!config.token
 		)
 			throw new Error("Invalid runtime Recall configuration");
+		if (
+			this.signingKey &&
+			[config.token, ...Object.values(this.options.actorTokens ?? {})].includes(
+				this.signingKey.toString("base64url"),
+			)
+		)
+			throw new Error(
+				"Runtime archive producer key must be independent of API credentials",
+			);
 		this.active = true;
 		this.stopReplay = this.queue.startRecallOutbox(() => this.configuration());
 	}
@@ -194,7 +213,10 @@ export class RuntimeRecallArchive {
 		event: CoreSessionEvent,
 		config: RecallConfiguration,
 	): Promise<void> {
-		await this.queue.archiveSdkEvent(event, config, { deferDelivery: true });
+		await this.queue.archiveSdkEvent(event, config, {
+			deferDelivery: true,
+			archiveSigningKey: this.signingKey,
+		});
 		void this.configuration()
 			.then((base) =>
 				this.queue.drainRecallOutbox(base, { respectBackoff: true }),
@@ -216,6 +238,9 @@ export class RuntimeRecallArchive {
 				: undefined;
 		return {
 			configured: this.active,
+			...(this.signingKey
+				? { producerKeyId: recallArchiveKeyId(this.signingKey) }
+				: {}),
 			pendingCaptures: this.pendingCaptures,
 			...(lastFailure ? { lastFailure } : {}),
 		};

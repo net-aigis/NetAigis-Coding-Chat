@@ -1,3 +1,4 @@
+import { decodeRecallArchiveKey } from "./recall-archive-proof";
 import type { RuntimeRecallArchiveOptions } from "./recall-runtime-archive";
 
 /** Explicit Hub deployment settings. Existing Recall actor keys are reused only for that same Recall API. */
@@ -7,7 +8,12 @@ export function readRuntimeRecallConfiguration(
 	const baseUrl = environment.CLINE_HUB_RECALL_URL,
 		project = environment.CLINE_HUB_RECALL_PROJECT,
 		actor = environment.CLINE_HUB_RECALL_ACTOR;
-	if (baseUrl === undefined && project === undefined && actor === undefined)
+	if (
+		baseUrl === undefined &&
+		project === undefined &&
+		actor === undefined &&
+		environment.CLINE_HUB_RECALL_ARCHIVE_KEY === undefined
+	)
 		return undefined;
 	try {
 		if (!baseUrl || !project?.trim() || !actor?.trim()) throw new Error();
@@ -43,7 +49,11 @@ export function readRuntimeRecallConfiguration(
 			token,
 			enabled: true,
 		};
+		const archiveSigningKey = environment.CLINE_HUB_RECALL_ARCHIVE_KEY;
 		return {
+			...(archiveSigningKey !== undefined
+				? { archiveSigningKey: decodeRecallArchiveKey(archiveSigningKey) }
+				: {}),
 			actorTokens: { ...actorTokens },
 			getConfiguration: async () => ({ ...configuration }),
 		};

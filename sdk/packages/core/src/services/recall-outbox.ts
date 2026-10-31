@@ -2,6 +2,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { signRuntimeRecallRecord } from "./recall-archive-proof";
 export type RecallFetch = (
 	...args: Parameters<typeof globalThis.fetch>
 ) => ReturnType<typeof globalThis.fetch>;
@@ -276,7 +277,7 @@ export class DurableRecallOutbox {
 	async archiveSdkEvent(
 		event: unknown,
 		config?: RecallConfiguration,
-		options: { deferDelivery?: boolean } = {},
+		options: { deferDelivery?: boolean; archiveSigningKey?: Uint8Array } = {},
 	): Promise<void> {
 		if (!config?.enabled) return;
 		const sessionId = getRecallSessionId(event);
@@ -295,6 +296,11 @@ export class DurableRecallOutbox {
 			},
 			_outbox: { version: 1, destination: endpoint(activeConfig) },
 		};
+		if (options.archiveSigningKey)
+			record.payload = signRuntimeRecallRecord(
+				record,
+				options.archiveSigningKey,
+			).payload;
 		const stage = this.writes
 			.catch(() => {})
 			.then(async () => {

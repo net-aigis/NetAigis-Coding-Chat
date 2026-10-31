@@ -1150,6 +1150,7 @@ export {
 	type RecallEvent,
 } from "./services/recall-outbox";
 export {
+	type RecallSessionReadOptions,
 	type SessionTakeoverResult,
 	type TotalRecallConversation,
 	type TotalRecallJournalEvent,

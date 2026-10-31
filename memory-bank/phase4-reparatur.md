@@ -1207,3 +1207,49 @@ Weiter offen: überprüfte Produzentenquelle vor einem tatsächlichen Recall-
 Import und authentifizierte Runtime-Admission/Browserübernahme, Altbestand-
 Anbindung, reale Geräte-/Modellabnahme und produktiver Rollout. Eine lesbare
 Archivkopie und grüne Komponentenfälle bedeuten weiter keine produktive Abnahme.
+
+### TOTAL RECALL: überprüfte Produzentenquelle vor Import
+
+Auf 07cf41099 fortgesetzt. `p4-recall-producer-red` belegte den fehlenden
+Quellennachweis für einen vollständig aussehenden, actorseitig gelieferten
+Snapshot. Die vorhandene Outbox kann jetzt optional die vollständigen
+Produzentendaten per HMAC-SHA256 im bestehenden payload authentifizieren:
+Event-ID, Projekt, Session, Actor, Art und Inhalt einschließlich unveränderter
+Nachrichtenurheber und Prozessbelege. Reihenfolge-/Empfangsdaten des Servers
+bleiben separat geprüft. Queue v1, IDs und tatsächliche Acer-Routen bleiben
+unverändert. Wiederholte Zustellung ändert den signierten Datensatz nicht.
+
+Schlüssel ist eine eigene Runtime-Option, niemals automatisch aus Hub-Login oder
+Recall-API-Token abgeleitet; Wiederverwendung eines API-Tokens wird verweigert.
+Optionaler expliziter Deployment-Wert CLINE_HUB_RECALL_ARCHIVE_KEY ist ein
+32-Byte-base64url-Wert aus geschützter Konfiguration außerhalb von Git.
+Dieser Schritt erzeugt/konfiguriert **keinen produktiven Schlüssel**, keine neue
+Ablage und keinen Dienst. Tests verwenden ausschließlich Fixture-Schlüssel.
+Journal enthält nur Schlüsselkennung und MAC; Status nur die Hash-Kennung.
+
+Reader verlangt den Nachweis standardmäßig für einen Wiederaufnahmekandidaten.
+Alte unsignierte Ereignisse bleiben vollständig lesbar und unverändert; keine
+heimliche Neuzuordnung von Urheberschaft. Rein lesende Inspektion kann die
+Kandidatensperre ausdrücklich abschalten, meldet dann weiterhin sourceVerified
+false. Ein tatsächlicher Import darf eine solche Client-Ausnahme nicht annehmen.
+Für einen ausschließlich alten, unsignierten Archivbestand wird eine anderweitig
+geprüfte Originalbasis benötigt; keine Rückfalllösung durch Modellannahmen.
+
+`p4-recall-producer-proof` **38/38** bestanden: echte Node-Kryptofunktionen,
+Manipulation verschachtelter Urheberschaft/Scope/ID/Inhalt, andere Schlüssel,
+JSON-Schlüsselreihenfolge, Zustellmetadaten, sichere Schlüsselvalidierung sowie
+bestehende Reader-/Runtime-/Config-/Outbox-/Hub-Verträge. Der reale persistierte
+Abschlussfall läuft jetzt durch signierte private Outbox und denselben Reader
+mit passendem Schlüssel bis sourceVerified=true. Das bleibt ein Komponentenfall
+mit Fixture-Inhalten/HTTP, keine produktive Abnahme. App-Adaptergrenze
+`p4-recall-producer-app` **23/23** bestanden. Core-/App-Typprüfungen
+p4-recall-producer-types / p4-recall-producer-app-types und Core-Build
+p4-recall-producer-build Exit 0.
+
+Vorangegangene Checkpoint-/Actor-/Recall-Lese-/Abschlussnachweise in 83 Dateien
+im bestehenden Prüfroot verifiziert: SHA256SUMS.recall-07cf41099-20261031,
+SHA256 281fd6e2325ae234b9413cbefe69107a34a502ab436734daea5ed845b122a2df.
+Keine neue Sicherung und keine Bereinigung des dokumentierten Test-Refs.
+Nächster konkreter Schritt: authentifizierter Import/Übernahme über die
+vorhandene gemeinsame Runtime mit Nichtüberschreiben, überprüftem Archivstand
+und kanonischer Session-ID. Keine neue Speicherarchitektur entwickeln.

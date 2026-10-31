@@ -2,6 +2,11 @@
 import type { ITelemetryService } from "@cline/shared";
 import { hasUnresolvedCommandObservation } from "../runtime/host/command-observations";
 import type { CoreSessionSnapshot } from "../session/session-snapshot";
+import {
+	copyRecallArchiveKey,
+	recallArchiveKeyId,
+	verifyRuntimeRecallRecord,
+} from "./recall-archive-proof";
 import type { RecallConfiguration, RecallFetch } from "./recall-outbox";
 
 export interface TotalRecallConversation {
@@ -40,6 +45,8 @@ export interface TotalRecallSessionSnapshot {
 	checkpointRunCount?: number;
 	/** Captured append-only high-water mark; later writes belong to a later read. */
 	journalSeq: number;
+	sourceVerified: boolean;
+	sourceKeyId?: string;
 	/** Archive eligibility only; does not grant runtime ownership or restore a task. */
 	restoration: {
 		available: boolean;
@@ -48,7 +55,8 @@ export interface TotalRecallSessionSnapshot {
 			| "incomplete_tail"
 			| "invalid_snapshot"
 			| "active_session"
-			| "unconfirmed_process";
+			| "unconfirmed_process"
+			| "unverified_source";
 	};
 	currentActorId?: string;
 	lockedBy?: string;
@@ -105,15 +113,28 @@ function validRecoveryShape(snapshot: CoreSessionSnapshot): boolean {
 const WRITER_COORDINATION_UNAVAILABLE =
 	"TOTAL RECALL has no verified writer-ownership/handover API. A running task cannot safely be taken over through the event journal.";
 
+export interface RecallSessionReadOptions {
+	verificationKey?: Uint8Array;
+	/** Only explicit read-only inspection may opt out; write admission must require proof. */
+	requireVerifiedSource?: boolean;
+}
 export class TotalRecallSessionHost {
 	private initialized = false;
+	private readonly verificationKey?: Buffer;
+	private readonly requireVerifiedSource: boolean;
 	constructor(
 		private readonly configManager: () => Promise<
 			RecallConfiguration | undefined
 		>,
 		_telemetry?: ITelemetryService,
 		private readonly fetch: RecallFetch = globalThis.fetch,
-	) {}
+		options: RecallSessionReadOptions = {},
+	) {
+		this.verificationKey = options.verificationKey
+			? copyRecallArchiveKey(options.verificationKey)
+			: undefined;
+		this.requireVerifiedSource = options.requireVerifiedSource !== false;
+	}
 	async initialize(_config: RecallConfiguration): Promise<void> {
 		this.initialized = true;
 	}
@@ -292,11 +313,19 @@ export class TotalRecallSessionHost {
 				recordedSnapshotSeq = event.seq;
 			}
 		}
+		const sourceVerified =
+			!!this.verificationKey &&
+			verifyRuntimeRecallRecord(
+				events.find((event) => event.seq === recordedSnapshotSeq),
+				this.verificationKey,
+			);
 		let reason: TotalRecallSessionSnapshot["restoration"]["reason"];
 		if (!recordedSnapshot) reason = "no_snapshot";
 		else if (recordedSnapshotSeq !== conversation.lastSeq)
 			reason = "incomplete_tail";
 		else if (!validRecoveryShape(recordedSnapshot)) reason = "invalid_snapshot";
+		else if (this.requireVerifiedSource && !sourceVerified)
+			reason = "unverified_source";
 		else if (
 			![
 				"idle",
@@ -319,6 +348,10 @@ export class TotalRecallSessionHost {
 		return {
 			conversationId,
 			journalSeq: conversation.lastSeq,
+			sourceVerified,
+			...(sourceVerified
+				? { sourceKeyId: recallArchiveKeyId(this.verificationKey!) }
+				: {}),
 			restoration: { available: !reason, ...(reason ? { reason } : {}) },
 			sessionId: recordedSnapshot?.sessionId,
 			messages: events,

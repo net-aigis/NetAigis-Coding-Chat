@@ -6,6 +6,7 @@ import type { RuntimeHost } from "../runtime/host/runtime-host";
 import type { CoreSessionEvent } from "../types/events";
 import { RuntimeRecallArchive } from "./recall-runtime-archive";
 
+const archiveSigningKey = Buffer.alloc(32, 12);
 const config = {
 	baseUrl: "http://recall-fixture.invalid",
 	project: "fixture-project",
@@ -178,6 +179,7 @@ it("archives the final persisted session after ended, preserving both authors an
 			directory,
 			getConfiguration: async () => config,
 			actorTokens: { jimmi: "fixture-jimmi" },
+			archiveSigningKey,
 			fetch: async () => new Response("{}", { status: 503 }),
 		},
 	);
@@ -244,9 +246,11 @@ it("archives the final persisted session after ended, preserving both authors an
 					),
 					{ status: 200 },
 				),
+			{ verificationKey: archiveSigningKey },
 		);
 		await reader.initialize(config);
 		expect(await reader.getSessionSnapshot("existing")).toMatchObject({
+			sourceVerified: true,
 			restoration: { available: true },
 			recordedSnapshot: { messages },
 		});
@@ -315,4 +319,29 @@ it.each([
 		await archive.stop();
 		await rm(directory, { recursive: true, force: true });
 	}
+});
+
+it("refuses to reuse an API credential as the runtime producer key before staging anything", async () => {
+	const key = Buffer.alloc(32, 9);
+	const transport = vi.fn();
+	const archive = new RuntimeRecallArchive({} as RuntimeHost, {
+		archiveSigningKey: key,
+		getConfiguration: async () => ({
+			...config,
+			token: key.toString("base64url"),
+		}),
+		directory: join(
+			process.env.CLINE_DATA_DIR || tmpdir(),
+			"invalid-producer-key",
+		),
+		fetch: transport,
+	});
+	await expect(archive.start()).rejects.toThrow(
+		"independent of API credentials",
+	);
+	expect(archive.status()).toMatchObject({
+		configured: false,
+		pendingCaptures: 0,
+	});
+	expect(transport).not.toHaveBeenCalled();
 });

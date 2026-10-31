@@ -51,3 +51,40 @@ it("rejects partial or malformed settings without echoing any supplied credentia
 		);
 	}
 });
+
+it("accepts only an explicit valid producer key, without deriving one from login or Recall tokens", async () => {
+	const key = Buffer.alloc(32, 9);
+	const env = {
+		CLINE_HUB_RECALL_URL: "http://recall-fixture.invalid",
+		CLINE_HUB_RECALL_PROJECT: "project",
+		CLINE_HUB_RECALL_ACTOR: "Friseer",
+		RECALL_API_TOKEN: "fixture-api-token",
+	};
+	expect(
+		readRuntimeRecallConfiguration(env)?.archiveSigningKey,
+	).toBeUndefined();
+	expect(
+		readRuntimeRecallConfiguration({
+			...env,
+			CLINE_HUB_RECALL_ARCHIVE_KEY: key.toString("base64url"),
+		})?.archiveSigningKey,
+	).toEqual(key);
+	for (const value of [
+		"",
+		"invalid-key-must-not-echo",
+		key.toString("base64"),
+	]) {
+		let error: unknown;
+		try {
+			readRuntimeRecallConfiguration({
+				...env,
+				CLINE_HUB_RECALL_ARCHIVE_KEY: value,
+			});
+		} catch (caught) {
+			error = caught;
+		}
+		expect(error).toBeInstanceOf(Error);
+		expect(String(error)).toContain("credentials withheld");
+		if (value) expect(String(error)).not.toContain(value);
+	}
+});

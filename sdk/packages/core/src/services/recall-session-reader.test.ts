@@ -83,7 +83,12 @@ async function reader(
 			{ status: 200 },
 		);
 	});
-	const host = new TotalRecallSessionHost(async () => config, undefined, fetch);
+	const host = new TotalRecallSessionHost(
+		async () => config,
+		undefined,
+		fetch,
+		{ requireVerifiedSource: false },
+	);
 	await host.initialize(config);
 	return { host, fetch };
 }
@@ -174,4 +179,36 @@ it("does not invent a successful empty result for a missing conversation", async
 	await expect(host.getSessionSnapshot("other-session")).rejects.toThrow(
 		"not found",
 	);
+});
+
+it.each([
+	undefined,
+	{ requireVerifiedSource: true },
+])("does not trust an unsigned actor-supplied snapshot when restore requires a verified producer (%j)", async (options) => {
+	const fetch = vi.fn(
+		async (input: Parameters<typeof globalThis.fetch>[0]) =>
+			new Response(
+				JSON.stringify(
+					String(input).includes("/conversations")
+						? {
+								conversations: [
+									{ conversation_id: "session", event_count: 1, last_seq: 1 },
+								],
+							}
+						: { events: [{ ...event(1), actor_id: "jimmi" }] },
+				),
+				{ status: 200 },
+			),
+	);
+	const host = new TotalRecallSessionHost(
+		async () => config,
+		undefined,
+		fetch,
+		options,
+	);
+	await host.initialize(config);
+	expect(await host.getSessionSnapshot("session")).toMatchObject({
+		sourceVerified: false,
+		restoration: { available: false, reason: "unverified_source" },
+	});
 });
