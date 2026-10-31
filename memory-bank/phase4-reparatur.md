@@ -2112,3 +2112,12 @@ Der externe Watchdog bleibt eine getrennte Acer-Installation. Physisches Android
 laufendes tatsächliches Modell, produktive Migration, vollständige Abnahme und
 abgesicherter VSIX-Rollout bleiben offen. Phase 4 und der Gesamtauftrag sind
 ausdrücklich nicht abgeschlossen.
+
+Nachweissicherung im vorhandenen privaten Prüfverzeichnis:
+tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.phase4-197fda29d-20261031.
+80 vorhandene Log-/Metadaten-Dateien erfasst und tatsächlich per SHA256
+nachgelesen, einschließlich fehlgeschlagener Versuche; keine Wiederholung alter
+Sicherungen oder Tests. Listen-SHA256:
+77db857befc9765d66fc8e6c6d745a85b9d7bee72bc8b7d74b96f8dca98574f5.
+Reparatur-Arbeitsstand vollständig committet; die zwölf bereits vorhandenen
+unversionierten Altartefakte bleiben erhalten und ungestaged. Kein Push.
