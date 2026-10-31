@@ -1520,3 +1520,25 @@ can finalize a row. Legacy completion booleans and stdout strings are not exit
 proof. Live metadata-only updates expose running/unknown/observation failures
 without completing an unfinished batch. Durable current-state reconciliation is
 a separate runtime responsibility and remains unfinished at this step.
+
+### Fork: current command observations in the existing session manifest
+
+The runtime-owned execution controller now retains process observations beyond
+tool detachment. ChildProcess callbacks record a unique execution ID, owning
+session/tool call, runtime instance, sequence, PID/time and actual exit evidence;
+identity probes add the existing process start token. UI progress is not the
+source of this authority. The existing session metadata field
+`runtimeCommandObservations` stores the latest observation for each execution;
+there is no second transcript/process database. All local manifest and metadata
+read-modify-writes share the per-session mutation queue. Session reads await the
+controller's persistence gate and fail on an unpersisted observation.
+
+Explicit handover and canonical resume reconcile a historical running tool
+result only with that execution's later confirmed exit, matching session, call,
+PID and time. Other active or unknown executions continue to block handover.
+A lost host/PID probe cannot create an exit code or establish success. Historical
+tool results and authors remain unchanged. Actor-mode session create/update
+cannot inject or overwrite runtime observations; public local metadata updates
+also retain the current journal. Persisted nonterminal observations remain
+unconfirmed after loss of the owning runtime; they are not automatic recovery.
+Live/historical UI reconciliation and reconnect authority are subsequent steps.

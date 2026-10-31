@@ -1,3 +1,4 @@
+import { COMMAND_OBSERVATIONS_METADATA_KEY } from "../../extensions/tools/executors/run-command-execution-controller";
 import { hasUnresolvedCommandObservation } from "../../runtime/host/command-observations";
 
 export { hasUnresolvedCommandObservation } from "../../runtime/host/command-observations";
@@ -155,6 +156,8 @@ export class HubSessionAccess {
 		if (!this.ctx.sessionHost.readLiveSessionMessages) return false;
 		return !hasUnresolvedCommandObservation(
 			await this.ctx.sessionHost.readLiveSessionMessages(id),
+			session.metadata?.[COMMAND_OBSERVATIONS_METADATA_KEY],
+			id,
 		);
 	}
 	async execute(
@@ -296,6 +299,8 @@ export class HubSessionAccess {
 						"session_import_required",
 						"Existing history requires a verified session import",
 					);
+				const metadata = { ...record(envelope.payload?.metadata) };
+				delete metadata[COMMAND_OBSERVATIONS_METADATA_KEY];
 				const control: SessionWriterControl = {
 					version: 1,
 					revision: 1,
@@ -311,7 +316,7 @@ export class HubSessionAccess {
 						...envelope.payload,
 						sessionConfig: { ...config, sessionId },
 						metadata: {
-							...record(envelope.payload?.metadata),
+							...metadata,
 							[SESSION_CONTROL_METADATA_KEY]: control,
 							hubCapabilityOwnerActorId: authority.actorId,
 						},
@@ -427,6 +432,8 @@ export class HubSessionAccess {
 								session.metadata?.hubCapabilityOwnerClientId,
 							hubCapabilityOwnerActorId:
 								session.metadata?.hubCapabilityOwnerActorId,
+							[COMMAND_OBSERVATIONS_METADATA_KEY]:
+								session.metadata?.[COMMAND_OBSERVATIONS_METADATA_KEY],
 						},
 					},
 				};

@@ -40,6 +40,10 @@ import {
 	RunCommandExecutionController,
 } from "../../extensions/tools";
 import { cleanupStaleDetachedCommandLogs } from "../../extensions/tools/executors/bash";
+import {
+	COMMAND_OBSERVATIONS_METADATA_KEY,
+	type RuntimeCommandObservation,
+} from "../../extensions/tools/executors/run-command-execution-controller";
 import type { TeamEvent } from "../../extensions/tools/team";
 import type { HookEventPayload } from "../../hooks";
 import { buildTelemetryAgentIdentity } from "../../services/agent-events";
@@ -323,7 +327,12 @@ export class LocalRuntimeHost implements RuntimeHost {
 	private readonly eventBridge: AgentEventBridge;
 	private readonly sessionVersioning = new SessionVersioningService();
 	private readonly runCommandExecutionController =
-		new RunCommandExecutionController();
+		new RunCommandExecutionController((id, entries) => {
+			const write = this.persistCommandObservations(id, entries);
+			// The snapshot reads the same durability gate; publish after this write.
+			void write.then(() => this.emitSessionSnapshot(id)).catch(() => {});
+			return write;
+		});
 
 	constructor(options: LocalRuntimeHostOptions) {
 		const homeDir = homedir();
@@ -575,7 +584,13 @@ export class LocalRuntimeHost implements RuntimeHost {
 			manifest.messages_path,
 			{ strict: true },
 		);
-		if (hasUnresolvedCommandObservation(initialMessages))
+		if (
+			hasUnresolvedCommandObservation(
+				initialMessages,
+				manifest.metadata?.[COMMAND_OBSERVATIONS_METADATA_KEY],
+				id,
+			)
+		)
 			throw new Error(
 				"Saved tool execution remains unconfirmed; session was not replaced",
 			);
@@ -1602,6 +1617,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 		return this.sessions.has(sessionId.trim());
 	}
 	async getSession(sessionId: string): Promise<SessionRecord | undefined> {
+		await this.runCommandExecutionController.flush(sessionId);
 		const active = this.sessions.get(sessionId);
 		if (active) {
 			return toActiveSessionRecord(active);
@@ -1660,25 +1676,42 @@ export class LocalRuntimeHost implements RuntimeHost {
 			// session otherwise remains lazy until its first user turn.
 			await this.ensureSessionPersisted(resident);
 		}
-		const result = await this.invokeOptionalValue<{
-			updated: boolean;
-			metadata?: SessionManifest["metadata"] | null;
-		}>("updateSession", {
-			sessionId,
-			prompt: updates.prompt,
-			metadata: updates.metadata,
-			title: updates.title,
-		});
-		const updated = result?.updated === true;
-		if (updated && result.metadata !== undefined) {
-			const active = this.sessions.get(sessionId.trim());
-			if (active) {
-				active.sessionMetadata = result.metadata ?? undefined;
-				if (active.artifacts)
-					active.artifacts.manifest.metadata = active.sessionMetadata;
+		return this.queueManifestMutation(sessionId, async () => {
+			const currentMetadata =
+				resident?.sessionMetadata ?? (await this.getRow(sessionId))?.metadata;
+			if (
+				updates.metadata !== undefined &&
+				currentMetadata?.[COMMAND_OBSERVATIONS_METADATA_KEY] !== undefined
+			) {
+				updates = {
+					...updates,
+					metadata: {
+						...updates.metadata,
+						[COMMAND_OBSERVATIONS_METADATA_KEY]:
+							currentMetadata[COMMAND_OBSERVATIONS_METADATA_KEY],
+					},
+				};
 			}
-		}
-		return { updated };
+			const result = await this.invokeOptionalValue<{
+				updated: boolean;
+				metadata?: SessionManifest["metadata"] | null;
+			}>("updateSession", {
+				sessionId,
+				prompt: updates.prompt,
+				metadata: updates.metadata,
+				title: updates.title,
+			});
+			const updated = result?.updated === true;
+			if (updated && result.metadata !== undefined) {
+				const active = this.sessions.get(sessionId.trim());
+				if (active) {
+					active.sessionMetadata = result.metadata ?? undefined;
+					if (active.artifacts)
+						active.artifacts.manifest.metadata = active.sessionMetadata;
+				}
+			}
+			return { updated };
+		});
 	}
 
 	async updateSessionCompactionState(
@@ -2028,14 +2061,11 @@ export class LocalRuntimeHost implements RuntimeHost {
 	): Promise<SessionManifest | undefined> {
 		const artifacts = session.artifacts;
 		if (!artifacts) return undefined;
-		const sessionId = session.sessionId;
-		const tail =
-			this.manifestMutationQueues.get(sessionId) ?? Promise.resolve();
-		const next = tail.then(async () => {
+		return this.queueManifestMutation(session.sessionId, async () => {
 			const latest =
 				(await this.invokeOptionalValue<SessionManifest>(
 					"readSessionManifest",
-					sessionId,
+					session.sessionId,
 				)) ?? artifacts.manifest;
 			mutate(latest);
 			artifacts.manifest = latest;
@@ -2046,6 +2076,15 @@ export class LocalRuntimeHost implements RuntimeHost {
 			);
 			return latest;
 		});
+	}
+
+	private async queueManifestMutation<T>(
+		sessionId: string,
+		operation: () => Promise<T>,
+	): Promise<T> {
+		const tail =
+			this.manifestMutationQueues.get(sessionId) ?? Promise.resolve();
+		const next = tail.then(operation);
 		const queued = next.then(
 			() => undefined,
 			() => undefined,
@@ -2054,9 +2093,8 @@ export class LocalRuntimeHost implements RuntimeHost {
 		try {
 			return await next;
 		} finally {
-			if (this.manifestMutationQueues.get(sessionId) === queued) {
+			if (this.manifestMutationQueues.get(sessionId) === queued)
 				this.manifestMutationQueues.delete(sessionId);
-			}
 		}
 	}
 
@@ -2615,36 +2653,65 @@ export class LocalRuntimeHost implements RuntimeHost {
 		await this.updateStatus(session, "idle", null);
 	}
 
+	private async persistCommandObservations(
+		sessionId: string,
+		entries: RuntimeCommandObservation[],
+	): Promise<void> {
+		const updated = await this.persistSessionMetadata(sessionId, (current) => {
+			const old = current?.[COMMAND_OBSERVATIONS_METADATA_KEY] as
+				| { version?: number; entries?: RuntimeCommandObservation[] }
+				| undefined;
+			if (
+				old !== undefined &&
+				(old.version !== 1 || !Array.isArray(old.entries))
+			)
+				throw new Error("Stored process observation journal is invalid");
+			const merged = new Map(
+				(old?.entries ?? []).map((entry) => [entry.executionId, entry]),
+			);
+			for (const entry of entries) merged.set(entry.executionId, entry);
+			return {
+				...current,
+				[COMMAND_OBSERVATIONS_METADATA_KEY]: {
+					version: 1,
+					entries: [...merged.values()],
+				},
+			};
+		});
+		if (!updated)
+			throw new Error(
+				"Process observation could not be persisted in its existing session",
+			);
+	}
+
 	private async persistSessionMetadata(
 		sessionId: string,
 		resolveMetadata: (
 			current: Record<string, unknown> | undefined,
 		) => Record<string, unknown> | undefined,
-	): Promise<void> {
-		const session = this.sessions.get(sessionId);
-		const currentManifest =
-			(await this.invokeOptionalValue<SessionManifest>(
-				"readSessionManifest",
-				sessionId,
-			)) ?? session?.artifacts?.manifest;
-		const metadata = resolveMetadata(
-			currentManifest?.metadata as Record<string, unknown> | undefined,
-		);
-		if (!session?.artifacts) {
-			return;
-		}
-		const result = await this.invokeOptionalValue<{ updated?: boolean }>(
-			"updateSession",
-			{
-				sessionId,
-				metadata,
-			},
-		);
-		if (result?.updated === false) {
-			return;
-		}
-		session.sessionMetadata = metadata;
-		session.artifacts.manifest.metadata = metadata;
+	): Promise<boolean> {
+		return this.queueManifestMutation(sessionId, async () => {
+			const session = this.sessions.get(sessionId);
+			const currentManifest =
+				(await this.invokeOptionalValue<SessionManifest>(
+					"readSessionManifest",
+					sessionId,
+				)) ?? session?.artifacts?.manifest;
+			if (!currentManifest) return false;
+			const metadata = resolveMetadata(
+				currentManifest.metadata as Record<string, unknown> | undefined,
+			);
+			const result = await this.invokeOptionalValue<{ updated?: boolean }>(
+				"updateSession",
+				{ sessionId, metadata },
+			);
+			if (result?.updated === false) return false;
+			if (session) {
+				session.sessionMetadata = metadata;
+				if (session.artifacts) session.artifacts.manifest.metadata = metadata;
+			}
+			return result?.updated === true;
+		});
 	}
 
 	private async finalizeSingleRun(

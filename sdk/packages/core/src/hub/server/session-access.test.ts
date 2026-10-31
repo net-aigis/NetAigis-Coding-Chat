@@ -303,12 +303,29 @@ describe("authenticated writer handover in existing session metadata", () => {
 			]),
 		).toBe(true);
 	});
+	it("does not accept client supplied process observations as new-session authority", async () => {
+		const f = fixture();
+		f.runtime.getSession.mockImplementation(async (id?: string) =>
+			id === "new-session" ? (undefined as never) : f.row,
+		);
+		await f.command("session.create", friseer, {
+			sessionConfig: { sessionId: "new-session" },
+			metadata: {
+				runtimeCommandObservations: { version: 1, entries: [{ forged: true }] },
+			},
+		});
+		expect(
+			(f.dispatch.mock.calls[0][0].payload?.metadata as Record<string, unknown>)
+				.runtimeCommandObservations,
+		).toBeUndefined();
+	});
 	it("prevents metadata writes from replacing writer or execution-owner identity", async () => {
 		const f = fixture();
 		await f.command("session.update", friseer, {
 			controlRevision: 1,
 			metadata: {
 				sharedSessionControl: { revision: 999 },
+				runtimeCommandObservations: { version: 1, entries: [{ forged: true }] },
 				hubCapabilityOwnerActorId: "jimmi",
 			},
 		});
@@ -316,6 +333,10 @@ describe("authenticated writer handover in existing session metadata", () => {
 			sharedSessionControl: { revision: 1 },
 			hubCapabilityOwnerActorId: "Friseer",
 		});
+		expect(
+			(f.dispatch.mock.calls[0][0].payload?.metadata as Record<string, unknown>)
+				.runtimeCommandObservations,
+		).toBeUndefined();
 	});
 	it("checks modern tool-result records and requires a numeric exit code for completion", () => {
 		const tool = (result: unknown) => [

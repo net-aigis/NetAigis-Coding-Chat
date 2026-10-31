@@ -828,6 +828,21 @@ function spawnAndCollect(
 			maxOutputChars,
 		);
 
+		const observe = (
+			execution: NonNullable<
+				import("../types").ToolOperationResult["execution"]
+			>,
+		) => {
+			if (context.sessionId)
+				executionController?.observe({
+					sessionId: context.sessionId,
+					toolCallId: context.toolCallId,
+					executionId,
+					...(processStartToken ? { processStartToken } : {}),
+					execution,
+				});
+		};
+
 		const settle = (fn: () => void) => {
 			if (settled) return;
 			settled = true;
@@ -923,6 +938,12 @@ function spawnAndCollect(
 					? out.totalChars + err.totalChars
 					: out.totalChars,
 			});
+			observe({
+				state: cancellation instanceof TimeoutError ? "timed_out" : "aborted",
+				pid: childPid,
+				observedAtMs: Date.now(),
+				terminationConfirmed,
+			});
 			const error =
 				cancellation instanceof TimeoutError
 					? new CommandTimeoutError(
@@ -1008,6 +1029,13 @@ function spawnAndCollect(
 			]
 				.filter(Boolean)
 				.join("\n");
+			observe({
+				state: "running",
+				pid: childPid,
+				detached: true,
+				logPath: detachedLog.path,
+				observedAtMs: Date.now(),
+			});
 			context.emitUpdate?.({
 				executionId,
 				execution: {
@@ -1024,6 +1052,7 @@ function spawnAndCollect(
 
 		child.once("spawn", () => {
 			if (killed) return;
+			observe({ state: "running", pid: childPid, observedAtMs: Date.now() });
 			context.emitUpdate?.({
 				observation: "process_started",
 				execution: {
@@ -1057,6 +1086,7 @@ function spawnAndCollect(
 					return;
 				}
 				processStartToken = probe.token;
+				observe({ state: "running", pid: childPid, observedAtMs: Date.now() });
 				detachable = true;
 				unregisterExecution = executionController.register({
 					executionId,
@@ -1201,7 +1231,7 @@ function spawnAndCollect(
 		// the active state, waiting for a 'close' that never comes.
 		child.on("exit", (code, signal) => {
 			// This observation comes from ChildProcess.exit, never an idle/observation timer.
-			context.emitUpdate?.({
+			const observation = {
 				observation: "process_exit",
 				executionId,
 				execution: {
@@ -1221,7 +1251,12 @@ function spawnAndCollect(
 					...(code !== null ? { exitCode: code } : {}),
 					...(signal ? { signal } : {}),
 				},
+			} as const;
+			observe({
+				...observation.execution,
+				...(cancellation ? { terminationConfirmed: true } : {}),
 			});
+			context.emitUpdate?.(observation);
 			if (killed) return;
 			exitStreamGraceTimer = setTimeout(() => {
 				if (killed || settledOnExitGrace) return;

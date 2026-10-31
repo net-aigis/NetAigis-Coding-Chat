@@ -923,3 +923,55 @@ unknown-Rückgabetyp in der Testbereinigung. Letzterer ist durch Promise.resolve
 korrekt normalisiert; keine Quellfehler unterdrückt und keine globalen
 Compileroptionen geändert. Staged-Diff- und aktuelle Commit-Historienprüfung mit
 gitleaks redacted erfolgreich, keine Secrets ausgegeben.
+
+### Prozessbeobachtung nach Detachment in der vorhandenen Session-Ablage
+
+Auf 11b0de55d fortgesetzt. `p4-command-journal-red` reproduzierte die fehlende
+Aufbewahrung/Schreibfehlergrenze (zwei neue Fehler, ein bestehender Fall grün).
+Der hosteigene Controller hält jetzt tatsächliche ChildProcess-Beobachtungen
+über eine Werkzeugrückgabe hinweg und schreibt sie in die vorhandenen
+Session-Metadaten. Eindeutige Execution-ID, Tool-Call/Session, Runtime-Instanz,
+Sequenz, PID/Zeit und tatsächlicher Exit verhindern die Verwechslung mit einer
+anderen oder alten Ausführung. Historische Ergebnisse werden nicht umgeschrieben.
+Die aktuelle Zustandsabfrage wartet auf die Persistenz; Schreibfehler werden
+nicht als erfolgreich gesicherter Zustand zurückgegeben. Kein neuer Speicher
+und keine Selbstüberwachungs-KI. TOTAL RECALL erhält die bestehenden Snapshot-
+Benachrichtigungen nach erfolgreichem Speichern einschließlich Metadaten.
+
+Der frühere unsynchronisierte Metadaten-Schreibweg benutzt nun dieselbe
+Session-Mutationsqueue wie Manifeständerungen. Öffentliche Metadatenänderungen
+bewahren das Prozessjournal. Authentifizierte Clients dürfen es weder bei
+session.create einschleusen noch bei session.update ersetzen. Eine alte
+running-Toolrückgabe kann nur durch ihren belegten späteren Exit als erledigt
+abgeglichen werden; nicht bestätigte oder beschädigte Aufzeichnungen sperren
+weiter. Nach Verlust der Runtime wird aus einem gespeicherten running kein
+bestätigtes aktuelles Prozessleben oder abgeschlossener Exit erfunden.
+
+Tatsächliche Prüfungen: `p4-command-journal-host` **167 bestanden, 14
+plattformabhängig übersprungen, keine Fehler**. Enthält echte Prozesse,
+FileSessionService, LocalRuntimeHost, gleichzeitige Modell-/Writer-Metadaten,
+unveränderte Verlaufsbytes und erneutes Einlesen über einen frischen Host;
+Agent und Modell sind Fixtures. Keine produktive Geräte-/Modellabnahme.
+Der Zwischenlauf `p4-command-journal-first` hatte 136 bestanden/27 Fehler/14
+übersprungen: acht vorhandene Metadata-Verträge widersprachen dem neuen
+zusätzlichen Manifestlesen. Jetzt korrekt aus dem aktuellen residenten Zustand
+bzw. bestehenden Index bewahrt; Vertragsprüfungen unverändert grün. Weitere
+19 Prozessfälle lieferten sandboxbedingt keine korrekten Kindprozessausgaben.
+Der exakt gleiche diagnostische stderr-Fall scheiterte in der Sandbox
+(`p4-command-journal-executor-diagnostic`) und bestand außerhalb
+(`p4-command-journal-executor-host-check`); danach nur die betroffene Gruppe
+auf dem Host geprüft. Keine pauschalen Systemänderungen.
+
+Core-Build `p4-command-journal-build` Exit 0. Die letzte Typprüfung läuft noch.
+Offen bleiben insbesondere Live-UI-Abgleich dieser späteren Beobachtungen,
+sichere Wiederanbindung einer Writer-Verbindung, vollständiger Recall-Restore,
+reale Acer-/Android-/aktuell ausgewählte Modellintegration und produktiver
+Rollout mit gesondert freizugebenden Eingriffen. Keine Phase abgeschlossen und
+keine bisherige produktive Installation/Dienstkonfiguration verändert.
+
+Auch `p4-command-journal-types-narrowed` jetzt Exit 0. Die erste letzte Prüfung
+fand zwei optionale Transcript-Pfade in der neuen Testhilfe; durch eine echte
+Voraussetzungsprüfung eingegrenzt, keine unsichere Typumgehung. Die Quelldateien
+waren bereits beim erfolgreichen Build typgeprüft. Der neue Restore-Ausschnitt
+beweist normale Session-Persistenz und erneutes Lesen, keine behauptete
+Stromausfall-/Power-Loss-Abnahme oder produktive Migration.

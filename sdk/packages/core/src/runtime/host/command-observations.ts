@@ -1,13 +1,56 @@
+import {
+	isConfirmedCommandExit,
+	type RuntimeCommandObservation,
+} from "../../extensions/tools/executors/run-command-execution-controller";
+
 /** Process observations shared by resume admission and authenticated handover. */
 function record(value: unknown): Record<string, unknown> {
 	return value && typeof value === "object" && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: {};
 }
+/** The runtime-only metadata is protected from remote session.update/create writes. */
+export function readCommandObservationJournal(
+	value: unknown,
+	sessionId: string,
+): RuntimeCommandObservation[] {
+	if (value === undefined) return [];
+	const journal = record(value);
+	if (journal.version !== 1 || !Array.isArray(journal.entries))
+		throw new Error("Invalid command observation journal");
+	for (const raw of journal.entries) {
+		const entry = record(raw);
+		if (
+			entry.sessionId !== sessionId ||
+			entry.source !== "child_process" ||
+			typeof entry.executionId !== "string" ||
+			!entry.executionId ||
+			typeof entry.runtimeInstanceId !== "string" ||
+			!entry.runtimeInstanceId ||
+			!Number.isSafeInteger(entry.sequence) ||
+			Number(entry.sequence) < 1 ||
+			!Number.isSafeInteger(record(entry.execution).observedAtMs)
+		)
+			throw new Error("Invalid command observation entry");
+	}
+	return structuredClone(journal.entries) as RuntimeCommandObservation[];
+}
+
 /** Explicit unknown/running observations and unfinished tool calls block a handover. */
 export function hasUnresolvedCommandObservation(
 	messages: readonly unknown[],
+	journal?: unknown,
+	sessionId = "",
 ): boolean {
+	let observations: RuntimeCommandObservation[];
+	try {
+		observations = readCommandObservationJournal(journal, sessionId);
+	} catch {
+		return true;
+	}
+	// Unfinished owned processes block transfer even if their tool result is not yet saved.
+	if (observations.some((entry) => !isConfirmedCommandExit(entry.execution)))
+		return true;
 	const pending = new Map<string, string>();
 	for (const raw of messages) {
 		const m = record(raw);
@@ -46,6 +89,17 @@ export function hasUnresolvedCommandObservation(
 						: [output];
 			for (const result of results) {
 				const execution = record(record(result).execution);
+				const confirmed = observations.find(
+					(entry) =>
+						entry.executionId === execution.executionId &&
+						entry.toolCallId === id &&
+						(execution.pid === undefined ||
+							execution.pid === entry.execution.pid) &&
+						entry.execution.observedAtMs! >=
+							Number(execution.observedAtMs ?? 0) &&
+						isConfirmedCommandExit(entry.execution),
+				);
+				if (confirmed) continue;
 				if (
 					execution.state === "unknown" ||
 					execution.state === "running" ||
