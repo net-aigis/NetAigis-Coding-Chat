@@ -55,6 +55,8 @@ export interface CreateRootSessionInput {
 }
 
 export interface CreateRootSessionWithArtifactsInput {
+	/** Reserve a new ID and artifact directory; never replace an existing target. */
+	ifAbsent?: boolean;
 	sessionId: string;
 	source: SessionSource;
 	mode?: string;

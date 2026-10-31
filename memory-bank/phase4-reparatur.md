@@ -1253,3 +1253,30 @@ Keine neue Sicherung und keine Bereinigung des dokumentierten Test-Refs.
 Nächster konkreter Schritt: authentifizierter Import/Übernahme über die
 vorhandene gemeinsame Runtime mit Nichtüberschreiben, überprüftem Archivstand
 und kanonischer Session-ID. Keine neue Speicherarchitektur entwickeln.
+
+### Native Import-Voraussetzung: vorhandene Ziele niemals ersetzen
+
+Auf 9c4594435 fortgesetzt. Die bestehende native Session-Erstellung kann jetzt
+ausdrücklich `ifAbsent` verlangen. SQLite verwendet INSERT OR IGNORE; der
+File-Adapter prüft seinen vorhandenen Index streng und entscheidet synchron
+im besitzenden Prozess. Das ist keine prozessübergreifende File-Transaktion.
+Ein exklusiv angelegtes privates Artefaktverzeichnis und wx-Dateien verhindern
+die Übernahme vorhandener Verzeichnisse, Symlinks und Transkripte. Unsichere
+Session-IDs und Backends ohne diese Garantie werden vor dem Schreiben abgelehnt.
+Bei fehlgeschlagener Indexaufnahme wird nur die eigene, anhand dev/ino erkannte
+leere Reservierung entfernt. Keine Löschung vorhandener Sitzungen.
+
+`p4-session-no-overwrite-fixtures` **9/9** bestanden: echte SQLite-/File-Backends,
+gleichzeitige Erstellung, bestehende Zeile mit und ohne Artefaktverzeichnis,
+bytegleiche Originaldateien, beschädigter Index, fremdes Artefakt und Symlink/
+Pfadgrenze. Der erste Rotlauf enthielt vier echte fehlende Schutzgrenzen und
+zwei Testhilfenfehler (getSession statt öffentlichem listSessions). Beim ersten
+Grünversuch bestanden die 20 bestehenden Persistenzfälle; drei neue Fälle
+scheiterten noch an dieser falschen Test-Lese-API. Nach deren Korrektur nur
+die neun betroffenen neuen Fälle erneut ausgeführt. Keine Behauptung, sämtliche
+ersten Fehler seien Produktfehler gewesen. Core-Typprüfung
+p4-session-no-overwrite-types und Build p4-session-no-overwrite-build Exit 0.
+
+Dies ist die Nichtüberschreiben-Voraussetzung, noch kein vollständiger
+Archivimport mit Commit-/Fehlerwiederaufnahme. Keine produktiven Daten,
+Modellrouten, Dienste oder ursprünglichen Arbeitsverzeichnisse verändert.

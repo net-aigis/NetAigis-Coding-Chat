@@ -120,6 +120,8 @@ export interface PersistedSessionUpdateInput {
 export interface SessionPersistenceAdapter {
 	ensureSessionsDir(): string;
 	upsertSession(row: SessionRow): Promise<void>;
+	/** Required for safe archive imports; false means an existing row was retained. */
+	insertSessionIfAbsent?(row: SessionRow): Promise<boolean>;
 	getSession(sessionId: string): Promise<SessionRow | undefined>;
 	listSessions(options: {
 		limit: number;

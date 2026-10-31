@@ -1,3 +1,4 @@
+import { lstatSync, mkdirSync, rmdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type * as LlmsProviders from "@cline/llms";
 import type { AgentResult, BasicLogger } from "@cline/shared";
@@ -105,6 +106,22 @@ export class UnifiedSessionPersistenceService {
 	): Promise<import("../models/session-row").RootSessionArtifacts> {
 		const startedAt = input.startedAt ?? nowIso();
 		const providedId = input.sessionId.trim();
+		if (
+			input.ifAbsent &&
+			(!providedId ||
+				providedId !== input.sessionId ||
+				[".", ".."].includes(providedId) ||
+				/[/\\]/.test(providedId) ||
+				Array.from(providedId).some(
+					(character) =>
+						character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
+				))
+		)
+			throw new Error("Unsafe archive session ID; no target was created");
+		if (input.ifAbsent && !this.adapter.insertSessionIfAbsent)
+			throw new Error(
+				"Session backend cannot guarantee creation without replacement",
+			);
 		const sessionId =
 			providedId.length > 0 ? providedId : `${Date.now()}_${nanoid(5)}`;
 		const messagesPath =
@@ -176,10 +193,48 @@ export class UnifiedSessionPersistenceService {
 			messagesPath,
 			updatedAt: nowIso(),
 		};
-		await this.adapter.upsertSession(row);
+		if (input.ifAbsent) {
+			const directory =
+				this.manifestStore.artifacts.sessionArtifactsDir(sessionId);
+			// mkdir without recursive is the exclusive artifact reservation. Existing
+			// folders and symlinks are never adopted or inspected as empty targets.
+			mkdirSync(directory, { mode: 0o700 });
+			const reservation = lstatSync(directory);
+			let inserted = false;
+			try {
+				inserted = await this.adapter.insertSessionIfAbsent!(row);
+				if (!inserted)
+					throw new Error(
+						"Session target already exists; existing history was retained",
+					);
+			} catch (error) {
+				if (!inserted) {
+					try {
+						const current = lstatSync(directory);
+						if (
+							current.dev === reservation.dev &&
+							current.ino === reservation.ino
+						)
+							rmdirSync(directory);
+					} catch {
+						/* Only remove our empty reservation. */
+					}
+				}
+				throw error;
+			}
+		} else await this.adapter.upsertSession(row);
 
-		this.manifestStore.initializeMessagesFile(row, messagesPath, startedAt);
-		this.manifestStore.writeSessionManifest(manifestPath, manifest);
+		this.manifestStore.initializeMessagesFile(
+			row,
+			messagesPath,
+			startedAt,
+			input.ifAbsent,
+		);
+		this.manifestStore.writeSessionManifest(
+			manifestPath,
+			manifest,
+			input.ifAbsent,
+		);
 		return { manifestPath, messagesPath, compactionPath, manifest };
 	}
 

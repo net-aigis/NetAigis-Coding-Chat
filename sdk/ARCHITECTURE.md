@@ -1636,3 +1636,12 @@ never accept that opt-out from a client. A configured key is copied privately;
 verification rejects modified authors, scope, event IDs, payload or proof. Hub
 status advertises only the producer key hash. Legacy recovery requires a
 separately verified original baseline instead of fabricated authenticated authors.
+
+Native root creation accepts explicit `ifAbsent` admission. It reserves a new
+artifact directory exclusively and inserts without replacing an existing row;
+messages and manifest use exclusive writes. Existing directories and symlinks
+are never adopted, corrupt file indexes fail closed, and unsupported adapters
+cannot silently fall back to upsert. SQLite admission is database-atomic; the
+file adapter serializes this decision in its owning process. A rejected insert
+removes only its own still-empty inode reservation. This primitive is distinct
+from completing or recovering a multi-artifact archive import.

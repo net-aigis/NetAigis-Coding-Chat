@@ -105,16 +105,26 @@ export class SessionManifestStore {
 		row: SessionRow,
 		path: string,
 		startedAt: string,
+		exclusive = false,
 	): void {
-		writeEmptyMessagesFile(path, startedAt, resolveMessagesFileContext(row));
+		writeEmptyMessagesFile(
+			path,
+			startedAt,
+			resolveMessagesFileContext(row),
+			exclusive,
+		);
 	}
 
-	writeSessionManifest(manifestPath: string, manifest: SessionManifest): void {
+	writeSessionManifest(
+		manifestPath: string,
+		manifest: SessionManifest,
+		exclusive = false,
+	): void {
 		mkdirSync(dirname(manifestPath), { recursive: true });
 		writeFileSync(
 			manifestPath,
 			`${JSON.stringify(SessionManifestSchema.parse(manifest), null, 2)}\n`,
-			"utf8",
+			exclusive ? { encoding: "utf8", flag: "wx", mode: 0o600 } : "utf8",
 		);
 	}
 

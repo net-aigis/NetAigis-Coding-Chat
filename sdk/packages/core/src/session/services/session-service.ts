@@ -31,8 +31,14 @@ class LocalSessionPersistenceAdapter implements SessionPersistenceAdapter {
 	}
 
 	async upsertSession(row: SessionRow): Promise<void> {
-		this.store.run(
-			`INSERT OR REPLACE INTO sessions (
+		this.writeSession(row, false);
+	}
+	async insertSessionIfAbsent(row: SessionRow): Promise<boolean> {
+		return this.writeSession(row, true);
+	}
+	private writeSession(row: SessionRow, ifAbsent: boolean): boolean {
+		const result = this.store.run(
+			`INSERT ${ifAbsent ? "OR IGNORE" : "OR REPLACE"} INTO sessions (
 				session_id, source, pid, started_at, ended_at, exit_code, status, status_lock, interactive,
 				provider, model, cwd, workspace_root, team_name, enable_tools, enable_spawn, enable_teams,
 				parent_session_id, parent_agent_id, agent_id, conversation_id, is_subagent, prompt,
@@ -69,6 +75,7 @@ class LocalSessionPersistenceAdapter implements SessionPersistenceAdapter {
 				row.updatedAt,
 			],
 		);
+		return result.changes === 1;
 	}
 
 	async getSession(sessionId: string): Promise<SessionRow | undefined> {

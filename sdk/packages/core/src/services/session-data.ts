@@ -362,6 +362,7 @@ export function writeEmptyMessagesFile(
 	path: string,
 	startedAt: string,
 	context: MessagesFileContext,
+	exclusive = false,
 ): void {
 	mkdirSync(dirname(path), { recursive: true });
 	writeFileSync(
@@ -375,7 +376,7 @@ export function writeEmptyMessagesFile(
 			null,
 			2,
 		)}\n`,
-		"utf8",
+		exclusive ? { encoding: "utf8", flag: "wx", mode: 0o600 } : "utf8",
 	);
 }
 
