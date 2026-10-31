@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { COMMAND_OUTPUT_STRING } from "./combineCommandSequences"
-import { commandHasConfirmedExit, commandStatusText, commandUiState, extractCommandExecution } from "./command-execution"
+import {
+	commandHasConfirmedExit,
+	commandStatusText,
+	commandUiState,
+	extractCommandExecution,
+	mergeCommandObservationJournals,
+	reconcileCommandMessage,
+} from "./command-execution"
+import type { ClineMessage } from "./ExtensionMessage"
 
 describe("factual command status projection", () => {
 	it("does not invent exit zero from success, stdout or a legacy completion flag", () => {
@@ -49,5 +57,61 @@ describe("factual command status projection", () => {
 		for (const exitCode of [undefined, "0", Number.NaN])
 			expect(extractCommandExecution([{ execution: { state: "completed", exitCode } }]).state).toBe("unknown")
 		expect(commandUiState({ commandExecution: { state: "completed" } as never })).toBe("unknown")
+	})
+})
+
+describe("later runtime observations without rewriting history", () => {
+	const pending: ClineMessage = {
+		ts: 42,
+		type: "say",
+		say: "command",
+		text: "kept output",
+		partial: false,
+		commandCompleted: false,
+		commandExecution: { state: "running", commands: [{ state: "running", executionId: "exec", pid: 123, observedAtMs: 10 }] },
+	}
+	const entry = {
+		sessionId: "session",
+		source: "child_process",
+		runtimeInstanceId: "runtime",
+		sequence: 2,
+		executionId: "exec",
+		execution: { state: "completed", exitCode: 0, pid: 123, observedAtMs: 20 },
+	}
+	it("projects only a matching later confirmed exit and leaves the input untouched", () => {
+		const journal = { version: 1, entries: [entry] }
+		const projected = reconcileCommandMessage(pending, "session", journal, true)
+		expect(projected.commandExecution?.state).toBe("completed")
+		expect(projected.commandCompleted).toBe(true)
+		expect(projected.text).toBe("kept output")
+		expect(pending.commandExecution?.state).toBe("running")
+		for (const changed of [
+			{ sessionId: "foreign" },
+			{ executionId: "other" },
+			{ source: "client" },
+			{ execution: { ...entry.execution, pid: 124 } },
+			{ execution: { ...entry.execution, observedAtMs: 9 } },
+			{ execution: { state: "completed", observedAtMs: 20 } },
+		])
+			expect(
+				reconcileCommandMessage(pending, "session", { version: 1, entries: [{ ...entry, ...changed }] }, true)
+					.commandExecution?.state,
+			).toBe("unknown")
+	})
+	it("does not claim an old running record is still alive when reopening history", () => {
+		expect(reconcileCommandMessage(pending, "session", undefined, true).commandExecution?.state).toBe("unknown")
+		expect(reconcileCommandMessage(pending, "session", undefined)).toBe(pending)
+	})
+	it("retains confirmed evidence across old snapshots, and never merges another runtime into the same execution", () => {
+		const final = { version: 1, entries: [entry] }
+		const stale = { version: 1, entries: [{ ...entry, sequence: 1, execution: { state: "running", observedAtMs: 10 } }] }
+		const merged = mergeCommandObservationJournals(final, stale, "session")
+		expect(reconcileCommandMessage(pending, "session", merged).commandExecution?.state).toBe("completed")
+		const old = mergeCommandObservationJournals(
+			stale,
+			{ version: 1, entries: [{ ...entry, runtimeInstanceId: "other" }] },
+			"session",
+		)
+		expect(reconcileCommandMessage(pending, "session", old).commandExecution?.state).toBe("running")
 	})
 })

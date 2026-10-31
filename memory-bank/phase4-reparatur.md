@@ -1007,3 +1007,31 @@ explizite writer-Voraussetzung korrigiert. Danach
 Keine Dienste, produktiven Daten, Ports oder Modellrouten verändert. Nächster
 Schritt: aktuelle Prozessbelege auch in Live-/History-Anzeige abgleichen;
 Recall-Restore/Browser und reale Komponenten-/Geräteabnahme bleiben offen.
+
+### Live-Anzeige und Wiederöffnen anhand der tatsächlichen Prozessbelege
+
+Auf ac19aa8f9 fortgesetzt. Die gemeinsame Statusprojektion gleicht jetzt eine
+pending-Toolrückgabe mit dem passenden späteren Runtime-Exit ab. Session,
+Execution-ID, PID, Zeit und gültige Runtime-/Sequenzdaten müssen passen. Ein
+alter Snapshot oder eine spätere alte Toolrückgabe kann einen bestätigten Exit
+nicht wieder auf running zurücksetzen. Der Eventkoordinator aktualisiert die
+bestehende Zeile mit gleichem Zeit-/UI-Schlüssel; stdout und kanonische Historie
+bleiben unverändert. Der Projektionscache ist flüchtiger UI-Zustand, kein
+weiterer Prozess- oder Verlaufsspeicher.
+
+Beim Wiederöffnen ohne passenden Exitbeleg wird ein alter running-Eintrag als
+unknown angezeigt. Nur die damalige Toolrückgabe belegt kein heutiges
+Prozessleben. SDK-History bekommt das vorhandene Journal aus dem Sessionrecord;
+Legacy-Abschlussflags bleiben ohne erfundenen Exitcode. Drei direkte
+Projektionsfälle, kanonischer History-Roundtrip und Snapshot-/Folgeereignis-
+Regression schützen diese Grenze. `p4-command-ui-reconcile` **240/240** betroffen
+bestanden; Extension-/Webview-Typprüfungen
+`p4-command-ui-reconcile-app-types` und `p4-command-ui-reconcile-web-types` Exit 0.
+Keine produktive Sitzung migriert oder Komponente installiert.
+
+Bei Prüfung des Anschlusses ist eine weitere Metadatenkante erkannt: der
+Checkpoint-Hook liefert nach einem asynchron erzeugten Checkpoint noch eine
+vorher gelesene komplette Metadatenkopie. Deren Writer-/Prozessfelder dürfen
+spätere Belege nicht überschreiben. Als nächstes gezielt reproduzieren und den
+Checkpoint-Schreibweg auf seine eigenen Felder begrenzen; keine Wiederholung
+der abgeschlossenen Phasen.

@@ -4496,3 +4496,52 @@ describe("persisted display-only errors", () => {
 		expect(rendered.some((message) => message.say === "completion_result" || message.ask === "completion_result")).toBe(false)
 	})
 })
+
+it("reopens canonical pending command history using only its later persisted runtime exit evidence", () => {
+	const canonical = [
+		{
+			role: "assistant",
+			content: [{ type: "tool_use", id: "call", name: "run_commands", input: { commands: ["fixture command"] } }],
+		},
+		{
+			role: "user",
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: "call",
+					content: [
+						{
+							success: false,
+							pending: true,
+							result: "kept partial output",
+							execution: { state: "running", executionId: "exec", pid: 123, observedAtMs: 10 },
+						},
+					],
+				},
+			],
+		},
+	] as unknown as SdkMessage[]
+	const before = JSON.stringify(canonical)
+	const rows = sdkMessagesToClineMessages(canonical)
+	expect(rows.find((row) => row.say === "command")?.commandExecution?.state).toBe("unknown")
+	const commandObservations = {
+		version: 1,
+		entries: [
+			{
+				sessionId: "session",
+				source: "child_process",
+				runtimeInstanceId: "runtime",
+				sequence: 2,
+				executionId: "exec",
+				execution: { state: "failed", exitCode: 7, pid: 123, observedAtMs: 20 },
+			},
+		],
+	}
+	const restored = sdkMessagesToClineMessages(canonical, undefined, { sessionId: "session", commandObservations })
+	expect(restored.find((row) => row.say === "command")).toMatchObject({
+		commandCompleted: true,
+		commandExecution: { state: "failed", commands: [{ exitCode: 7 }] },
+		text: expect.stringContaining("kept partial output"),
+	})
+	expect(JSON.stringify(canonical)).toBe(before)
+})

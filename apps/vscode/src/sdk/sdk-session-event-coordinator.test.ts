@@ -19,6 +19,66 @@ describe("SdkSessionEventCoordinator", () => {
 		vi.clearAllMocks()
 	})
 
+	it("updates a detached command row from a durable snapshot and fences a later stale tool return", async () => {
+		const message: ClineMessage = {
+			ts: 42,
+			type: "say",
+			say: "command",
+			text: "kept output",
+			commandExecution: {
+				state: "running",
+				commands: [{ state: "running", executionId: "exec", pid: 123, observedAtMs: 10 }],
+			},
+		}
+		const { coordinator, options, event } = makeCoordinator()
+		vi.mocked(options.getTask).mockReturnValue({
+			taskId: "session-123",
+			messageStateHandler: { getClineMessages: () => [message] },
+		} as never)
+		const snapshot = {
+			type: "session_snapshot",
+			payload: {
+				sessionId: "session-123",
+				snapshot: {
+					metadata: {
+						runtimeCommandObservations: {
+							version: 1,
+							entries: [
+								{
+									sessionId: "session-123",
+									source: "child_process",
+									runtimeInstanceId: "runtime",
+									sequence: 2,
+									executionId: "exec",
+									execution: { state: "completed", exitCode: 0, pid: 123, observedAtMs: 20 },
+								},
+							],
+						},
+					},
+				},
+			},
+		} as unknown as CoreSessionEvent
+		await coordinator.handleSessionEvent(snapshot)
+		expect(options.messages.appendAndEmit).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					ts: 42,
+					text: "kept output",
+					commandCompleted: true,
+					commandExecution: expect.objectContaining({ state: "completed" }),
+				}),
+			],
+			snapshot,
+		)
+		options.translateSessionEvent.mockReturnValue({ messages: [message], sessionEnded: false, turnComplete: false })
+		await coordinator.handleSessionEvent(event)
+		expect(options.messages.appendAndEmit).toHaveBeenLastCalledWith(
+			[expect.objectContaining({ commandExecution: expect.objectContaining({ state: "completed" }) })],
+			event,
+		)
+		expect(message.commandExecution?.state).toBe("running")
+	})
+
 	it("translates and emits session messages, then posts state", async () => {
 		const message: ClineMessage = { ts: 1, type: "say", say: "text", text: "hello" }
 		const { coordinator, options, event } = makeCoordinator({

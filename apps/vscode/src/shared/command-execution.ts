@@ -20,6 +20,7 @@ export interface CommandObservation {
 	observationFailed?: boolean
 	executionId?: string
 	pid?: number
+	observedAtMs?: number
 }
 export interface CommandExecution {
 	state: CommandExecutionState
@@ -60,6 +61,7 @@ function observation(value: unknown): CommandObservation {
 		...(raw.observationFailed === true ? { observationFailed: true } : {}),
 		...(typeof raw.executionId === "string" ? { executionId: raw.executionId } : {}),
 		...(Number.isSafeInteger(raw.pid) ? { pid: Number(raw.pid) } : {}),
+		...(Number.isSafeInteger(raw.observedAtMs) ? { observedAtMs: Number(raw.observedAtMs) } : {}),
 	}
 }
 function aggregate(commands: CommandObservation[]): CommandExecutionState {
@@ -124,4 +126,64 @@ export function commandStatusText(state: ReturnType<typeof commandUiState>): str
 		observation_failed: "Observation failed",
 		not_started: "Not started",
 	}[state]
+}
+
+/** A projection cache, not a process authority or a second persistent store. */
+export function mergeCommandObservationJournals(previous: unknown, next: unknown, sessionId: string): unknown {
+	const entries = new Map<string, Record<string, unknown>>()
+	for (const journal of [previous, next]) {
+		const raw = record(journal)
+		if (raw.version !== 1 || !Array.isArray(raw.entries)) continue
+		for (const value of raw.entries) {
+			const entry = record(value)
+			if (
+				entry.source !== "child_process" ||
+				entry.sessionId !== sessionId ||
+				typeof entry.executionId !== "string" ||
+				!entry.executionId ||
+				typeof entry.runtimeInstanceId !== "string" ||
+				!entry.runtimeInstanceId ||
+				!Number.isSafeInteger(entry.sequence) ||
+				Number(entry.sequence) < 1 ||
+				!Number.isSafeInteger(record(entry.execution).observedAtMs)
+			)
+				continue
+			const old = entries.get(entry.executionId)
+			if (
+				old &&
+				(old.runtimeInstanceId !== entry.runtimeInstanceId ||
+					Number(old.sequence) >= Number(entry.sequence) ||
+					commandHasConfirmedExit({ state: "unknown", commands: [observation(old.execution)] }))
+			)
+				continue
+			entries.set(entry.executionId, entry)
+		}
+	}
+	return { version: 1, entries: [...entries.values()] }
+}
+
+export function reconcileCommandMessage(
+	message: ClineMessage,
+	sessionId: string,
+	journal: unknown,
+	history = false,
+): ClineMessage {
+	if (message.say !== "command" || !Array.isArray(message.commandExecution?.commands)) return message
+	const validated = record(mergeCommandObservationJournals(undefined, journal, sessionId)).entries as Record<string, unknown>[]
+	const commands = message.commandExecution.commands.map((old) => {
+		const entry = validated.find(
+			(candidate) =>
+				candidate.executionId === old.executionId &&
+				(old.pid === undefined || old.pid === record(candidate.execution).pid) &&
+				Number(record(candidate.execution).observedAtMs) >= (old.observedAtMs ?? 0),
+		)
+		const current = entry ? observation({ ...record(entry.execution), executionId: entry.executionId }) : undefined
+		// Only an actual terminal observation can resolve a historical running result.
+		if (current && commandHasConfirmedExit({ state: current.state, commands: [current] })) return current
+		if (history && old.state === "running") return { ...old, state: "unknown" as const }
+		return old
+	})
+	const commandExecution = { state: aggregate(commands), commands }
+	if (JSON.stringify(commandExecution) === JSON.stringify(message.commandExecution)) return message
+	return { ...message, commandExecution, commandCompleted: commandHasConfirmedExit(commandExecution) }
 }

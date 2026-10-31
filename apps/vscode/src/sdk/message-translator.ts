@@ -1,3 +1,4 @@
+import { reconcileCommandMessage } from "@shared/command-execution"
 // Replaces classic message streaming from src/core/task/index.ts (see origin/main)
 //
 // Translates SDK session events into ClineMessage[] for webview consumption.
@@ -2382,6 +2383,8 @@ function finalizePersistedToolUse(
 }
 
 export interface SdkMessagesToClineMessagesOptions {
+	sessionId?: string
+	commandObservations?: unknown
 	/**
 	 * Whether the transcript's LAST agent turn ended cleanly (per the session record's status).
 	 * Only that final turn is ever retagged into the inferred completion row — persisted
@@ -2653,7 +2656,9 @@ export function sdkMessagesToClineMessages(
 		})
 
 	flushUnmatchedToolUses()
-	return clineMessages
+	return clineMessages.map((message) =>
+		reconcileCommandMessage(message, options?.sessionId ?? "", options?.commandObservations, true),
+	)
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import type { AgentEvent, CoreSessionEvent } from "@cline/core"
+import { mergeCommandObservationJournals, reconcileCommandMessage } from "@shared/command-execution"
 import { refreshClineRecommendedModels } from "@/core/controller/models/refreshClineRecommendedModels"
 import type { StateManager } from "@/core/storage/StateManager"
 import { CLINE_RECOMMENDED_MODELS_FALLBACK } from "@/shared/cline/recommended-models"
@@ -42,6 +43,7 @@ export interface SdkSessionEventCoordinatorOptions {
 }
 
 export class SdkSessionEventCoordinator {
+	private commandObservations?: { sessionId: string; journal: unknown }
 	private readonly translateSessionEvent: (event: CoreSessionEvent, state: MessageTranslatorState) => TranslationResult
 
 	constructor(private readonly options: SdkSessionEventCoordinatorOptions) {
@@ -67,6 +69,23 @@ export class SdkSessionEventCoordinator {
 		}
 
 		const result = this.translateSessionEvent(event, this.options.messageTranslatorState)
+		if (this.commandObservations?.sessionId !== activeSession.sessionId)
+			this.commandObservations = { sessionId: activeSession.sessionId, journal: undefined }
+		if (event.type === "session_snapshot") {
+			this.commandObservations.journal = mergeCommandObservationJournals(
+				this.commandObservations.journal,
+				event.payload.snapshot.metadata?.runtimeCommandObservations,
+				activeSession.sessionId,
+			)
+			for (const message of this.options.getTask()?.messageStateHandler?.getClineMessages() ?? []) {
+				const update = reconcileCommandMessage(message, activeSession.sessionId, this.commandObservations.journal)
+				if (update !== message) result.messages.push(update)
+			}
+		}
+		result.messages = result.messages.map((message) =>
+			reconcileCommandMessage(message, activeSession.sessionId, this.commandObservations!.journal),
+		)
+
 		const agentFailure = this.getAgentFailureTelemetry(event)
 		if (agentFailure && !this.options.messageTranslatorState.isSuppressedToolApprovalDenial(agentFailure.error)) {
 			this.options.captureProviderApiError?.({

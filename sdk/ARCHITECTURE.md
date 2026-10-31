@@ -1561,3 +1561,10 @@ already resolved approval events, and never sends a replacement run/tool call.
 A decision-response failure is surfaced through the existing detached-event
 error path instead of silently marking the request resolved. Disconnect does
 not abort execution or relinquish another actor's role.
+
+The VS Code projection reconciles later persisted command exits into the
+existing row, matching execution/session/PID/time. A transient UI cache retains
+confirmed evidence across reordered snapshots and historical tool returns.
+History without matching later exit proof labels a recorded running result
+unknown; it cannot establish that an old process is alive. Canonical messages,
+stdout and authors are never rewritten by this projection.
