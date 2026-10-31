@@ -1,5 +1,31 @@
 # 📈 FORTSCHRITTSVERFOLGUNG
 
+## Aktive Fortsetzung am 31.10.2026
+
+Die älteren Abschnitte unten bleiben als zeitlicher Bestand erhalten.
+Phase 1–3 und die geprüften Sicherungen werden nicht neu begonnen. Phase 4
+läuft im Reparatur-Worktree weiter; aktueller Nachweis und offene Arbeit stehen
+in [phase4-reparatur.md](phase4-reparatur.md), die umgesetzte eigene Identität
+und verbleibende produktive Migration in [fork-identitaet.md](fork-identitaet.md).
+NetAigis Coding Chat bleibt netaigis.netaigis-coding-chat, eigene Version 0.1.0.
+
+Aktuell geprüft: kanonischer Start/Resume mit erhaltenen Nachrichten-IDs,
+konkurrierende Wiederanbindung, geschützte Prozessbelege für Schreibübergabe
+und Recall-Wiederaufnahme sowie der vorhandene File-/SQLite-Sitzungsspeicher.
+Neue Acer-Adapterkorrekturen für Tokenbegrenzung und Abschlussgründe sind
+vorbereitet und noch nicht produktiv angewendet. Für die tatsächliche Acer-
+Dateiwiederherstellungsprüfung fehlt dem bestehenden SSH-Zugang Root-Zugriff;
+ein gezielter Betreiber-Prüfschritt ist dokumentiert und angefragt.
+
+Offen bleiben technische Klärung unbekannter alter Prozesse, vollständige
+produktive Daten-/Secret-/Checkpoint-Migration, reale gemeinsame VS-Code-/Android-
+Sitzung, bestehende Acer-Dienste einschließlich TOTAL RECALL durchgehend im
+tatsächlichen Betrieb, externer Acer-Watchdog und der abgesicherte produktive
+Rollout. Modelle sind austauschbar; der angekündigte DeepSeek-Wechsel führt zu
+keiner fest eingebauten Modellwahl. Einzeltests, Commits und Build beenden den
+Gesamtauftrag nicht. Produktive Eingriffe benötigen die verlangte gezielte
+Freigabe unmittelbar vor ihrer Durchführung.
+
 ## 🎯 Status-Übersicht
 
 ### ✅ ERLEDIGTE AUFTRÄGE

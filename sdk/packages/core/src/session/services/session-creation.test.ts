@@ -54,6 +54,66 @@ async function fixture(kind: "files" | "sqlite") {
 }
 
 it.each([
+	"files",
+	"sqlite",
+] as const)("does not invent %s sessions from inherited object keys and retains real sessions with those IDs", async (kind) => {
+	const f = await fixture(kind);
+	try {
+		await f.service.createRootSessionWithArtifacts(input);
+		for (const sessionId of ["constructor", "__proto__", "toString"]) {
+			const before = await f.service.listSessionMetadata();
+			expect(
+				await f.service.updateSession({
+					sessionId,
+					title: "Nonexistent session",
+				}),
+			).toMatchObject({ updated: false });
+			expect(await f.service.deleteSession(sessionId)).toEqual({
+				deleted: false,
+			});
+			expect(await f.service.listSessionMetadata()).toEqual(before);
+			await f.service.createRootSessionWithArtifacts({ ...input, sessionId });
+			expect(
+				await f.service.updateSession({ sessionId, title: "Existing session" }),
+			).toMatchObject({ updated: true });
+			expect(
+				(await f.service.listSessionMetadata()).find(
+					(row) => row.sessionId === sessionId,
+				)?.metadata?.title,
+			).toBe("Existing session");
+		}
+	} finally {
+		await f.close();
+	}
+});
+
+it("refuses reads and writes on a malformed file index without replacing its bytes", async () => {
+	const f = await fixture("files");
+	try {
+		const artifacts = await f.service.createRootSessionWithArtifacts(input);
+		const manifest = await readFile(artifacts.manifestPath);
+		const path = join(f.sessionsDir, "sessions.index.json");
+		const bytes = "Existing damaged index, retained for recovery\n";
+		await writeFile(path, bytes);
+		for (const action of [
+			() =>
+				f.service.updateSession({
+					sessionId: input.sessionId,
+					title: "Must not be written",
+				}),
+			() => f.service.updateSessionStatus(input.sessionId, "completed"),
+			() => f.service.deleteSession(input.sessionId),
+			() => f.service.listSessionMetadata(),
+		])
+			await expect(action()).rejects.toThrow("index");
+		expect(await readFile(path, "utf8")).toBe(bytes);
+		expect(await readFile(artifacts.manifestPath)).toEqual(manifest);
+	} finally {
+		await f.close();
+	}
+});
+
+it.each([
 	["files", "completed"],
 	["sqlite", "completed"],
 	["files", "failed"],

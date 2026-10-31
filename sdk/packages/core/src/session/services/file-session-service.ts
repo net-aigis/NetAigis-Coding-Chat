@@ -67,7 +67,7 @@ class FileSessionPersistenceAdapter implements SessionPersistenceAdapter {
 		return join(this.ensureSessionsDir(), "subagent-spawn-queue.json");
 	}
 
-	private readIndex(strict = false): FileSessionIndex {
+	private readIndex(): FileSessionIndex {
 		const path = this.indexPath();
 		if (!existsSync(path)) {
 			return { version: 1, sessions: {} };
@@ -76,26 +76,22 @@ class FileSessionPersistenceAdapter implements SessionPersistenceAdapter {
 			const parsed = JSON.parse(readFileSync(path, "utf8")) as FileSessionIndex;
 			if (parsed?.version === 1 && parsed.sessions) {
 				if (
-					strict &&
-					(typeof parsed.sessions !== "object" ||
-						Array.isArray(parsed.sessions) ||
-						Object.entries(parsed.sessions).some(
-							([id, row]) =>
-								!row || row.sessionId !== id || typeof row.status !== "string",
-						))
+					typeof parsed.sessions !== "object" ||
+					Array.isArray(parsed.sessions) ||
+					Object.entries(parsed.sessions).some(
+						([id, row]) =>
+							!row || row.sessionId !== id || typeof row.status !== "string",
+					)
 				)
 					throw new Error("Invalid session index");
 				return parsed;
 			}
-			if (strict) throw new Error("Invalid session index");
+			throw new Error("Invalid session index");
 		} catch {
-			if (strict)
-				throw new Error(
-					"Existing session index is unreadable; import was not admitted",
-				);
-			// Ignore invalid persistence and fall back to an empty index.
+			throw new Error(
+				"Existing session index is unreadable; operation was not admitted",
+			);
 		}
-		return { version: 1, sessions: {} };
 	}
 
 	private writeIndex(index: FileSessionIndex): void {
@@ -128,12 +124,12 @@ class FileSessionPersistenceAdapter implements SessionPersistenceAdapter {
 
 	async upsertSession(row: SessionRow): Promise<void> {
 		const index = this.readIndex();
-		index.sessions[row.sessionId] = row;
+		index.sessions = { ...index.sessions, [row.sessionId]: row };
 		this.writeIndex(index);
 	}
 
 	async insertSessionIfAbsent(row: SessionRow): Promise<boolean> {
-		const index = this.readIndex(true);
+		const index = this.readIndex();
 		if (Object.hasOwn(index.sessions, row.sessionId)) return false;
 		// Synchronous index read/write is one admission in this owning process.
 		this.writeIndex({
@@ -144,7 +140,8 @@ class FileSessionPersistenceAdapter implements SessionPersistenceAdapter {
 	}
 
 	async getSession(sessionId: string): Promise<SessionRow | undefined> {
-		return this.readIndex().sessions[sessionId];
+		const { sessions } = this.readIndex();
+		return Object.hasOwn(sessions, sessionId) ? sessions[sessionId] : undefined;
 	}
 
 	async listSessions(options: {
@@ -173,7 +170,9 @@ class FileSessionPersistenceAdapter implements SessionPersistenceAdapter {
 		input: PersistedSessionUpdateInput,
 	): Promise<{ updated: boolean; statusLock: number }> {
 		const index = this.readIndex();
-		const existing = index.sessions[input.sessionId];
+		const existing = Object.hasOwn(index.sessions, input.sessionId)
+			? index.sessions[input.sessionId]
+			: undefined;
 		if (!existing) {
 			return { updated: false, statusLock: 0 };
 		}
@@ -244,7 +243,9 @@ class FileSessionPersistenceAdapter implements SessionPersistenceAdapter {
 
 	async deleteSession(sessionId: string, cascade: boolean): Promise<boolean> {
 		const index = this.readIndex();
-		const existing = index.sessions[sessionId];
+		const existing = Object.hasOwn(index.sessions, sessionId)
+			? index.sessions[sessionId]
+			: undefined;
 		let changed = false;
 		if (existing) {
 			delete index.sessions[sessionId];

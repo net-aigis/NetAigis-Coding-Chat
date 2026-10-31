@@ -1771,3 +1771,9 @@ call's exit cannot release the fence. Confirmed failures, signal exits and
 confirmed cancellations are quiescent without being relabelled as successes.
 An explicit never-started result needs no invented exit code. Reads and stored
 history remain intact when write admission is refused.
+
+The existing file session index accepts only its own stored keys as session
+identities. Reserved JavaScript object names remain valid explicit data keys;
+inherited prototypes never become phantom sessions. Malformed existing indexes
+fail reads and writes explicitly rather than appearing as an empty store or
+being replaced during an update. Recovery is a separate, verified operation.

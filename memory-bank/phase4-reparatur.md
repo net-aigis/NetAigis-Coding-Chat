@@ -1990,3 +1990,21 @@ PY
 
 Ein Fehler bleibt ein Blocker für die produktive Anwendung. Dieser Prüfschritt
 ist ausdrücklich keine Freigabe für Adapterersetzung oder Dienstneustart.
+
+### Dateibasierter Sitzungsindex: keine erfundenen Einträge und kein stiller Leerstand
+
+p4-file-index-integrity-red: **1/3 ausgewählte Prüfungen**, zwei Fehler bei
+File-Persistenz reproduziert, 16 unbetroffene Fälle übersprungen. Geerbte
+Object-Schlüssel wie constructor wurden als vorhandene Sitzung gelesen und
+konnten durch update/deletion Phantomänderungen erzeugen. Ein kaputter Index
+wurde beim Lesen still als leer behandelt. File-Persistenz prüft nun eigene
+Schlüssel und meldet kaputte vorhandene Indizes ausdrücklich als Fehler.
+Upsert legt Schlüssel als Datenfelder an; solche tatsächlich vorhandenen IDs
+bleiben gültig. Keine Blacklist, keine neue Speicherarchitektur und keine
+automatische Dateireparatur oder Ersetzung beschädigter Bestände.
+
+p4-file-index-integrity **65/65** bestanden, einschließlich tatsächlicher
+File-/SQLite-Speicher mit den betroffenen IDs, unveränderter Daten bei fehlenden
+IDs/kaputtem Index, nativer Erstellung, initialer Historie, Snapshotimport und
+Modellwahl-Persistenz. p4-file-index-types und p4-file-index-build Exit 0.
+Keine produktiven Sitzungsdateien geändert.
