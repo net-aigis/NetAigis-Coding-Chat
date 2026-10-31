@@ -1149,6 +1149,13 @@ export {
 	type RecallDrainResult,
 	type RecallEvent,
 } from "./services/recall-outbox";
+export {
+	type SessionTakeoverResult,
+	type TotalRecallConversation,
+	type TotalRecallJournalEvent,
+	TotalRecallSessionHost,
+	type TotalRecallSessionSnapshot,
+} from "./services/recall-session-reader";
 export { SKILLS_CLI_PACKAGE, SKILLS_CLI_VERSION } from "./services/skills-cli";
 export {
 	TelemetryService,

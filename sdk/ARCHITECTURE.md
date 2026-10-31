@@ -1587,3 +1587,21 @@ existing configured behavior. Only the existing Coding-Agent route receives
 this scoped `X-AI-User`; other ports/paths remain unchanged. Provider/model IDs,
 endpoints, static configuration and model routing are not selected or rewritten
 by actor propagation. No particular model or parameter count is required.
+
+### Fork: one checked Recall journal reader for clients and runtime
+
+The existing append-only reader now lives in core as `TotalRecallSessionHost`;
+VS Code supplies its existing network transport. No new store or Recall server
+route is introduced. A project-scoped conversation descriptor captures count
+and last sequence, then verified `after_seq` pages read exactly that watermark.
+Every page must advance; wrong scope, missing watermark, duplicate IDs/sequences
+or count mismatch fail explicitly. Later concurrent inserts belong to a later
+read. The read has a bounded deadline rather than repeated polling/sleep.
+
+The reader retains original events and authors and exposes archive eligibility
+separately from writer ownership. A full snapshot before a later incomplete tail
+is not a safe resume point. Full shape, timestamps, lineage, quiescent status and
+resolved process evidence are required even for a candidate. Eligibility does
+not authenticate a new writer, verify an archive producer, import files or start
+an agent. Actual restore must still pass owning-runtime authority, source
+verification and no-overwrite admission. The event journal has no takeover route.

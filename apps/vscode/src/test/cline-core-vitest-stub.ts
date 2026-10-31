@@ -546,4 +546,6 @@ export async function loginOpenAICodex(): Promise<OAuthCredentials> {
 
 // The actual outbox implementation is shared with the runtime, not replaced by a fixture.
 export { DurableRecallOutbox, getRecallSessionId } from "../../../../sdk/packages/core/src/services/recall-outbox"
+// Use the shared real journal reader for the Recall adapter contract tests.
+export { TotalRecallSessionHost } from "../../../../sdk/packages/core/src/services/recall-session-reader"
 export { resolveMessageDisplayRole } from "../../../../sdk/packages/core/src/session/user-run-messages"

@@ -64,10 +64,22 @@ describe("existing productive TOTAL RECALL API", () => {
 		])
 	})
 	it("reads the real event journal and retains the original author without inventing a snapshot endpoint", async () => {
-		const fetch = vi.fn<FetchCall>(async () => new Response(JSON.stringify({ events: [event] }), { status: 200 }))
+		const fetch = vi.fn<FetchCall>(
+			async (input) =>
+				new Response(
+					JSON.stringify(
+						String(input).includes("/conversations")
+							? { conversations: [{ conversation_id: "stable-session", event_count: 1, last_seq: 4 }] }
+							: { events: [event] },
+					),
+					{ status: 200 },
+				),
+		)
 		vi.stubGlobal("fetch", fetch)
 		const snapshot = await (await host()).getSessionSnapshot("stable-session")
-		const url = new URL(String(fetch.mock.calls[0][0]))
+		const request = fetch.mock.calls.find(([input]) => String(input).includes("/events"))
+		if (!request) throw new Error("Expected actual event page request")
+		const url = new URL(String(request[0]))
 		expect(url.pathname).toBe("/internal/recall/events")
 		expect(url.searchParams.get("project_id")).toBe(config.project)
 		expect(url.searchParams.get("conversation_id")).toBe("stable-session")
@@ -80,11 +92,18 @@ describe("existing productive TOTAL RECALL API", () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<FetchCall>(
-				async () =>
-					new Response(JSON.stringify({ events: [{ ...event, project_id: "different-project" }] }), { status: 200 }),
+				async (input) =>
+					new Response(
+						JSON.stringify(
+							String(input).includes("/conversations")
+								? { conversations: [{ conversation_id: "stable-session", event_count: 1, last_seq: 4 }] }
+								: { events: [{ ...event, project_id: "different-project" }] },
+						),
+						{ status: 200 },
+					),
 			),
 		)
-		await expect((await host()).getSessionSnapshot("stable-session")).rejects.toThrow()
+		await expect((await host()).getSessionSnapshot("stable-session")).rejects.toThrow("mis-scoped")
 	})
 	it("does not claim an actor lease or successful takeover through nonexistent server routes", async () => {
 		const fetch = vi.fn()
@@ -95,4 +114,56 @@ describe("existing productive TOTAL RECALL API", () => {
 		expect(await client.getSessionLockStatus("stable-session")).toMatchObject({ verified: false })
 		expect(fetch).not.toHaveBeenCalled()
 	})
+})
+
+it("does not expose an earlier full snapshot as a safe restore after a later incomplete capture", async () => {
+	const tail = {
+		...event,
+		seq: 5,
+		event_id: "later-incomplete",
+		payload: {
+			sdk_event: {
+				type: "session_snapshot",
+				payload: {
+					sessionId: "stable-session",
+					snapshot: { version: 1, sessionId: "stable-session", status: "running" },
+				},
+			},
+		},
+	}
+	vi.stubGlobal(
+		"fetch",
+		vi.fn<FetchCall>(
+			async (input) =>
+				new Response(
+					JSON.stringify(
+						String(input).includes("/conversations")
+							? { conversations: [{ conversation_id: "stable-session", event_count: 2, last_seq: 5 }] }
+							: { events: [event, tail] },
+					),
+					{ status: 200 },
+				),
+		),
+	)
+	expect(await (await host()).getSessionSnapshot("stable-session")).toMatchObject({
+		restoration: { available: false, reason: "incomplete_tail" },
+	})
+})
+it("reads the captured journal watermark through after_seq pages instead of silently truncating history", async () => {
+	const second = { ...event, seq: 5, event_id: "last-full" }
+	const fetch = vi.fn<FetchCall>(async (input) => {
+		const url = new URL(String(input))
+		return new Response(
+			JSON.stringify(
+				url.pathname.endsWith("/conversations")
+					? { conversations: [{ conversation_id: "stable-session", event_count: 2, last_seq: 5 }] }
+					: { events: url.searchParams.get("after_seq") === "4" ? [second] : [event] },
+			),
+			{ status: 200 },
+		)
+	})
+	vi.stubGlobal("fetch", fetch)
+	const snapshot = await (await host()).getSessionSnapshot("stable-session")
+	expect(snapshot.messages).toEqual([event, second])
+	expect(snapshot).toMatchObject({ journalSeq: 5 })
 })

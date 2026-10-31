@@ -1126,3 +1126,46 @@ Nächster offener Schritt bleibt Recall-Restore/Browser über die gemeinsame
 Runtime; keine nicht vorhandenen Recall-Übernahmerouten annehmen. Reale Android-
 Abnahme erfolgt später angeleitet durch den Benutzer und mit der dann tatsächlich
 ausgewählten Modellkonfiguration.
+
+### TOTAL RECALL: vollständiger Leser und ehrliche Wiederaufnahmegrenze
+
+Auf e4677b3b3 fortgesetzt. `p4-recall-reader-red`: zwei neue gezielte Fehler
+belegen die bisherige Einseiten-Lektüre und den früheren vollständigen Snapshot
+trotz späterem unvollständigem Tail. Leser jetzt aus der bisherigen App nach
+Core verschoben; App bleibt ein dünner Adapter für den vorhandenen Netzpfad.
+Kein zweiter Reader, keine neue Datenbank und keine erfundene Recall-Route.
+
+Der lesende Acer-Quellnachweis `p4-acer-recall-pagination-source.json` bestätigt
+für die reale API project_id/conversation_id/after_seq und die bestehenden
+Antwortschlüssel events/conversations. Kein unbelegter limit-Parameter. Der
+Leser bindet sich zuerst an Anzahl und letzte Sequenz der Projekt-Konversation,
+liest fortschreitende Seiten bis genau zu dieser Grenze und prüft Scope,
+Duplikate, fehlende Seiten/Watermark und Anzahl. Spätere parallele Einfügungen
+gehören zu einem späteren Lesestand. Kein sleep-/Polling-Wiederholungsloop;
+Gesamt- und HTTP-Fristen begrenzen den Lesevorgang.
+
+Originalereignisse und Urheber werden unverändert zurückgegeben. Ein früherer
+vollständiger Snapshot plus späterer unvollständiger Tail bleibt ausdrücklich
+nicht wiederaufnahmefähig. Auch fehlende Struktur/Lineage, ungültige Zeiten,
+aktive Sitzung oder unbestätigte Prozesse verhindern einen sicheren Kandidaten.
+Das Feld restoration beschreibt ausschließlich die Archiv-Voraussetzungen:
+keine erteilte Schreibzuständigkeit, keine bestätigte Produzentenauthentizität,
+kein Import und keine gestartete Aufgabe. Für den nächsten eigentlichen Restore
+sind Runtime-Admission, überprüfte Quelle und Nichtüberschreiben erforderlich.
+
+`p4-recall-reader-shape` **13/13** Core-Fälle bestanden (vorher 11/11,
+überlappend). Core-Typprüfung p4-recall-reader-core-types Exit 0;
+abschließender Core-Build p4-recall-reader-shape-build Exit 0 nach zusätzlichen
+Lineage-/Zeitprüfungen. App-Erstlauf p4-recall-reader-app hatte fünf grüne
+Browser-/Command-Fälle, aber Reader-Suite konnte wegen fehlendem Export im
+bestehenden Core-Teststub nicht laden (Gesamtexit 1, kein vollständiger Erfolg).
+Stub exportiert jetzt die tatsächliche neue gemeinsame Implementierung.
+Nur Reader erneut geprüft: p4-recall-reader-app-export **6/6** bestanden.
+App-Typprüfung p4-recall-reader-app-types Exit 0. Die Scope-Negativfixture
+liefert erst einen gültigen Konversationsdeskriptor und prüft danach tatsächlich
+die abweichende Ereignis-Projekt-ID; keine unbeabsichtigt schwächere Prüfung.
+
+Gemeinsamer Runtime-Restore/Session-Browser und verifizierte Produzentenquelle,
+Archivabschluss nach Runtime-Ende, echte Acer-/Android-/Modellabnahme und
+produktionsreifer Rollout bleiben offene Arbeiten. Keine produktive API-
+Schreibanforderung, Installation oder Migration in diesem Schritt.
