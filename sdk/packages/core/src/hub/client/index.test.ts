@@ -159,6 +159,8 @@ describe("NodeHubClient", () => {
 	it.each([
 		"run.start",
 		"session.send_input",
+		"session.resume",
+		"session.recall.restore",
 		"session.control.claim",
 		"session.control.release",
 	] as const)("never resends %s after an uncertain dispatch", async (command) => {

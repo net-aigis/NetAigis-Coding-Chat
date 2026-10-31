@@ -22,6 +22,9 @@ export type HubCapabilityName =
 	| "client.list"
 	| "session.create"
 	| "session.resume"
+	| "session.recall.list"
+	| "session.recall.inspect"
+	| "session.recall.restore"
 	| "session.list"
 	| "session.get"
 	| "session.run"
@@ -56,6 +59,9 @@ export const HUB_CAPABILITIES: readonly HubCapabilityName[] = [
 	"client.list",
 	"session.create",
 	"session.resume",
+	"session.recall.list",
+	"session.recall.inspect",
+	"session.recall.restore",
 	"session.list",
 	"session.get",
 	"session.run",
@@ -623,6 +629,9 @@ export type HubCommandOutput<TCommand extends HubTypedCommandName> =
 	HubCommandOutputMap[TCommand];
 
 export type HubCommandName =
+	| "session.recall.list"
+	| "session.recall.inspect"
+	| "session.recall.restore"
 	| "cloud.command"
 	| "cloud.watch"
 	| "client.register"

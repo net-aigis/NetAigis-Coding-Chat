@@ -760,6 +760,7 @@ export class NodeHubClient {
 					"run.start",
 					"session.send_input",
 					"session.resume",
+					"session.recall.restore",
 					"session.control.claim",
 					"session.control.release",
 				].includes(command),

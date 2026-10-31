@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { realpathSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 import type {
 	AgendaTaskRecord,
 	AgendaTaskRunRecord,
@@ -920,6 +921,10 @@ export class HubServerTransport implements NativeHubTransport {
 			}
 		}
 		switch (envelope.command) {
+			case "session.recall.list":
+			case "session.recall.inspect":
+			case "session.recall.restore":
+				return this.handleRecallSession(envelope, authority);
 			case "client.register": {
 				const reply = handleClientRegister(this.ctx, envelope);
 				this.tasks.notifyAutomationReadinessChanged();
@@ -1187,6 +1192,150 @@ export class HubServerTransport implements NativeHubTransport {
 					? envelope.payload.sessionId
 					: envelope.sessionId,
 		};
+	}
+
+	private async handleRecallSession(
+		envelope: HubCommandEnvelope,
+		authority?: HubConnectionAuthority,
+	): Promise<HubReplyEnvelope> {
+		if (
+			!this.options.actorTokens ||
+			!authority?.actorId ||
+			!authority.connectionId ||
+			envelope.clientId !== authority.clientId
+		)
+			return errorReply(
+				envelope,
+				"actor_authentication_required",
+				"Recall recovery requires an authenticated actor connection",
+			);
+		if (!this.recallArchive)
+			return errorReply(
+				envelope,
+				"recall_unavailable",
+				"This runtime has no configured Recall connection",
+			);
+		try {
+			const reader = await this.recallArchive.sessionReader(authority.actorId);
+			if (envelope.command === "session.recall.list")
+				return okReply(envelope, {
+					conversations: await reader.listConversations(),
+				});
+			const id = envelope.payload?.conversationId;
+			if (
+				typeof id !== "string" ||
+				!id ||
+				(envelope.sessionId && envelope.sessionId !== id)
+			)
+				return errorReply(
+					envelope,
+					"invalid_recall_request",
+					"A consistent conversation/session ID is required",
+				);
+			const saved = await reader.getSessionSnapshot(id);
+			if (envelope.command === "session.recall.inspect")
+				return okReply(envelope, { snapshot: saved });
+			if (
+				Object.keys(envelope.payload ?? {}).some(
+					(key) =>
+						![
+							"conversationId",
+							"expectedJournalSeq",
+							"controlRevision",
+						].includes(key),
+				)
+			)
+				return errorReply(
+					envelope,
+					"invalid_recall_request",
+					"Recovery accepts an archive reference, never client-supplied history or proof",
+				);
+			if (
+				!Number.isSafeInteger(envelope.payload?.expectedJournalSeq) ||
+				envelope.payload?.expectedJournalSeq !== saved.journalSeq
+			)
+				return errorReply(
+					envelope,
+					"recall_revision_conflict",
+					"Recall changed; inspect the current archive before recovering it",
+				);
+			if (
+				!saved.sourceVerified ||
+				!saved.sourceKeyId ||
+				!saved.restoration.available ||
+				!saved.recordedSnapshot
+			)
+				return errorReply(
+					envelope,
+					"recall_not_recoverable",
+					`Archive is not eligible: ${saved.restoration.reason ?? "unverified_source"}`,
+				);
+			const snapshot = saved.recordedSnapshot;
+			// Imported paths never confer authority over another project or host.
+			const authorizedRoot = this.options.workspaceRoot;
+			if (
+				!authorizedRoot ||
+				realpathSync(snapshot.workspace.root) !== realpathSync(authorizedRoot)
+			)
+				return errorReply(
+					envelope,
+					"recall_workspace_mismatch",
+					"Archive workspace differs from this runtime's authorized workspace",
+				);
+			const root = realpathSync(authorizedRoot),
+				cwd = realpathSync(snapshot.workspace.cwd),
+				suffix = relative(root, cwd);
+			if (
+				isAbsolute(suffix) ||
+				suffix === ".." ||
+				suffix.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)
+			)
+				return errorReply(
+					envelope,
+					"recall_workspace_mismatch",
+					"Archive working directory is outside the authorized workspace",
+				);
+			const event = saved.messages.find(
+				(item) => item.seq === saved.recordedSnapshotSeq,
+			);
+			if (!event || !this.sessionHost.importSessionSnapshot)
+				return errorReply(
+					envelope,
+					"recall_import_unavailable",
+					"Runtime cannot import canonical history without replacement",
+				);
+			// Native import persists a quiescent baseline. It grants no writer and starts no model/process.
+			const result = await this.sessionHost.importSessionSnapshot({
+				snapshot,
+				source: {
+					kind: "recall",
+					projectId: event.project_id,
+					conversationId: id,
+					eventId: event.event_id,
+					journalSeq: saved.journalSeq,
+					producerKeyId: saved.sourceKeyId,
+				},
+				requestedBy: {
+					actorId: authority.actorId,
+					clientId: authority.clientId,
+					requestId: envelope.requestId ?? createSessionId("recall_"),
+				},
+			});
+			return okReply(envelope, {
+				sessionId: result.manifest.session_id,
+				imported: true,
+				runtimeResident: false,
+				journalSeq: saved.journalSeq,
+				writerGranted: false,
+			});
+		} catch {
+			// HTTP/config/parse errors can contain protected material: never forward their raw text.
+			return errorReply(
+				envelope,
+				"recall_operation_failed",
+				"Recall operation was not confirmed; source and existing target were retained",
+			);
+		}
 	}
 
 	private async handleSettingsList(

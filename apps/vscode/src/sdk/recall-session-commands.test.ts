@@ -21,6 +21,29 @@ const mocks = vi.hoisted(() => ({
 	input: vi.fn(),
 	quickPick: vi.fn(),
 	error: vi.fn(async () => {}),
+	shared: undefined as undefined | { endpoint: string; authToken: string },
+	sharedRestore: vi.fn(async (id: string, _seq: number) => id),
+	sharedSnapshot: vi.fn(async (id: string) => ({
+		conversationId: id,
+		journalSeq: 11,
+		sourceVerified: true,
+		restoration: { available: true },
+	})),
+}))
+vi.mock("@/sdk/shared-session-hub", () => ({ getSharedSessionHubConnection: () => mocks.shared }))
+vi.mock("@/sdk/recall-runtime-client", () => ({
+	RecallRuntimeClient: class {
+		connection: typeof mocks.shared
+		constructor(connection: typeof mocks.shared) {
+			this.connection = { ...connection! }
+		}
+		listConversations = mocks.list
+		getSessionSnapshot = mocks.sharedSnapshot
+		restoreSession = mocks.sharedRestore
+		matchesConnection(connection: typeof mocks.shared) {
+			return this.connection?.endpoint === connection?.endpoint && this.connection?.authToken === connection?.authToken
+		}
+	},
 }))
 vi.mock("vscode", () => ({
 	commands: {
@@ -74,6 +97,7 @@ beforeEach(() => {
 	vi.clearAllMocks()
 	mocks.commands.clear()
 	mocks.input.mockReset()
+	mocks.shared = undefined
 })
 afterEach(() => {
 	mocks.dispose?.()
@@ -81,6 +105,25 @@ afterEach(() => {
 	mocks.receive = undefined
 })
 describe("TOTAL RECALL command wiring", () => {
+	it("binds recovery to the inspected shared runtime and server watermark, never to webview-supplied proof", async () => {
+		mocks.shared = { endpoint: "wss://fixture.invalid/transport", authToken: "fixture-login" }
+		await openRecallSessionView()
+		await mocks.receive?.({ command: "restore-session", conversationId: "first", journalSeq: 1, snapshot: {} })
+		expect(mocks.sharedRestore).not.toHaveBeenCalled()
+		await mocks.receive?.({ command: "read-session", conversationId: "first" })
+		await mocks.receive?.({ command: "restore-session", conversationId: "first", journalSeq: 1, sourceVerified: true })
+		expect(mocks.sharedRestore).toHaveBeenCalledExactlyOnceWith("first", 11)
+		expect(mocks.post).toHaveBeenCalledWith({ cmd: "restored", sessionId: "first" })
+	})
+	it("requires inspection again after the selected runtime or actor credential changes", async () => {
+		mocks.shared = { endpoint: "wss://fixture.invalid/transport", authToken: "fixture-first-login" }
+		await openRecallSessionView()
+		await mocks.receive?.({ command: "read-session", conversationId: "first" })
+		mocks.shared.authToken = "fixture-other-login"
+		await mocks.receive?.({ command: "restore-session", conversationId: "first" })
+		expect(mocks.sharedRestore).not.toHaveBeenCalled()
+		expect(mocks.error).toHaveBeenCalled()
+	})
 	it("connects the actual standalone panel to listing and reading without claiming restore or takeover", async () => {
 		await openRecallSessionView()
 		expect(mocks.post).toHaveBeenCalledWith({ cmd: "render", sessions: await mocks.list() })

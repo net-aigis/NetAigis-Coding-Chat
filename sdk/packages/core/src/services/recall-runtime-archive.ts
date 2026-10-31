@@ -14,6 +14,7 @@ import {
 	type RecallConfiguration,
 	type RecallFetch,
 } from "./recall-outbox";
+import { TotalRecallSessionHost } from "./recall-session-reader";
 
 export interface RuntimeRecallArchiveOptions {
 	/** Runtime-only producer key; independent of actor/API/login credentials. */
@@ -58,6 +59,26 @@ export class RuntimeRecallArchive {
 		if (!actor || actor === config.actor) return { ...config };
 		// Keep the true actor even while its key is unavailable. Never submit with another actor's key.
 		return { ...config, actor, token: this.options.actorTokens?.[actor] ?? "" };
+	}
+
+	/** The owning runtime selects credentials and producer verification; clients cannot supply either. */
+	async sessionReader(actor: string): Promise<TotalRecallSessionHost> {
+		const config = await this.configuration(actor);
+		if (!config?.enabled || !config.token || config.actor !== actor)
+			throw new Error(
+				"Runtime Recall credentials unavailable for authenticated actor",
+			);
+		const reader = new TotalRecallSessionHost(
+			() => this.configuration(actor),
+			undefined,
+			this.options.fetch,
+			{
+				verificationKey: this.signingKey,
+				requireVerifiedSource: true,
+			},
+		);
+		await reader.initialize(config);
+		return reader;
 	}
 	async start(): Promise<void> {
 		const config = await this.configuration();

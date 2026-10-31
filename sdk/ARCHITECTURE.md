@@ -1657,3 +1657,14 @@ completion revision; both must be complete before canonical resume. Archived
 idle rows with pid zero are historical records, not dead live processes to be
 rewritten by PID reconciliation. This local primitive does not authenticate a
 remote request; the owning Hub must verify archive proof, actor and workspace.
+
+The additive `session.recall.list/inspect/restore` Hub commands use that same
+reader and archiver's actor credential selection. Recovery accepts references,
+not client transcripts/proof flags. Authenticated actor, verified producer,
+quiescent snapshot, exact captured journal watermark and real workspace paths
+are checked by the owning Hub before native admission under its session lock.
+Admission persists history only; a writer claim and canonical resume/attach
+remain separate. There is no cross-service transaction with the Recall journal.
+Restores are refused while draining and never automatically replayed after an
+uncertain dispatch. VS Code's Recall browser uses the explicitly selected Hub,
+binds its inspected reference to that connection and makes no local fallback.

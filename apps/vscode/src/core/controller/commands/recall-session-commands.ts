@@ -3,12 +3,17 @@
 import * as vscode from "vscode"
 import { getRecallConfigManager, getRecallConfiguration } from "@/sdk/recall-config-manager"
 import { drainRecallOutbox } from "@/sdk/recall-outbox"
+import { RecallRuntimeClient } from "@/sdk/recall-runtime-client"
 import { renderRecallSessionBrowser } from "@/sdk/recall-session-browser"
 import { TotalRecallSessionHost } from "@/sdk/recall-session-host"
+import { getSharedSessionHubConnection } from "@/sdk/shared-session-hub"
 import { Logger } from "@/shared/services/Logger"
 
 let recallPanel: vscode.WebviewPanel | undefined
-async function host(): Promise<TotalRecallSessionHost> {
+let selectedSnapshot: { conversationId: string; journalSeq: number; eligible: boolean; runtime?: RecallRuntimeClient } | undefined
+async function host(): Promise<TotalRecallSessionHost | RecallRuntimeClient> {
+	const shared = getSharedSessionHubConnection()
+	if (shared) return new RecallRuntimeClient(shared)
 	const config = await getRecallConfiguration()
 	if (!config?.enabled) throw new Error("TOTAL RECALL ist nicht konfiguriert oder deaktiviert")
 	const client = new TotalRecallSessionHost(getRecallConfiguration)
@@ -16,6 +21,7 @@ async function host(): Promise<TotalRecallSessionHost> {
 	return client
 }
 async function showError(): Promise<void> {
+	selectedSnapshot = undefined
 	Logger.error("[TOTAL RECALL] Browser operation failed; no successful restore or takeover was reported")
 	const message = "TOTAL RECALL konnte die Aktion nicht bestätigen. Konfiguration, Verbindung und geschützte Outbox prüfen."
 	await recallPanel?.webview.postMessage({ cmd: "msg", msg: message })
@@ -55,7 +61,17 @@ export async function openRecallSessionView(): Promise<void> {
 					input.conversationId.length > 0
 				)
 					await readTotalRecallSession(input.conversationId)
-				else if (input.command === "restore-session" || input.command === "takeover-session") {
+				else if (input.command === "restore-session") {
+					const selected = selectedSnapshot
+					if (!selected?.eligible || selected.conversationId !== input.conversationId)
+						throw new Error("Inspect an eligible archive before recovery")
+					const runtime = selected.runtime
+					if (!runtime?.matchesConnection(getSharedSessionHubConnection()))
+						throw new Error("Shared runtime changed; inspect the archive again")
+					const sessionId = await runtime.restoreSession(selected.conversationId, selected.journalSeq)
+					selectedSnapshot = undefined
+					await panel.webview.postMessage({ cmd: "restored", sessionId })
+				} else if (input.command === "takeover-session") {
 					await panel.webview.postMessage({
 						cmd: "msg",
 						msg: "Keine bestätigte Schreibübergabe verfügbar. Keine laufende Aufgabe wurde übernommen.",
@@ -67,6 +83,7 @@ export async function openRecallSessionView(): Promise<void> {
 		})
 		panel.onDidDispose(() => {
 			messages.dispose()
+			selectedSnapshot = undefined
 			if (recallPanel === panel) recallPanel = undefined
 		})
 	}
@@ -78,12 +95,23 @@ export async function openRecallSessionView(): Promise<void> {
 	}
 }
 async function listTotalRecallSessions(): Promise<void> {
+	selectedSnapshot = undefined
 	const sessions = await (await host()).listConversations()
 	await recallPanel?.webview.postMessage({ cmd: "render", sessions })
 }
 async function readTotalRecallSession(conversationId: string): Promise<void> {
-	const snapshot = await (await host()).getSessionSnapshot(conversationId)
-	await recallPanel?.webview.postMessage({ cmd: "snapshot", snapshot })
+	selectedSnapshot = undefined
+	const runtime = await host()
+	const snapshot = await runtime.getSessionSnapshot(conversationId)
+	const eligible =
+		runtime instanceof RecallRuntimeClient && snapshot.sourceVerified === true && snapshot.restoration?.available === true
+	selectedSnapshot = {
+		conversationId,
+		journalSeq: snapshot.journalSeq,
+		eligible,
+		...(runtime instanceof RecallRuntimeClient ? { runtime } : {}),
+	}
+	await recallPanel?.webview.postMessage({ cmd: "snapshot", snapshot, canRestore: eligible })
 }
 async function quickPickRecallSession(): Promise<void> {
 	try {
@@ -104,6 +132,12 @@ async function quickPickRecallSession(): Promise<void> {
 	}
 }
 export async function configureTotalRecall(): Promise<void> {
+	if (getSharedSessionHubConnection()) {
+		await vscode.window.showInformationMessage(
+			"TOTAL RECALL wird für diese Verbindung durch die gemeinsame Runtime verwaltet.",
+		)
+		return
+	}
 	const existing = await getRecallConfiguration()
 	const baseUrl = await vscode.window.showInputBox({
 		title: "TOTAL RECALL – vorhandener API-Endpunkt",

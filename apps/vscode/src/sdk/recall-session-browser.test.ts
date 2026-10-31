@@ -26,7 +26,9 @@ describe("TOTAL RECALL browser message contract", () => {
 				this.children = []
 			}
 		}
-		const elements = new Map(["list", "status", "snapshot", "refresh", "configure"].map((id) => [id, new Element()]))
+		const elements = new Map(
+			["list", "status", "snapshot", "refresh", "configure", "restore"].map((id) => [id, new Element()]),
+		)
 		const messages: unknown[] = []
 		let receive: (event: { data: unknown }) => void = () => {}
 		vm.runInNewContext(script!, {
@@ -50,5 +52,10 @@ describe("TOTAL RECALL browser message contract", () => {
 		})
 		expect(elements.get("snapshot")!.textContent).toContain("Friseer")
 		expect(elements.get("status")!.textContent).toContain("keine laufende Aufgabe übernommen")
+		receive({ data: { cmd: "snapshot", snapshot: { conversationId, journalSeq: 11 }, canRestore: true } })
+		elements.get("restore")!.listeners.get("click")!()
+		expect(messages.at(-1)).toEqual({ command: "restore-session", conversationId })
+		receive({ data: { cmd: "restored", sessionId: conversationId } })
+		expect(elements.get("status")!.textContent).toContain("kein Prozess gestartet und kein Schreibrecht erteilt")
 	})
 })

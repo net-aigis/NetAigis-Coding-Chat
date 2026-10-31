@@ -47,6 +47,7 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: [
+			{ find: /^@cline\/core\/hub$/, replacement: path.resolve(__dirname, "node_modules/@cline/core/dist/hub/index.js") },
 			// Vite drops Zod's named namespace export on Windows while preserving
 			// its default export. Restore the package's declared `z` export for tests.
 			{ find: /^zod$/, replacement: path.resolve(__dirname, "src/test/zod-vitest-stub.ts") },

@@ -29,6 +29,7 @@ export const HUB_DRAINING_ERROR_CODE = "hub_draining";
 const DRAIN_REFUSED_COMMANDS = new Set<string>([
 	"session.create",
 	"session.resume",
+	"session.recall.restore",
 	"session.restore",
 	"session.fork",
 	"run.start",

@@ -1321,3 +1321,62 @@ keinen lebenden Prozess; unbekannte Werkzeugausführung bleibt separat gesperrt.
 abschließender p4-native-import-build Exit 0. Nächster Schritt ist
 die serverseitig geprüfte Hub-Admission und Browser-Anbindung. Keine produktive
 API-Schreibanforderung, Installation, Migration oder Acer-Dienständerung.
+
+### Authentifizierter Recall-Import über die gemeinsame Runtime
+
+Auf 01671cb0d fortgesetzt. Additive Hub-Kommandos session.recall.list/inspect/
+restore verwenden den vorhandenen Recall-Reader und die geschützte Actor-
+Konfiguration des Runtime-Archivers. Keine neue Serverroute auf dem Acer.
+Client darf ausschließlich Konversationsreferenz und gelesene Journalgrenze
+senden, keine Nachrichten, fremde Urheber oder selbst behaupteten Quellennachweis.
+Hub verifiziert Produzenten-MAC, Vollständigkeit, Zustand, Sequenz und das
+tatsächlich autorisierte Arbeitsverzeichnis einschließlich aufgelöster Pfade.
+Der Import läuft unter derselben ID-Sperre wie Schreibübergaben und lehnt
+Neuaufnahme während Hub-Drain ab. Ungewisse Restore-Antworten werden nicht
+automatisch erneut gesendet. Native Aufnahme erteilt kein Schreibrecht und
+startet keinen Agenten; anschließendes Resume/Attach nutzt die vorhandene
+kanonische Runtime. Es gibt keinen atomaren Cross-Service-CAS mit dem fremden
+Recall-Journal; die belegte Importbasis bleibt ausdrücklich ihre Journalgrenze.
+Ein Import behauptet keinen weiterlebenden archivierten Shellprozess.
+
+VS-Code-Session-Browser verwendet bei ausgewählter gemeinsamer Verbindung
+diesen Hub statt einer zweiten lokalen Recall-Schreibstelle. Quelle und
+bestätigter Journalstand werden außerhalb der Webview gebunden; ein Wechsel
+von Runtime oder Actor-Zugang erfordert erneutes Lesen. Der Browser meldet
+Bereitstellung des gespeicherten Verlaufs getrennt von Prozessstart/Schreibrecht.
+Fehler führen weder zu lokaler Ersatzruntime noch zu Erfolgsmeldung.
+Der eigene Anzeigename bleibt NetAigis Coding Chat. Kein produktiver Login-
+oder Produzentenschlüssel wurde angelegt oder ausgegeben.
+
+`p4-recall-recovery-wire` scheiterte zunächst viermal an falschen Testassertions:
+NodeHubClient wirft HubCommandError statt negativer Replies. Vertrag korrigiert;
+`p4-recall-recovery-wire-contract` 4/4 bestanden. Echte lokale WebSockets,
+LocalRuntimeHost und File-Persistenz, Recall-HTTP und Agent/Modell als Fixtures.
+Manipulierte Autorenschaft, unsignierte Quelle, fremdes Workspace und veraltete
+Journalgrenze werden verweigert. Erweiterter positiver Fall
+p4-recall-recovery-writer 1/1 bestanden, drei unbetroffene Fälle übersprungen:
+Import unter jimmi-Zugang, kanonisches Resume unter Friseer, Attach und
+Schreibübergabe an jimmi, weiterhin ein Agent/gleiche Historie; erneuter Import
+über die residente Sitzung abgelehnt. Kein physischer Android- oder Modelltest.
+
+`p4-recall-runtime-app` 10/10 bestanden (Adapter, Browser-Script, Commandgrenze,
+verlorene Antwort, wechselnde Zugangsauswahl und fremde Webview-Daten).
+`p4-recall-client-no-replay` 6/6 bestanden, 38 unbetroffene Fälle übersprungen.
+Core-Vertragsgruppe p4-recall-recovery-core-contracts: 24/25 bestanden; Abschluss-
+Archivfall scheiterte nach 20,022 Sekunden mit STACK_TRACE_ERROR. Nur diesen
+Fall unverändert isoliert wiederholt: p4-recall-archive-final-isolated 1/1
+bestanden, fünf unbetroffene Fälle übersprungen, Gesamtlauf 7,73 Sekunden.
+Parallel liefen langsame Typprüfungen; Last als Ursache ist plausibel, nicht
+abschließend belegt. Der angegebene Filter client-timeout.test.ts existiert
+nicht und wurde nicht ausgeführt; stattdessen tatsächlicher index.test.ts-
+No-Replay-Nachweis oben. Kein verschwiegener grüner Gesamtlauf.
+
+SDK-Build p4-recall-admission-sdk-build Exit 0. Core-Typ-Vorlauf fand einen
+falschen Testzugriff model statt modelId; korrigiert, p4-recall-recovery-types-fixed
+Exit 0. App-Typprüfung p4-recall-runtime-app-types Exit 0.
+Weiter offen: Android-Browseroberfläche/echte Geräteabnahme dieses Restorepfads,
+belegte Altbestandsaufnahme und Kaltstart-Prozessklärung, tatsächliche Dienste-
+und Modellabnahme, eigenständiger externer Watchdog und produktiver Rollout.
+Neue native PID-Bereinigungskante erkannt: bisher wird bei fehlendem Runtime-PID
+Exit 1 erfunden. Für historische Importzeilen bereits umgangen; allgemeine
+Korrektur mit eigenem Regressionsnachweis bleibt der nächste Prozessstatuspunkt.

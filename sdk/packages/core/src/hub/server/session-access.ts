@@ -51,6 +51,8 @@ const READ_COMMANDS = new Set([
 	"session.get",
 	"session.messages",
 	"session.list",
+	"session.recall.list",
+	"session.recall.inspect",
 	"session.search",
 	"session.compaction.get",
 	"session.pending_prompts",
@@ -365,6 +367,8 @@ export class HubSessionAccess {
 				});
 			});
 		}
+		if (command === "session.recall.restore")
+			return this.locked(id, () => dispatch(envelope));
 		if (
 			command === "session.control.claim" ||
 			command === "session.control.release"
