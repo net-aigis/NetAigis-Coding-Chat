@@ -9,13 +9,209 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentConfig } from "@cline/shared";
+import type { AgentConfig, AgentResult } from "@cline/shared";
 import { expect, it, vi } from "vitest";
 import { SqliteSessionStore } from "../../services/storage/sqlite-session-store";
 import { FileSessionService } from "../../session/services/file-session-service";
 import type { SessionPersistenceAdapter } from "../../session/services/persistence-service";
 import { CoreSessionService } from "../../session/services/session-service";
 import { LocalRuntimeHost } from "./local-runtime-host";
+
+it("reattaches during the initial prompt without waiting for or ending that pending turn", async () => {
+	const root = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "initial-turn-reattach-"),
+	);
+	const service = new FileSessionService(join(root, "sessions"));
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	let running = false,
+		firstSettled = false,
+		secondSettled = false;
+	const run = vi.fn(async (): Promise<AgentResult> => {
+		running = true;
+		await gate;
+		running = false;
+		return {
+			text: "fixture",
+			usage: { inputTokens: 0, outputTokens: 0, totalCost: 0 },
+			messages: [],
+			toolCalls: [],
+			iterations: 1,
+			finishReason: "completed",
+			model: { id: "interchangeable-model", provider: "configured-provider" },
+			startedAt: new Date(),
+			endedAt: new Date(),
+			durationMs: 0,
+		};
+	});
+	const createAgent = vi.fn(
+		() =>
+			({
+				getAgentId: () => "fixture",
+				getConversationId: () => "same-session",
+				getMessages: () => [],
+				canStartRun: () => !running,
+				subscribeEvents: () => () => {},
+				shutdown: async () => {},
+				run,
+			}) as never,
+	);
+	const host = new LocalRuntimeHost({
+		sessionService: service,
+		distinctId: "fixture-initial-turn",
+		createAgent,
+		runtimeBuilder: {
+			build: async () => ({ tools: [], shutdown: async () => {} }),
+		} as never,
+	});
+	const starts: Promise<unknown>[] = [];
+	try {
+		starts.push(
+			host
+				.startSession({
+					config: {
+						sessionId: "same-session",
+						providerId: "configured-provider",
+						modelId: "interchangeable-model",
+						cwd: root,
+						workspaceRoot: root,
+						systemPrompt: "fixture",
+						enableTools: false,
+						enableSpawnAgent: false,
+						enableAgentTeams: false,
+					},
+					interactive: true,
+					prompt: "Original accepted instruction",
+				})
+				.finally(() => {
+					firstSettled = true;
+				}),
+		);
+		for (const start of starts) void start.catch(() => {});
+		await vi.waitFor(() => expect(run).toHaveBeenCalledOnce());
+		starts.push(
+			host
+				.resumeSession({ config: { sessionId: "same-session" } as never })
+				.then((result) => {
+					secondSettled = true;
+					return result;
+				}),
+		);
+		void starts[1].catch(() => {});
+		await vi.waitFor(() => expect(secondSettled).toBe(true));
+		expect(firstSettled).toBe(false);
+		expect(running).toBe(true);
+		expect(createAgent).toHaveBeenCalledOnce();
+		expect((await host.getSession("same-session"))?.status).toBe("running");
+		release();
+		await Promise.all(starts);
+	} finally {
+		release();
+		await Promise.allSettled(starts);
+		await host.dispose();
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+it.each([
+	"files",
+	"sqlite",
+] as const)("admits concurrent starts of the same %s session once without losing the resident runtime", async (kind) => {
+	const root = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "concurrent-admission-"),
+	);
+	const db =
+		kind === "sqlite"
+			? new SqliteSessionStore({ sessionsDir: join(root, "db") })
+			: undefined;
+	const service = db
+		? new CoreSessionService(db, {
+				sessionArtifactsDir: join(root, "sessions"),
+			})
+		: new FileSessionService(join(root, "sessions"));
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	const build = vi.fn(async () => {
+		await gate;
+		return { tools: [], shutdown: async () => {} };
+	});
+	const createAgent = vi.fn(
+		(config: AgentConfig) =>
+			({
+				getAgentId: () => "fixture",
+				getConversationId: () => config.sessionId,
+				getMessages: () => structuredClone(config.initialMessages ?? []),
+				canStartRun: () => true,
+				subscribeEvents: () => () => {},
+				shutdown: async () => {},
+			}) as never,
+	);
+	const host = new LocalRuntimeHost({
+		sessionService: service,
+		distinctId: "fixture-concurrent-admission",
+		createAgent,
+		runtimeBuilder: { build } as never,
+	});
+	const starts: Promise<unknown>[] = [];
+	try {
+		const input = {
+			config: {
+				sessionId: "same-session",
+				providerId: "configured-provider",
+				modelId: "interchangeable-model",
+				cwd: root,
+				workspaceRoot: root,
+				systemPrompt: "fixture",
+				enableTools: false,
+				enableSpawnAgent: false,
+				enableAgentTeams: false,
+			},
+			interactive: true,
+			initialMessages: [
+				{
+					id: "original",
+					role: "user",
+					content: "Original accepted instruction",
+				},
+			] as never,
+		};
+		starts.push(host.startSession(input));
+		await vi.waitFor(() => expect(build).toHaveBeenCalledOnce());
+		starts.push(
+			host.startSession({
+				...input,
+				initialMessages: [
+					{ role: "user", content: "stale concurrent client copy" },
+				] as never,
+			}),
+		);
+		for (const start of starts) void start.catch(() => {});
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(build).toHaveBeenCalledOnce();
+		release();
+		const results = await Promise.all(starts);
+		expect(results).toMatchObject([
+			{ sessionId: "same-session" },
+			{ sessionId: "same-session" },
+		]);
+		expect(createAgent).toHaveBeenCalledOnce();
+		expect(host.isSessionResident("same-session")).toBe(true);
+		expect(
+			(await host.readLiveSessionMessages("same-session"))[0].content,
+		).toBe("Original accepted instruction");
+		expect(await service.listSessions(10)).toHaveLength(1);
+	} finally {
+		release();
+		await Promise.allSettled(starts);
+		await host.dispose();
+		db?.close();
+		await rm(root, { recursive: true, force: true });
+	}
+});
 
 it.each([
 	"files",

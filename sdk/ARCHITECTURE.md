@@ -1756,3 +1756,9 @@ construction. The agent, native transcript and later cold resume therefore share
 the same identities. Existing IDs and existing canonical saved history are kept;
 the caller's input objects are not mutated. No model request is needed for this
 admission and persistence step.
+
+Concurrent local start/resume requests share the pending admission for their
+session ID. Only one runtime is constructed; later callers reattach to that
+resident after publication. Already admitted residents remain attachable while
+the first prompt is still executing, without waiting for that model turn or
+restarting it. Failed admission is propagated rather than implicitly retried.

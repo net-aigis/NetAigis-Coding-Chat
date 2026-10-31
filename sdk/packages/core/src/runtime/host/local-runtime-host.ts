@@ -329,6 +329,10 @@ export class LocalRuntimeHost implements RuntimeHost {
 	private readonly connectorsRequest?: ConnectorsRequest;
 	private readonly events = new RuntimeHostEventBus();
 	private readonly sessions = new Map<string, ActiveSession>();
+	private readonly startingSessions = new Map<
+		string,
+		Promise<StartSessionResult>
+	>();
 	// Serializes manifest read-modify-writes per session; see mutateSessionManifest.
 	private readonly manifestMutationQueues = new Map<string, Promise<void>>();
 	private readonly usageBySession = new Map<string, SessionAccumulatedUsage>();
@@ -527,7 +531,47 @@ export class LocalRuntimeHost implements RuntimeHost {
 		const requestedSessionId = input.config.sessionId?.trim() ?? "";
 		const sessionId = requestedSessionId || createSessionId();
 		assertSafeSessionArtifactId(sessionId);
-		if (requestedSessionId) {
+		const pending = this.startingSessions.get(sessionId);
+		if (pending) {
+			const live = this.sessions.get(sessionId);
+			let admitted = false;
+			if (live?.artifacts) {
+				try {
+					assertSnapshotImportComplete(live.sessionMetadata);
+					admitted = true;
+				} catch {
+					/* The initial transcript is not yet published. */
+				}
+			}
+			// Initial prompt execution may outlive admission. An already admitted
+			// resident can be reattached while that first model turn is running.
+			if (admitted) return this.startSessionOnce(input, sessionId, true);
+			await pending;
+			return this.startSession({
+				...input,
+				config: { ...input.config, sessionId },
+			});
+		}
+		const starting = this.startSessionOnce(
+			input,
+			sessionId,
+			requestedSessionId.length > 0,
+		);
+		this.startingSessions.set(sessionId, starting);
+		try {
+			return await starting;
+		} finally {
+			if (this.startingSessions.get(sessionId) === starting)
+				this.startingSessions.delete(sessionId);
+		}
+	}
+
+	private async startSessionOnce(
+		input: StartSessionInput,
+		sessionId: string,
+		wasRequested: boolean,
+	): Promise<StartSessionResult> {
+		if (wasRequested) {
 			await this.assertSessionImportAdmission(sessionId);
 		}
 		// Starting a session that is mid-run must not replace it: the replaced
@@ -545,23 +589,44 @@ export class LocalRuntimeHost implements RuntimeHost {
 			if (!live.artifacts) await this.ensureSessionPersisted(live);
 			return await this.liveSessionStartResult(live);
 		}
-		if (requestedSessionId && (await this.readManifest(sessionId))) {
+		if (wasRequested && (await this.readManifest(sessionId))) {
 			if (input.prompt?.trim())
 				throw new Error(
 					`Session ${sessionId} already exists; resume and send a new prompt separately.`,
 				);
-			return this.resumeSession(input);
+			return this.resumeSavedSession(input);
 		}
 		const config = await resolveStartSessionWorkspace(input.config);
 		return await this.startResolvedSession(
 			{ ...input, config },
 			sessionId,
-			requestedSessionId.length > 0,
+			wasRequested,
 		);
 	}
 
 	/** A shared client cannot replace server-owned history by echoing an older transcript. */
 	async resumeSession(input: StartSessionInput): Promise<StartSessionResult> {
+		const id = input.config.sessionId?.trim();
+		if (!id || input.prompt?.trim())
+			throw new Error(
+				"Resume requires an existing session ID and no new prompt",
+			);
+		assertSafeSessionArtifactId(id);
+		if (
+			!this.startingSessions.has(id) &&
+			!this.sessions.has(id) &&
+			!(await this.readManifest(id))
+		)
+			throw new SessionNotFoundError(id);
+		return this.startSession({
+			...input,
+			config: { ...input.config, sessionId: id },
+		});
+	}
+
+	private async resumeSavedSession(
+		input: StartSessionInput,
+	): Promise<StartSessionResult> {
 		const id = input.config.sessionId?.trim();
 		if (!id || input.prompt?.trim())
 			throw new Error(

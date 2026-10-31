@@ -1851,3 +1851,34 @@ laufenden Python-Dienstes oder eine DeepSeek-Inkompatibilität. Der bestätigte
 Längenabschluss-Fehler erfordert eine weitere gezielte Integrationskorrektur;
 produktive Anwendung/HTTP-/Modellabnahme weiter offen. Keine vollständige oder
 stückweise Rekonstruktion des privaten Acer-Moduls im lokalen Repository.
+
+### Konkurrierende Start-/Resume-Anfragen teilen dieselbe Anlage
+
+Auf 911d714a8 fortgesetzt. p4-concurrent-session-admission-red 0/2 (zehn
+übersprungen) reproduziert denselben Doppelstart in File und SQLite: zwei
+Runtime-Konstruktionen für eine Session-ID konkurrierten trotz später exklusiver
+Dateianlage. Ein fehlgeschlagener Ersteller konnte die Erreichbarkeit der
+anderen Instanz beeinträchtigen. Lokale Start-/Resume-Anfragen teilen nun die
+laufende Anlage; erst nach deren bestätigtem Abschluss wird derselbe residente
+Agent wieder angebunden. Fehlgeschlagene Anlage wird weitergegeben, nicht als
+automatischer zweiter Versuch verschleiert. Keine Änderung am vorhandenen
+serverseitigen Writer-/Session-Lock und kein neuer Sitzungsspeicher.
+
+p4-concurrent-session-admission **127/127** bestanden. Ergänzender gezielter
+Vertrag p4-concurrent-initial-turn **3/3**, zehn unbetroffene übersprungen:
+zweimal konkurrierende Startanlage plus Wiederanbindung während eines noch
+ausstehenden ersten Modellturns. Dessen Promise bleibt offen und Status running,
+während die zweite Resume-Antwort bereits bestätigt ist; nur ein Agent, kein
+Abbruch oder vorzeitiger Completed-Status. Der Turn ist eine kontrollierte
+Agent-Fixture, kein neuer echter sleep-/Modellnachweis. Die frühere tatsächliche
+Sleep-Messreihe bleibt erhalten und wurde nicht wiederholt.
+p4-concurrent-session-types und p4-concurrent-session-build Exit 0.
+
+Zusätzliche gezielte Acer-Prüfung p4-acer-coding-stream-contract.json ohne
+Modellaufruf, Dienständerung oder Vollquellkopie: auch sse_stream konvertiert
+synthetisches done_reason=length nach finish_reason=stop. Damit betrifft der
+bestätigte Fehler den Streamingpfad ebenso wie completion. Inhalt bleibt
+erhalten, thinking wird in dieser Quelle nicht durchgereicht. Zur gezielten
+Reparatur wurden ausschließlich zwei Protokollausdrücke und ihre AST-Positionen
+erfasst, keine vollständigen zusätzlichen Funktionen oder Moduldateien kopiert.
+Produktive HTTP-/Modellabnahme und jede produktive Adapteränderung bleiben offen.
