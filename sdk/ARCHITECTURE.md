@@ -1605,3 +1605,12 @@ resolved process evidence are required even for a candidate. Eligibility does
 not authenticate a new writer, verify an archive producer, import files or start
 an agent. Actual restore must still pass owning-runtime authority, source
 verification and no-overwrite admission. The event journal has no takeover route.
+
+The runtime archiver stages the raw `ended` event, then a final full snapshot
+read from the existing persisted session and canonical messages. It compares
+session records before/after that read; missing or changing state remains a
+capture failure, never a fabricated empty/final transcript. The original end
+observation is retained either way. The final snapshot uses the actual writer's
+actor and existing credential selection. Stop awaits both durable stages while
+remaining independent of network delivery. The same outbox and snapshot schema
+are used; no transcript reconstruction or new store is added.

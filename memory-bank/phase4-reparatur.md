@@ -1169,3 +1169,41 @@ Gemeinsamer Runtime-Restore/Session-Browser und verifizierte Produzentenquelle,
 Archivabschluss nach Runtime-Ende, echte Acer-/Android-/Modellabnahme und
 produktionsreifer Rollout bleiben offene Arbeiten. Keine produktive API-
 Schreibanforderung, Installation oder Migration in diesem Schritt.
+
+### TOTAL RECALL: tatsächlicher Archivabschluss nach Runtime-Ende
+
+Auf c32a1fc7c fortgesetzt. Der neue End-to-End-Komponentenfall
+`p4-recall-final-snapshot-red` reproduzierte die Abschlusslücke: nur ended,
+kein nachfolgender vollständiger Stand. Der Archiver legt jetzt zuerst die
+unveränderte Endbeobachtung ab und erfasst danach bestehendes Sessionrecord und
+kanonische Nachrichten. Record vor/nach dem Lesen muss übereinstimmen. Fehlende
+oder wechselnde Daten ergeben capture_failed und ausschließlich das belegte
+Rohereignis; keine leere erfundene Historie und kein Abschluss aus Modelltext.
+
+Der abschließende Snapshot behält IDs, Nachrichten, Autorenschaft und tatsächliche
+Metadaten. Actor stammt aus der vorhandenen Writerkontrolle; existierende
+Outbox-/API-Zugangsauswahl bleibt getrennt von Hub-Login. Beide Dateien werden
+vor Shutdown dauerhaft gestaged, unabhängig vom Netz. Aktueller Hub-Lifecycle
+entsorgt die Runtime bereits vor Archive.stop; keine abgeschlossenen
+Lifecycle-Arbeiten wiederholt oder andere Reihenfolge blind umgestellt.
+
+`p4-recall-final-snapshot` **9/9** betroffene Archiv-/Outbox-/Hub-Fälle bestanden.
+Der neue Fall verwendet echte FileSessionService-Persistenz und LocalRuntimeHost
+zum Lesen, verzögerte Nachrichtenlieferung, reale private Outbox und simuliertes
+HTTP 503. Ohne UI-Client wartet Stop auf die Erfassung; zuerst ended, dann der
+vollständige gespeicherte Stand unter jimmi mit unveränderten Friseer-/jimmi-
+Nachrichten. Der tatsächliche gemeinsame Reader liest die erzeugten Einträge
+wieder als vollständigen Kandidaten. Originale Transkriptdatei bleibt bytegleich.
+Zwei zusätzliche Fehlerfälle: fehlendes Record und Zustandswechsel während des
+Lesens bleiben sichtbar, kein fingierter Snapshot.
+
+`p4-recall-final-snapshot-types-contract` und
+`p4-recall-final-snapshot-build-contract` Exit 0. Typ-Vorlauf fand den zu großen
+RuntimeHost-Cast der neuen Testhilfe. Der Archiver deklariert jetzt exakt seine
+beiden tatsächlich benötigten Lesemethoden; keine unsichere Test-Typumgehung.
+Keine produktiven Modellanfragen oder Acer-Änderungen.
+
+Weiter offen: überprüfte Produzentenquelle vor einem tatsächlichen Recall-
+Import und authentifizierte Runtime-Admission/Browserübernahme, Altbestand-
+Anbindung, reale Geräte-/Modellabnahme und produktiver Rollout. Eine lesbare
+Archivkopie und grüne Komponentenfälle bedeuten weiter keine produktive Abnahme.

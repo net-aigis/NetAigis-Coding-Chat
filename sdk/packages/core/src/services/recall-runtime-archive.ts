@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { resolveClineDir } from "@cline/shared/storage";
 import { parseSessionWriterControl } from "../hub/session-control";
 import type { RuntimeHost } from "../runtime/host/runtime-host";
+import { createCoreSessionSnapshot } from "../session/session-snapshot";
 import type { CoreSessionEvent } from "../types/events";
 import {
 	DurableRecallOutbox,
@@ -27,7 +28,10 @@ export class RuntimeRecallArchive {
 	private captureFailed = false;
 	private deliveryPending = false;
 	constructor(
-		private readonly runtime: RuntimeHost,
+		private readonly runtime: Pick<
+			RuntimeHost,
+			"getSession" | "readLiveSessionMessages"
+		>,
 		private readonly options: RuntimeRecallArchiveOptions,
 	) {
 		this.queue = new DurableRecallOutbox(
@@ -119,21 +123,7 @@ export class RuntimeRecallArchive {
 					return;
 				}
 				if ("incomplete" in capture) this.captureFailed = true;
-				await this.queue.archiveSdkEvent(capture.value, config, {
-					deferDelivery: true,
-				});
-				void this.configuration()
-					.then((base) =>
-						this.queue.drainRecallOutbox(base, { respectBackoff: true }),
-					)
-					.then(
-						(result) => {
-							this.deliveryPending = Boolean(result.blocked);
-						},
-						() => {
-							this.deliveryPending = true;
-						},
-					);
+				await this.stageEvent(capture.value, config);
 			})
 			.catch(() => {
 				this.captureFailed = true;
@@ -141,6 +131,82 @@ export class RuntimeRecallArchive {
 			.finally(() => {
 				this.pendingCaptures--;
 			});
+		if (copied.type === "ended") this.captureFinalSnapshot(id, configuration);
+	}
+
+	private captureFinalSnapshot(
+		id: string,
+		configuration: Promise<{ value?: RecallConfiguration }>,
+	): void {
+		// Begin the canonical read immediately; stage it after the raw ended event.
+		const captured = (async (): Promise<
+			Extract<CoreSessionEvent, { type: "session_snapshot" }>
+		> => {
+			const before = await this.runtime.getSession(id);
+			if (!before || !this.runtime.readLiveSessionMessages)
+				throw new Error("Final session state unavailable");
+			const messages = await this.runtime.readLiveSessionMessages(id);
+			const after = await this.runtime.getSession(id);
+			if (!after || JSON.stringify(before) !== JSON.stringify(after))
+				throw new Error("Session state changed during final capture");
+			return {
+				type: "session_snapshot",
+				payload: {
+					sessionId: id,
+					snapshot: createCoreSessionSnapshot({ session: after, messages }),
+				},
+			};
+		})().then(
+			(value) => ({ value }),
+			() => ({ value: undefined }),
+		);
+		this.pendingCaptures++;
+		this.captures = this.captures
+			.then(async () => {
+				const [capture, selected] = await Promise.all([
+					captured,
+					configuration,
+				]);
+				if (!capture.value || !selected.value) {
+					this.captureFailed = true;
+					return;
+				}
+				const snapshot = capture.value.payload.snapshot;
+				const actor = parseSessionWriterControl(
+					snapshot.metadata?.sharedSessionControl,
+				).writer?.actorId;
+				const base = selected.value;
+				const config =
+					actor && actor !== base.actor
+						? { ...base, actor, token: this.options.actorTokens?.[actor] ?? "" }
+						: base;
+				await this.stageEvent(capture.value, config);
+			})
+			.catch(() => {
+				this.captureFailed = true;
+			})
+			.finally(() => {
+				this.pendingCaptures--;
+			});
+	}
+
+	private async stageEvent(
+		event: CoreSessionEvent,
+		config: RecallConfiguration,
+	): Promise<void> {
+		await this.queue.archiveSdkEvent(event, config, { deferDelivery: true });
+		void this.configuration()
+			.then((base) =>
+				this.queue.drainRecallOutbox(base, { respectBackoff: true }),
+			)
+			.then(
+				(result) => {
+					this.deliveryPending = Boolean(result.blocked);
+				},
+				() => {
+					this.deliveryPending = true;
+				},
+			);
 	}
 	status() {
 		const lastFailure = this.captureFailed
