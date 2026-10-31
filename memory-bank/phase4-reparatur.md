@@ -1035,3 +1035,47 @@ vorher gelesene komplette Metadatenkopie. Deren Writer-/Prozessfelder dürfen
 spätere Belege nicht überschreiben. Als nächstes gezielt reproduzieren und den
 Checkpoint-Schreibweg auf seine eigenen Felder begrenzen; keine Wiederholung
 der abgeschlossenen Phasen.
+
+### Checkpoint-Metadatenverlust reproduziert und korrigiert
+
+`p4-checkpoint-metadata-red` schlug mit echtem Prozess und tatsächlicher
+FileSessionService-Persistenz fehl: Der echte Bootstrap-Callback des
+Checkpoint-Hooks schrieb nach dem Exit eine ältere Metadatenkopie zurück
+(Titel wieder original statt writer correction, ältere Writer-/Prozessfelder).
+Er schreibt jetzt ausschließlich sein eigenes checkpoint-Feld gegen den
+aktuellen Zustand innerhalb der Session-Queue. Neuere Prozess-, Writer-,
+Auftrags- und Titelfelder bleiben erhalten; kein Checkpoint neu erfunden.
+
+`p4-checkpoint-metadata-fixed`: **122/123** bestanden; die neue Regression und
+alle Host-Verträge grün. Der einzelne zusätzliche Fehler war ein bestehender
+No-Git-Fixture unter dem privat isolierten TMPDIR im Reparatur-Worktree. Vor
+seinem git init fand Git das Eltern-Repository und erzeugte dort den Test-Ref
+`refs/cline/checkpoints/sess_git_init_later/1` mit Objekt
+`ba11b26aee697f37e43365f512bc8af97718ca14`. Das war eine unerwünschte Auswirkung
+dieses Testlaufs. Der Quellpfad nutzt stash create/commit-tree/privaten Ref,
+keinen destruktiven Stash/Reset. Der Ref wurde weder gelöscht noch verschoben;
+Nachweis `p4-checkpoint-inherited-test-ref.json` im bestehenden privaten
+Prüfverzeichnis. Eine spätere Bereinigung erfordert die gesonderte Freigabe.
+
+Abgrenzung: coding-agent-v4 ist weiterhin
+624c2cd6661e100680d8b61daa3a3447f4708536. Originalstatus mit denselben Flags
+`--porcelain=v1 --untracked-files=all` weiterhin SHA256
+aff4aedbf69ef2f24960a735b51663df55a0a961ef0d2fb8e910293e010c9fbb.
+Ein anfänglicher Vergleich ohne untracked-files=all lieferte wegen anderer
+Darstellung einen anderen Hash; kein geänderter Original-Arbeitsstand.
+
+Nur der betroffene Fixture wurde erneut geprüft: explizite Suchgrenze
+`p4-checkpoint-git-discovery-isolated` **1/1** bestanden (19 nicht betroffene
+Fälle übersprungen). Die Core-Testkonfiguration setzt die Suchgrenze jetzt
+selbst am bereits explizit gesetzten privaten CLINE_DATA_DIR/TMPDIR und bewahrt
+vorhandene Git-Suchgrenzen. Keine Produktions-/Systemkonfiguration geändert,
+versiegelter Prüfstarter unangetastet. Finaler Konfigurationsnachweis
+`p4-checkpoint-git-discovery-config` separat, nicht mit dem Zwischenlauf addieren.
+Die zuvor erfolgreichen 122 Fälle nicht pauschal wiederholen.
+
+`p4-checkpoint-metadata-types` und `p4-checkpoint-metadata-build` Exit 0.
+Vorherige neue Terminal-/Journal-/Reconnect-/Projektionsnachweise einschließlich
+roter Zwischenläufe in 84 Dateien überprüft versiegelt:
+`SHA256SUMS.runtime-0f594871e-20261031`, SHA256
+7b4a8f2aca367e2386f771c551a33417a162e4cd5b6278d5f9c3a774092a9226.
+Keine neue Sicherung oder neue Ablagewurzel. Gesamtauftrag läuft weiter.

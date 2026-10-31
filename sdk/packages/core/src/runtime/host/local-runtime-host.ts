@@ -867,7 +867,13 @@ export class LocalRuntimeHost implements RuntimeHost {
 					| Record<string, unknown>
 					| undefined,
 			writeSessionMetadata: async (metadata) => {
-				await this.persistSessionMetadata(sessionId, () => metadata);
+				// This bootstrap callback belongs to the checkpoint hook. Its copy
+				// predates asynchronous snapshot creation; retain current writer,
+				// process and continuity fields instead of replacing all metadata.
+				await this.persistSessionMetadata(sessionId, (current) => ({
+					...current,
+					checkpoint: metadata.checkpoint,
+				}));
 			},
 		});
 		const initialSessionMetadata = withSessionHistoryOriginMetadata(

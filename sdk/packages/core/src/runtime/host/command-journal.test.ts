@@ -2,12 +2,13 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createBuiltinTools } from "../../extensions/tools";
 import {
 	COMMAND_OBSERVATIONS_METADATA_KEY as KEY,
 	type RunCommandExecutionController,
 } from "../../extensions/tools/executors/run-command-execution-controller";
+import * as bootstrap from "../../services/local-runtime-bootstrap";
 import { FileSessionService } from "../../session/services/file-session-service";
 import { hasUnresolvedCommandObservation } from "./command-observations";
 import { LocalRuntimeHost } from "./local-runtime-host";
@@ -41,6 +42,16 @@ it("persists a detached command's own exit without rewriting history, keeps conc
 				shutdown: async () => {},
 			}) as never,
 	};
+	let writeCheckpointMetadata!: (
+		metadata: Record<string, unknown>,
+	) => Promise<void> | void;
+	const prepareBootstrap = bootstrap.prepareLocalRuntimeBootstrap;
+	const bootstrapSpy = vi
+		.spyOn(bootstrap, "prepareLocalRuntimeBootstrap")
+		.mockImplementation(async (input) => {
+			writeCheckpointMetadata = input.writeSessionMetadata;
+			return prepareBootstrap(input);
+		});
 	const host = new LocalRuntimeHost(options);
 	const abort = new AbortController();
 	let ready!: () => void, exited!: () => void;
@@ -170,6 +181,14 @@ it("persists a detached command's own exit without rewriting history, keeps conc
 			(await host.getSession("journal-session"))!.metadata?.[KEY],
 		).toMatchObject({ entries: [{ execution: { state: "running" } }] });
 		await didExit;
+		await host.getSession("journal-session"); // Exit observation is durable before the stale checkpoint callback.
+		await writeCheckpointMetadata({
+			...row!.metadata,
+			checkpoint: {
+				latest: { ref: "fixture-checkpoint", runCount: 1, createdAt: 10 },
+				history: [],
+			},
+		});
 		const ended = await host.getSession("journal-session");
 		expect(ended!.metadata).toMatchObject({
 			title: "writer correction",
@@ -198,6 +217,7 @@ it("persists a detached command's own exit without rewriting history, keeps conc
 	} finally {
 		abort.abort();
 		await host.dispose();
+		bootstrapSpy.mockRestore();
 		await rm(root, { recursive: true, force: true });
 	}
 });

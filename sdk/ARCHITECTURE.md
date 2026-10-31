@@ -1568,3 +1568,9 @@ confirmed evidence across reordered snapshots and historical tool returns.
 History without matching later exit proof labels a recorded running result
 unknown; it cannot establish that an old process is alive. Canonical messages,
 stdout and authors are never rewritten by this projection.
+
+The checkpoint hook's asynchronous callback updates only its own `checkpoint`
+field against the current queued metadata. Its older full metadata copy cannot
+roll back a writer revision, newer process exit, title or continuity fields.
+Core tests set a Git discovery ceiling at their explicit private fixture root;
+fixtures nested below a worktree cannot checkpoint their parent before git init.

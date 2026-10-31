@@ -1,7 +1,24 @@
+import { delimiter, isAbsolute } from "node:path";
 import { defineConfig } from "vitest/config";
+
+// Private fixtures may live below a worktree. Git must not discover or
+// checkpoint that parent before a fixture initializes its own repository.
+const fixtureRoot = process.env.CLINE_DATA_DIR ?? process.env.TMPDIR;
 
 export default defineConfig({
 	test: {
+		...(fixtureRoot && isAbsolute(fixtureRoot)
+			? {
+					env: {
+						GIT_CEILING_DIRECTORIES: [
+							process.env.GIT_CEILING_DIRECTORIES,
+							fixtureRoot,
+						]
+							.filter(Boolean)
+							.join(delimiter),
+					},
+				}
+			: {}),
 		environment: "node",
 		include: ["src/**/*.test.ts"],
 		exclude: ["src/**/*.e2e.test.ts"],
