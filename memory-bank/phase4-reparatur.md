@@ -1598,3 +1598,37 @@ p4-legacy-lifecycle 53/53 bestanden, einschließlich vorheriger vollständiger
 Snapshot-/Runtimeverträge; p4-legacy-lifecycle-types Exit 0. Keine erneute
 Sleep-Messreihe und kein Eingriff in produktive Prozesse. SDK-Bundle wird mit
 dem nächsten geprüften Core-Schritt aktualisiert; diese Tests laufen am Source.
+
+### Ruhende alte Sitzungen behalten ihren Zustand bei PID-Abgleich
+
+Auf 40e14dba9 fortgesetzt. p4-idle-owner-reconcile-red 0/2 (zwei bestehende
+Fälle übersprungen) belegt die nachträgliche failed-Markierung regulärer
+File-/SQLite-idle-Sitzungen allein wegen ihrer historischen PID. Der Abgleich
+untersucht jetzt running/pending und prüft vor dem bedingten Schreibzugriff
+erneut den aktuellen Zustand und die aktuelle PID. Eine zwischen Scan und Read
+ruhend gewordene Sitzung bleibt erhalten. Vorhandene unbekannte Werkzeugzustände
+werden nicht aufgehoben; eine solche idle-Sitzung bleibt gegen Resume gesperrt.
+
+Erster Gesamtlauf p4-idle-owner-reconcile 24/26: der zusätzliche Übergangstest
+zeigte noch einen falschen Rückgabewert des Abgleichzählers. Er zählte den vom
+anderen Schreiber bewirkten Wechsel nach idle als eigene Reparatur. Die private
+Methode meldet jetzt ausdrücklich nur ihren tatsächlichen Schreibabschluss,
+statt aus einem beliebigen später gelesenen Zeilenstatus eine Änderung abzuleiten.
+p4-idle-owner-reconcile-count **26/26** bestanden. Beide nativen Backends prüfen
+jeweils unveränderte Manifest-/Nachrichtenbytes, Friseer-Urheber, Resume mit
+gespeichertem austauschbarem Modell, den Zustandswechsel während des Abgleichs
+und verweigerte Wiederholung einer unbestätigten Werkzeugausführung.
+p4-idle-owner-types und p4-idle-owner-core-build Exit 0; damit ist auch das
+vorherige Legacy-Status-Bundle aktualisiert. Tatsächlich verlorene running-
+Owner behalten unbekannten Ausgang ohne künstlichen Exitcode.
+
+Die lesende Acer-Integrationsvorprüfung bleibt im bestehenden Prüfroot:
+p4-acer-model-request-caps.json / p4-acer-model-request-contract.json. Quellhashes
+der beiden bestätigten Anwendungen sind gegenüber dem früheren Befund gleich.
+Der bestehende Learning-Agent-ChatRequest hat kein max_tokens/max_completion_tokens-
+Feld; sein Handler setzt beim Backendaufruf keine entsprechende Antwortbegrenzung
+und fordert intern stream=false an. Das ist kein Nachweis echter Tokenstream-
+oder Längenbegrenzungsunterstützung. Der Coding-Agent verwendet seinen bestehenden
+Proxy mit nativer Adapterroute. Vor einem begrenzten echten Modelltest ist deren
+Request-Konvertierung gezielt zu prüfen. Keine neue Modellgeneration ausgelöst,
+keine produktive Quelldatei oder Konfiguration verändert, keine Secrets ausgegeben.

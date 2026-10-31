@@ -1714,3 +1714,9 @@ Legacy Hub replies preserve idle/running/pending lifecycle states separately.
 Lifecycle labels alone cannot supply an OS exit code; only richer confirmed
 snapshot/process evidence can carry it. Unknown legacy lifecycle labels fail
 validation rather than being projected as running or completed.
+
+Native stale-owner reconciliation scans running/pending rows only. A saved idle
+conversation is not an active process merely because it has a historical PID.
+The latest row status and owner PID are rechecked before the conditional update;
+an intervening transition to idle is retained and not counted as reconciliation.
+Canonical resume still rejects unfinished calls and unconfirmed command journals.

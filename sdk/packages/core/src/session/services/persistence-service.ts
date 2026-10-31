@@ -587,14 +587,15 @@ export class UnifiedSessionPersistenceService {
 
 	private async reconcileDeadRunningSession(
 		row: SessionRow,
-	): Promise<SessionRow | undefined> {
+	): Promise<boolean> {
 		if (
+			row.status === "idle" ||
 			(row.pid === 0 &&
 				Object.hasOwn(row.metadata ?? {}, SNAPSHOT_IMPORT_METADATA_KEY)) ||
 			isNonTerminalSessionStatus(row.status) === false ||
 			this.isPidAlive(row.pid)
 		) {
-			return row;
+			return false;
 		}
 
 		const detectedAt = nowIso();
@@ -602,8 +603,13 @@ export class UnifiedSessionPersistenceService {
 
 		for (let attempt = 0; attempt < OCC_MAX_RETRIES; attempt++) {
 			const latest = await this.adapter.getSession(row.sessionId);
-			if (!latest) return undefined;
-			if (isNonTerminalSessionStatus(latest.status) === false) return latest;
+			if (!latest) return false;
+			if (
+				latest.status === "idle" ||
+				isNonTerminalSessionStatus(latest.status) === false ||
+				this.isPidAlive(latest.pid)
+			)
+				return false;
 
 			const nextMetadata = {
 				...(latest.metadata ?? {}),
@@ -653,17 +659,9 @@ export class UnifiedSessionPersistenceService {
 				reason,
 				UnifiedSessionPersistenceService.STALE_SOURCE,
 			);
-			return {
-				...latest,
-				status: "failed",
-				endedAt: detectedAt,
-				exitCode: null,
-				metadata: nextMetadata,
-				statusLock: changed.statusLock,
-				updatedAt: detectedAt,
-			};
+			return true;
 		}
-		return await this.adapter.getSession(row.sessionId);
+		return false;
 	}
 
 	async listSessions(
@@ -720,7 +718,7 @@ export class UnifiedSessionPersistenceService {
 		const requestedLimit = Math.max(1, Math.floor(limit));
 		const rows = (
 			await Promise.all(
-				(["idle", "running", "pending"] as const).map((status) =>
+				(["running", "pending"] as const).map((status) =>
 					this.adapter.listSessions({
 						limit: requestedLimit,
 						status,
@@ -730,8 +728,7 @@ export class UnifiedSessionPersistenceService {
 		).flat();
 		let reconciled = 0;
 		for (const row of rows) {
-			const updated = await this.reconcileDeadRunningSession(row);
-			if (updated && updated.status !== row.status) reconciled++;
+			if (await this.reconcileDeadRunningSession(row)) reconciled++;
 		}
 		return reconciled;
 	}
