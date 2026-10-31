@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule independent NetAigis infrastructure observation
+
+[Timer]
+OnBootSec=60s
+OnUnitInactiveSec=60s
+AccuracySec=5s
+Unit=netaigis-watchdog.service
+
+[Install]
+WantedBy=timers.target
