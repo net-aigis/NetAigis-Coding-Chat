@@ -166,7 +166,7 @@ export class UnifiedSessionPersistenceService {
 		const status: SessionStatus = input.status ?? "running";
 		const terminal = !isNonTerminalSessionStatus(status);
 		const endedAt = terminal ? (input.endedAt ?? nowIso()) : undefined;
-		const exitCode = terminal ? (input.exitCode ?? 0) : undefined;
+		const exitCode = terminal ? (input.exitCode ?? undefined) : undefined;
 		const manifest = {
 			version: 1 as const,
 			session_id: sessionId,

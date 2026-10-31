@@ -1729,3 +1729,6 @@ An in-process reservation receipt lets the existing transcript importer roll
 back only its own new target, including artifact-write failures; a colliding
 target is never deleted as failed work. File-index admission remains single-
 owner-process synchronization, not a cross-process transactional guarantee.
+
+Native creation, like later status updates, preserves absent/null exit evidence
+as unknown. A terminal lifecycle label does not manufacture exit zero.

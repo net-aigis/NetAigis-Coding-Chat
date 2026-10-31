@@ -1672,3 +1672,13 @@ Backendpayload (num_predict fehlt). Modellkennung und stream bleiben erhalten.
 Die Modulquelle ist SHA256 cdf5d6768d8fffb9e3d1d0f4b08db9784a5ce5b432003f4cf16d4f3a970c8b81.
 Keine produktive Adapterkorrektur oder Modellanfrage ausgeführt; dies ist ein
 belegter offener Integrationsfehler, keine vorgetäuschte produktive Abnahme.
+
+### Auch native Anlage behält unbekannten Exit statt künstlicher Null
+
+Auf b555c6e0b fortgesetzt. p4-native-unknown-exit-red 0/4 (12 übersprungen)
+reproduziert fehlende/null Exitangabe→0 selbst bei status=failed in File und
+SQLite. Native Anlage übernimmt jetzt nur einen ausdrücklich übergebenen Code;
+unbekannter Ausgang bleibt im Index null und im Manifest ohne numerische Angabe.
+Explizite Codes bleiben unverändert. p4-native-unknown-exit **64/64** bestanden
+einschließlich bestehender Persistenz-/Importerfälle; p4-native-unknown-exit-build
+Exit 0. Kein behaupteter Prozessabschluss durch einen Sitzungslabel-Default.

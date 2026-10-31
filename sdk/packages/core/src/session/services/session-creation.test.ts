@@ -52,6 +52,38 @@ async function fixture(kind: "files" | "sqlite") {
 		},
 	};
 }
+
+it.each([
+	["files", "completed"],
+	["sqlite", "completed"],
+	["files", "failed"],
+	["sqlite", "failed"],
+] as const)("preserves an unknown or explicit exit for native %s %s creation", async (kind, status) => {
+	const f = await fixture(kind);
+	try {
+		for (const [index, exitCode] of [undefined, null, 42].entries()) {
+			const sessionId = `exit-evidence-${index}`;
+			const result = await f.service.createRootSessionWithArtifacts({
+				...input,
+				sessionId,
+				status,
+				exitCode,
+			});
+			expect(result.manifest.exit_code ?? null).toBe(exitCode ?? null);
+			expect(
+				JSON.parse((await readFile(result.manifestPath)).toString())
+					.exit_code ?? null,
+			).toBe(exitCode ?? null);
+			expect(
+				(await f.service.listSessions(10)).find(
+					(row) => row.sessionId === sessionId,
+				)?.exitCode ?? null,
+			).toBe(exitCode ?? null);
+		}
+	} finally {
+		await f.close();
+	}
+});
 it.each([
 	"files",
 	"sqlite",
