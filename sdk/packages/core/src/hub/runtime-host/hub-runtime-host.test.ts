@@ -1680,6 +1680,42 @@ describe("HubRuntimeHost", () => {
 		);
 	});
 
+	it("requests confirmed live history for clients attaching during a turn", async () => {
+		const messages = [
+			{
+				role: "user",
+				content: "not persisted yet",
+				metadata: { author: "Friseer" },
+			},
+		];
+		commandMock.mockResolvedValue({
+			ok: true,
+			payload: { sessionId: "sess-1", view: "live", messages },
+		});
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
+		await expect(host.readLiveSessionMessages("sess-1")).resolves.toEqual(
+			messages,
+		);
+		expect(commandMock).toHaveBeenCalledWith(
+			"session.messages",
+			{ sessionId: "sess-1", live: true },
+			"sess-1",
+		);
+		expect(subscribeMock).toHaveBeenCalledWith(expect.any(Function), {
+			sessionId: "sess-1",
+		});
+	});
+
+	it("does not claim live history from an older hub that ignores the request", async () => {
+		commandMock.mockResolvedValue({ ok: true, payload: { messages: [] } });
+		const { HubRuntimeHost } = await import("./hub-runtime-host");
+		const host = new HubRuntimeHost({ url: "ws://127.0.0.1:25463/hub" });
+		await expect(host.readLiveSessionMessages("sess-1")).rejects.toThrow(
+			"live",
+		);
+	});
+
 	it("throws when the hub rejects message reads", async () => {
 		const telemetry = { capture: vi.fn() };
 		commandMock.mockResolvedValue({

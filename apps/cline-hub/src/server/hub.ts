@@ -13,7 +13,7 @@ import {
 	requestToolApprovalFromWebview,
 } from "./approvals";
 import { configureConnectorCliLaunch } from "./connectors";
-import { workspaceRoot } from "./deps";
+import { options, workspaceRoot } from "./deps";
 import {
 	formatClientDetails,
 	formatSessionCreator,
@@ -23,7 +23,14 @@ import {
 import type { HubContext } from "./state";
 import { broadcastHubState } from "./state-payloads";
 import type { SessionContext } from "./types";
-import { asRecord, asString, basename, clientMetadata, isActiveSession, isVisibleClient } from "./utils";
+import {
+	asRecord,
+	asString,
+	basename,
+	clientMetadata,
+	isActiveSession,
+	isVisibleClient,
+} from "./utils";
 
 export async function syncHubHealth(ctx: HubContext): Promise<void> {
 	if (!ctx.hubUrl) {
@@ -92,19 +99,26 @@ export async function syncHubClientsAndSessions(
 }
 
 export async function attachHub(ctx: HubContext): Promise<void> {
-	configureConnectorCliLaunch();
-	const hub = await ensureDetachedHubServer(workspaceRoot);
-	ctx.hubUrl = hub.url;
-	ctx.hubAuthToken = hub.authToken;
+	const connection = options.sessionHub;
+	ctx.externalHub = Boolean(connection);
+	if (connection) {
+		ctx.hubUrl = connection.endpoint;
+		ctx.hubAuthToken = connection.authToken;
+	} else {
+		configureConnectorCliLaunch();
+		const hub = await ensureDetachedHubServer(workspaceRoot);
+		ctx.hubUrl = hub.url;
+		ctx.hubAuthToken = hub.authToken;
+	}
 
 	ctx.cline = await ClineCore.create({
 		clientName: "cline-hub",
-		backendMode: "hub",
+		backendMode: connection ? "remote" : "hub",
 		capabilities: {
 			requestToolApproval: (request) =>
 				requestToolApprovalFromWebview(ctx, request),
 		},
-		hub: {
+		[connection ? "remote" : "hub"]: {
 			endpoint: ctx.hubUrl,
 			authToken: ctx.hubAuthToken,
 			clientType: "cline-hub-chat",
@@ -255,6 +269,10 @@ export async function detachHub(ctx: HubContext): Promise<void> {
 }
 
 export async function restartHub(ctx: HubContext): Promise<void> {
+	if (ctx.externalHub)
+		throw new Error(
+			"The shared runtime is managed separately; this browser cannot restart it.",
+		);
 	ctx.broadcast({
 		type: "notification",
 		title: "Hub restarting",

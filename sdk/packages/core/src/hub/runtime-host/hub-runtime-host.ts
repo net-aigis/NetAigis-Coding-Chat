@@ -1620,6 +1620,36 @@ export class HubRuntimeHost implements RuntimeHost {
 			: [];
 	}
 
+	async readLiveSessionMessages(
+		sessionId: string,
+	): Promise<import("@cline/llms").MessageWithMetadata[]> {
+		const target = sessionId.trim();
+		if (!target)
+			throw new Error("A session ID is required to read live history");
+		// Subscribe before hydrating so an attaching browser can merge live
+		// updates that arrive during the read. This does not start a session,
+		// replace its runtime or acquire the tool capability owner's identity.
+		this.ensureSessionSubscription(target);
+		const reply = await this.client.command(
+			"session.messages",
+			{ sessionId: target, live: true },
+			target,
+		);
+		if (!reply.ok)
+			throw new Error(hubReplyErrorMessage(reply, "session.messages"));
+		if (
+			reply.payload?.view !== "live" ||
+			reply.payload.sessionId !== target ||
+			!Array.isArray(reply.payload.messages)
+		) {
+			throw new Error(
+				"The selected hub did not confirm live history for this session",
+			);
+		}
+		return reply.payload
+			.messages as import("@cline/llms").MessageWithMetadata[];
+	}
+
 	async dispatchHookEvent(_payload: HookEventPayload): Promise<void> {
 		await this.client.command("session.hook", { payload: _payload });
 	}

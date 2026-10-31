@@ -616,3 +616,21 @@ run returns.
 No message text leaves the client: `textSignature` and `session.input_sent`'s
 `bumpKind` are enums computed locally
 (`packages/core/src/services/telemetry/stall-signals.ts`).
+
+### Shared Hub live-history reads
+
+`ClineCore.readLiveMessages(sessionId)` now uses the existing Hub command
+`session.messages` with `{ sessionId, live: true }`. A supporting server replies
+with the matching ID, `view: "live"` and the canonical runtime messages. A Hub
+without the capability refuses the request; the client rejects a response
+that silently serves persisted history. Calls to `readMessages` keep the
+established persisted-history contract. Live reads subscribe to subsequent
+events without starting/replacing the session or changing its tool owner.
+
+The fork's VS Code adapter can explicitly select a shared Hub via its protected
+connection configuration; the existing browser dashboard accepts the same
+endpoint through `CLINE_SHARED_SESSION_HUB_ENDPOINT` plus a separate
+`CLINE_SHARED_SESSION_HUB_TOKEN`. No production endpoint is provided or inferred.
+This connection is separate from model/provider routing. It does not yet
+constitute authenticated Friseer/jimmi writer handover or production Android
+acceptance. See the fork's `memory-bank/phase4-reparatur.md` for current scope.

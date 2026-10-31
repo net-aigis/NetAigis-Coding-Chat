@@ -45,10 +45,17 @@ import { getRecallConfiguration } from "./recall-config-manager"
 import { archiveSdkEvent, flushRecallOutboxWrites, startRecallOutbox } from "./recall-outbox"
 import type { SdkForegroundCommandCoordinator } from "./sdk-foreground-command-coordinator"
 import type { SdkSessionHost } from "./session-host"
+import {
+	getSharedSessionHubConnection,
+	type SharedSessionHubConnection,
+	validateSharedSessionHubConnection,
+} from "./shared-session-hub"
 import { createVscodeExtraTools } from "./vscode-runtime-builder"
 import { getEffectiveTerminalExecutionMode } from "./vscode-terminal-execution-mode"
 
 export interface VscodeSessionHostOptions {
+	/** Explicitly selected existing SDK hub. Omission preserves local execution. No discovery/spawn/fallback. */
+	sharedSessionHub?: SharedSessionHubConnection
 	mcpHub: McpHub
 	requestToolApproval?: (request: {
 		agentId: string
@@ -150,6 +157,9 @@ export class VscodeSessionHost implements SdkSessionHost {
 	}
 
 	static async create(options: VscodeSessionHostOptions): Promise<VscodeSessionHost> {
+		const sharedSessionHub = options.sharedSessionHub
+			? validateSharedSessionHubConnection(options.sharedSessionHub)
+			: getSharedSessionHubConnection()
 		// Build tool executor capabilities from options — only include keys that are provided.
 		// When a terminal manager is available, suppress the SDK's built-in run_commands
 		// tool by setting bash to undefined. Our custom run_commands (provided via
@@ -214,7 +224,8 @@ export class VscodeSessionHost implements SdkSessionHost {
 		}
 
 		const inner = await ClineCore.create({
-			backendMode: "local",
+			backendMode: sharedSessionHub ? "remote" : "local",
+			...(sharedSessionHub ? { remote: { ...sharedSessionHub, clientType: "vscode", displayName: "VS Code" } } : {}),
 			capabilities: {
 				requestToolApproval: options.requestToolApproval as
 					| ((request: ToolApprovalRequest) => Promise<ToolApprovalResult>)

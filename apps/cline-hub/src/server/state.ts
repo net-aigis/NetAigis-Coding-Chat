@@ -27,6 +27,8 @@ export class HubContext {
 	hubUrl = "";
 	hubAuthToken = "";
 	hubHealthy = false;
+	/** A selected shared runtime has an independent lifecycle, not owned by the browser. */
+	externalHub = false;
 	cline: ClineCore | undefined;
 	uiClient: HubUIClient | undefined;
 	hubStartedAt: string | undefined;

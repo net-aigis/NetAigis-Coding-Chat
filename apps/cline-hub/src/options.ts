@@ -6,6 +6,8 @@ export interface ClineHubServerOptions {
 	publicUrl: string;
 	roomSecret?: string;
 	workspaceRoot: string;
+	/** Explicit existing shared runtime; distinct from the browser HTTP listener. */
+	sessionHub?: { endpoint: string; authToken: string };
 }
 
 const DEFAULT_HOST = "127.0.0.1";
@@ -76,6 +78,30 @@ export function resolveClineHubServerOptions(
 	const port = parsePort(env[DASHBOARD_PORT_ENV]);
 	const publicUrl = normalizePublicUrl(env.PUBLIC_URL, host, port);
 	const roomSecret = normalizeRoomSecret(env.ROOM_SECRET);
+	const endpoint = env.CLINE_SHARED_SESSION_HUB_ENDPOINT;
+	const authToken = env.CLINE_SHARED_SESSION_HUB_TOKEN;
+	let sessionHub: ClineHubServerOptions["sessionHub"];
+	if (endpoint !== undefined || authToken !== undefined) {
+		try {
+			const url = new URL(endpoint ?? "");
+			if (
+				!endpoint ||
+				!authToken?.trim() ||
+				!["ws:", "wss:"].includes(url.protocol) ||
+				url.username ||
+				url.password ||
+				url.search ||
+				url.hash
+			) {
+				throw new Error("Invalid connection");
+			}
+			sessionHub = { endpoint, authToken };
+		} catch {
+			throw new Error(
+				"The shared session hub requires an explicit WebSocket endpoint and a separate credential",
+			);
+		}
+	}
 	if (isNonLocalBindHost(host) && !roomSecret) {
 		throw new Error(
 			`ROOM_SECRET is required when HOST=${host}. Use HOST=127.0.0.1 for local-only development or set ROOM_SECRET before exposing this example on a LAN/tunnel.`,
@@ -87,6 +113,7 @@ export function resolveClineHubServerOptions(
 		publicUrl,
 		roomSecret,
 		workspaceRoot: env.WORKSPACE_ROOT?.trim() || process.cwd(),
+		...(sessionHub ? { sessionHub } : {}),
 	};
 }
 

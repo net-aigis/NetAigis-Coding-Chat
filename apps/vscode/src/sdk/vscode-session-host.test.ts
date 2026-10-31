@@ -11,7 +11,7 @@ vi.mock("@cline/core", async () => {
 })
 vi.mock("@/services/logging/distinctId", () => ({ getDistinctId: () => "distinct-id" }))
 vi.mock("@/core/storage/StateManager", () => ({
-	StateManager: { get: () => ({ getGlobalStateKey: () => undefined }) },
+	StateManager: { get: () => ({ getGlobalStateKey: () => undefined, getSecretKey: () => undefined }) },
 }))
 vi.mock("./vscode-runtime-builder", () => ({ createVscodeExtraTools: mockCreateVscodeExtraTools }))
 
@@ -53,14 +53,12 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks()
 		mockInnerStart.mockReset().mockResolvedValue({ sessionId: "core-task" })
-		mockClineCoreCreate
-			.mockReset()
-			.mockResolvedValue({
-				subscribe: () => () => {},
-				start: mockInnerStart,
-				stop: async () => {},
-				dispose: async () => {},
-			})
+		mockClineCoreCreate.mockReset().mockResolvedValue({
+			subscribe: () => () => {},
+			start: mockInnerStart,
+			stop: async () => {},
+			dispose: async () => {},
+		})
 		mockCreateVscodeExtraTools.mockReset().mockResolvedValue([])
 	})
 
@@ -73,6 +71,37 @@ describe("VscodeSessionHost telemetry wiring", () => {
 		expect(mockClineCoreCreate.mock.calls[0][0].prepare).toBeUndefined()
 		expect(mockInnerStart.mock.calls[0][0]).toMatchObject({ source: "vscode", config: { telemetry } })
 		await host.dispose()
+	})
+
+	it("uses the explicitly supplied shared runtime and preserves the session and provider configuration", async () => {
+		const sharedSessionHub = { endpoint: "ws://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
+		const requestToolApproval = vi.fn(async () => ({ approved: false }))
+		const host = await VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub, requestToolApproval })
+		await host.start(gitStartInput)
+		expect(mockClineCoreCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				backendMode: "remote",
+				remote: expect.objectContaining(sharedSessionHub),
+				capabilities: expect.objectContaining({ requestToolApproval }),
+			}),
+		)
+		expect(mockInnerStart.mock.calls[0][0].config).toMatchObject({
+			sessionId: gitStartInput.config.sessionId,
+			providerId: gitStartInput.config.providerId,
+			modelId: gitStartInput.config.modelId,
+		})
+		expect(mockInnerStart.mock.calls[0][0].config).not.toHaveProperty("authToken")
+		await host.dispose()
+	})
+
+	it("does not fall back to another runtime when the selected shared runtime fails", async () => {
+		const sharedSessionHub = { endpoint: "ws://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
+		mockClineCoreCreate.mockRejectedValueOnce(new Error("fixture runtime unavailable"))
+		await expect(VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub })).rejects.toThrow(
+			"fixture runtime unavailable",
+		)
+		expect(mockClineCoreCreate).toHaveBeenCalledOnce()
+		expect(mockClineCoreCreate.mock.calls[0][0].backendMode).toBe("remote")
 	})
 
 	it("preserves remote-config telemetry but uses host consent for Git", async () => {

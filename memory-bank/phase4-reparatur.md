@@ -446,3 +446,137 @@ statt. Vier geschützte/leer angelegte Root-.git-Markierungen und fünf
 Container-Git-Verweise ergaben keine normale Repository-Statusabfrage.
 Diese Grenzen schließen eine Aussage wie „alle Dateien inhaltlich geprüft“ aus.
 Keine Bereinigung ist freigegeben oder erfolgt.
+
+
+## Fortsetzung 31.10.2026 — gemeinsame Runtime und offene Fork-Identität
+
+Auf Benutzerbestätigung ist kein produktiver Session-Hub nachgewiesen.
+Die fehlende Bestandsinstallation ist keine Voraussetzung, erneut nach
+einem vorhandenen Endpunkt zu fragen: die noch fehlende Implementierung
+wird am vorhandenen Hub-/Browser-Code entwickelt. Port 11436 bleibt der
+Coding-Agent; kein produktiver Endpunkt, Prozess oder Datenpfad wurde
+umgedeutet, angelegt, umkonfiguriert oder neu gestartet. Andere Projekte
+wurden in dieser Fortsetzung nicht untersucht. Die Nachweise liegen weiter
+im bereits vorhandenen projektlokalen Phase-4-Prüfverzeichnis.
+
+### Verbindliche eigene Produktidentität
+
+[Eigener Pflichtauftrag und Kompatibilitätsanalyse](fork-identitaet.md)
+stehen nun ausdrücklich im Arbeitsstand und in AGENTS.md. Die Original-ID
+ist noch aktiv im Quellmanifest; weder der frühere Vorschlag noch eine neue
+Identität wurden eigenmächtig freigegeben. Forgejo-Repository-Metadaten,
+getrennte Upstream-/Fork-Release-Metadaten und der getestete Prepublish-
+Schutz verhindern versehentliches Paketieren des Originalprodukts über den
+vorgesehenen Einstieg. Finale Benennung, eigenes Versionsschema, praktische
+Migration, eigene Releases/VSIX und produktive Abnahme bleiben offen.
+
+### Implementierte gemeinsame Transportanbindung
+
+`VscodeSessionHost` akzeptiert eine ausdrücklich konfigurierte bestehende
+SDK-Hub-Verbindung. Sie wird im vorhandenen geschützten Secret-Store gehalten,
+außerhalb Modellkonfiguration und Proto-Secrets. Eine fehlende Auswahl erhält
+den bisherigen lokalen Modus; eine ungültige gespeicherte Auswahl oder ein
+Verbindungsfehler erstellt keinen lokalen Ersatz-Chat. Die Provider- und
+Modellkonfiguration und die bestehenden Werkzeugfreigabe-Callbacks bleiben
+erhalten. Der Test der Secret-Isolation prüft auch den neuen Hub-Schlüssel.
+Es wurden noch keine produktiven Verbindungseinstellungen geschrieben.
+
+Der Browser-Server kann denselben Hub ausdrücklich über
+`CLINE_SHARED_SESSION_HUB_ENDPOINT` und `CLINE_SHARED_SESSION_HUB_TOKEN`
+verwenden. Beide Werte sind reine Konfigurationsschnittstellen ohne
+vorgegebenen produktiven Wert; Tokens stehen nicht in URLs oder öffentlicher
+Browser-Konfiguration. In diesem Modus startet er keinen zusätzlichen Hub,
+fällt bei Fehlern nicht auf einen anderen zurück und darf den separat
+verwalteten Hub nicht per Browser-Button neu starten. Das verhindert zwei
+unabhängige Session-Runtimes bei ausdrücklich gemeinsamer Auswahl. Die
+bisherigen Standardpfade bleiben ohne Auswahl erhalten.
+
+### Tatsächlicher Live-Verlauf und sichere Browser-Auswahl
+
+Ein nachgewiesener Fehler im bisherigen Hub-Pfad: Core.readLiveMessages fiel
+über den Hub auf gespeicherte Nachrichten zurück. Der bestehende Command
+`session.messages` unterstützt deshalb ergänzend `live: true` und bestätigt
+`view: live` mit passender Session-ID. Der Handler liest dann die bereits
+vorhandene kanonische Runtime-Konversation. Ein Host ohne Live-Lesefunktion
+wird ausdrücklich abgewiesen; der neue Client verweigert auch eine alte
+Hub-Antwort, die den Wunsch ignoriert. Der bisherige Aufruf ohne `live` bleibt
+als gespeicherter Verlauf unverändert. Keine zweite Chat-Datenbank.
+
+Vor dem Lesen wird der bestehende Event-Stream abonniert, damit auch nach
+Hydrierung neue Zustände derselben Sitzung ankommen. Das startet/ersetzt
+keine Sitzung und übernimmt nicht die Identität des Tool-Capability-Owners.
+Der Browser prüft die existierende Sitzung, liest den aktuellen Verlauf und
+ändert seine Auswahl erst nach Erfolg. Lesefehler werden nicht mehr als
+leerer erfolgreicher Verlauf ausgegeben. Langsamere alte Auswahlvorgänge
+überschreiben keine neueren; Clear und Verbindungsabbau verwerfen ausstehende
+Hydrierungen. Die bestehende UI führt während Hydrierung eintreffende Live-
+Updates mit dem Verlauf zusammen.
+
+### Ausgeführte Tests und genaue Grenzen
+
+Rote Regressionen vor den jeweiligen Patches: VS-Code-Runtime-Auswahl 0/2;
+Live-Hub-Vertrag vier fehlgeschlagene neue Fälle (ein Kontrollfall bestanden);
+Browser-Hydrierung 0/3; Clear während Hydrierung 0/1; gemeinsame
+Browser-Endpunktauswahl und Lebenszyklus 0/7. Alle Logs bleiben erhalten.
+
+- `p3-live-core-accepted`: 53/53 bestanden. Darunter ein Test mit zwei echten
+  authentifizierten Loopback-WebSocket-Verbindungen, echtem Hub-Server und
+  einer ausdrücklich simulierten ausführenden Runtime. Beide Clients lesen
+  dieselbe bestehende ID und denselben aktuellen Verlauf mit unveränderten
+  Autorenmetadaten/unbekannter Werkzeugbeobachtung und erhalten Statusereignisse.
+  Nach bestätigtem Close des ersten Clients bleibt die andere Verbindung
+  lesbar; kein Start/Stop/Abort einer Ersatzsitzung. Kein produktives Modell.
+- `p3-live-browser-endpoint-green`: 23/23 bestanden, einschließlich
+  Endpunktauswahl, fehlender Ersatz-Runtime, Neustartverweigerung für externe
+  Runtime, Hydrierung, Clear und bestehender Nachrichten-/Event-Projektion.
+- `p3-live-vscode-config`: 35/35 bestanden; `p3-live-credential-isolation`:
+  Bun 2/2 bestanden.
+- `p4-fork-release-policy-direct`: 9/9 bestanden. Der aktuelle tatsächliche
+  Prepublish-Guard ist bewusst noch gesperrt, kein fehlgeschlagener Build.
+
+Damit 122 unterschiedliche gezielte Tests. Die Vorherläufe und Zwischenfehler
+werden nicht als zusätzliche Erfolge mitgezählt. Der erste Socket-Test
+verweigerte noch jede gespeicherte Verlaufsladung im ganzen Server; die
+unabhängige Suchindexierung liest sie berechtigterweise. Der korrigierte Test
+prüft die drei tatsächlich bestätigten Live-Antworten der Clients. Zwei
+Typfehler der neuen Socket-Fixture wurden korrigiert. SDK-Build sowie Core-,
+Browser-Server- und VS-Code-Typprüfung bestanden. Die Proto-Generierung
+erzeugte keine Schemaänderung für den privaten Hub-Schlüssel.
+
+### Verbindlich offen, kein Phase-4-Abschluss
+
+1. Authentifizierte Akteurzuordnung und kontrollierte Schreibübergabe
+   Friseer/jimmi an der gemeinsamen Runtime. Ein gemeinsamer Hub-Token bzw.
+   lesender Teilnehmerstatus ist noch keine Akteur- oder Writer-Autorisierung.
+2. Sichere Wiederaufnahme/Anbindung bereits bestehender lokaler Sitzungen
+   an diese Runtime, mit korrektem Werkzeugzustand, ohne Start eines zweiten
+   unabhängigen Verlaufs, ohne Verlust alter lokaler History und ohne
+   Umdeutung unbekannter Prozesse. Zuständigkeit aller Datei-/Terminal-
+   Capabilities am tatsächlichen Workspace-Host nachweisen.
+3. Durchgehende Recall-Archivierung und Retry/Provenienz beim Wechsel von
+   Clients und Akteuren mit bestätigter Session-ID testen. Keine Besitz-
+   oder Wiederherstellungserfolge aus einem gelesenen Archiv ableiten.
+4. Danach die noch offenen Coding-/Learning-Agent-Verträge, vollständige
+   Regression und Android Ende-zu-Ende mit der eigenen produktiven
+   Modell-/Dienstkombination abnehmen. Der Transport-Fixture-Test ersetzt
+   weder eine reale Android-Prüfung noch die produktive 125B-Abnahme.
+5. Eigene Identitätsmigration/Versionierung entsprechend gesonderter
+   Namensentscheidung und anschließend die bereits beauftragte Phase 6
+   (Sicherung/Rückfall/produktive Installation nach Abnahme).
+
+Kein neuer Watchdog in Cline. Unabhängige Überwachung bleibt der getrennte
+Acer-Infrastrukturauftrag. Keine Installation, keine produktive Dienständerung.
+
+Die Identitäts-/Release-Schutzkorrektur ist in `8b85d65e1` getrennt committed.
+Die Veröffentlichungssperre ist ein konkreter Schutz des noch offenen
+Benutzerauftrags, keine eigenmächtige Wahl von Publisher, Produktname oder
+Fork-Version. Der spätere Phase-6-Installationsauftrag bleibt erhalten; es
+wird keine zusätzliche Installationsfreigabe über die bereits vereinbarten
+Abnahme-/Rückfallbedingungen hinaus erfunden.
+
+Für die gemeinsamen Transport-Einstellungen sind außerdem vor produktiver
+Nutzung noch die Bedienung/Konfiguration beim Wechsel einer bereits offenen
+Extension und die Zuordnung lokaler gegenüber gemeinsamer Session-History
+zu vervollständigen. Die bisherige lokale Sitzung wird nicht automatisch
+auf eine entfernte Runtime verschoben. Die getrennte Actor-/Writer-Aufgabe
+ist durch ein erfolgreiches Beobachter-Attach ausdrücklich nicht erledigt.

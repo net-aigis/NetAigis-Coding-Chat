@@ -254,6 +254,7 @@ export async function startClineHubDashboardServer(): Promise<ClineHubDashboardS
 			},
 			close(socket) {
 				const peer = socket.data;
+				peer.selectionGeneration = (peer.selectionGeneration ?? 0) + 1;
 				peer.unsubscribeEvents?.();
 				ctx.peers.delete(peer);
 				rejectOrphanedApprovals(ctx);

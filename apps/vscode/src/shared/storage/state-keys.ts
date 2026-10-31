@@ -324,6 +324,8 @@ export const TOTAL_RECALL_SECRET_KEYS = [
 	"netaigis-recall_migration_v1",
 ] as const
 
+export const SHARED_SESSION_SECRET_KEYS = ["shared-session-hub_connection"] as const
+
 // Secret keys used in Api Configuration
 const SECRETS_KEYS = [
 	"apiKey",
@@ -425,7 +427,7 @@ const ApiHandlerSettingsKeysSet = new Set(Object.keys(API_HANDLER_SETTINGS_FIELD
 // Integration credentials share the protected store, but are deliberately
 // excluded from model API configuration and generated wire Secrets messages.
 export const ApiSecretKeys = Array.from(SECRETS_KEYS)
-export const SecretKeys = [...SECRETS_KEYS, ...TOTAL_RECALL_SECRET_KEYS]
+export const SecretKeys = [...SECRETS_KEYS, ...TOTAL_RECALL_SECRET_KEYS, ...SHARED_SESSION_SECRET_KEYS]
 export const SettingsKeys = Array.from(SettingsKeysSet) as (keyof Settings)[]
 export const ApiHandlerSettingsKeys = Array.from(ApiHandlerSettingsKeysSet) as (keyof ApiHandlerOptionSettings)[]
 export const GlobalStateAndSettingKeys = Array.from(GlobalStateAndSettingsKeySet) as GlobalStateAndSettingsKey[]

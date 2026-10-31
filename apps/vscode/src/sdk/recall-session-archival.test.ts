@@ -35,7 +35,9 @@ vi.mock("@cline/core", async (original) => ({
 	},
 }))
 vi.mock("@/services/logging/distinctId", () => ({ getDistinctId: () => "fixture-id" }))
-vi.mock("@/core/storage/StateManager", () => ({ StateManager: { get: () => ({ getGlobalStateKey: () => undefined }) } }))
+vi.mock("@/core/storage/StateManager", () => ({
+	StateManager: { get: () => ({ getGlobalStateKey: () => undefined, getSecretKey: () => undefined }) },
+}))
 vi.mock("./vscode-runtime-builder", () => ({ createVscodeExtraTools: async () => [] }))
 vi.mock("./recall-config-manager", () => ({ getRecallConfiguration: async () => mocks.config }))
 vi.mock("./recall-outbox", () => ({

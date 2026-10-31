@@ -56,6 +56,8 @@ export type BrowserPeer = {
 	socket: Bun.ServerWebSocket<BrowserPeer>;
 	displayName: string;
 	selectedSessionId?: string;
+	/** Latest browser selection owns hydration; an older read cannot replace it. */
+	selectionGeneration?: number;
 	unsubscribeEvents?: () => void;
 	sending: boolean;
 };

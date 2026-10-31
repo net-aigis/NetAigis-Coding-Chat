@@ -176,13 +176,8 @@ async function loadHistoryFor(
 	ctx: HubContext,
 	sessionId: string,
 ): Promise<unknown[]> {
-	if (!ctx.cline) return [];
-	try {
-		return (await ctx.cline.readMessages(sessionId)) as unknown[];
-	} catch (error) {
-		console.warn(`readMessages(${sessionId}) failed:`, error);
-		return [];
-	}
+	if (!ctx.cline) throw new Error("Hub is not connected.");
+	return ctx.cline.readLiveMessages(sessionId);
 }
 
 export async function selectSession(
@@ -190,9 +185,18 @@ export async function selectSession(
 	peer: BrowserPeer,
 	sessionId: string,
 ): Promise<void> {
-	peer.selectedSessionId = sessionId;
-	const tracked = ctx.sessions.get(sessionId);
+	const generation = (peer.selectionGeneration ?? 0) + 1;
+	peer.selectionGeneration = generation;
+	if (!ctx.cline) throw new Error("Hub is not connected.");
+	const record = await ctx.cline.get(sessionId);
+	if (peer.selectionGeneration !== generation) return;
+	if (!record)
+		throw new Error("The selected session does not exist in this runtime.");
 	const history = await loadHistoryFor(ctx, sessionId);
+	if (peer.selectionGeneration !== generation) return;
+	const tracked = trackSession(record);
+	if (tracked) ctx.sessions.set(sessionId, tracked);
+	peer.selectedSessionId = sessionId;
 	ctx.send(peer, { type: "session_started", sessionId });
 	ctx.send(peer, {
 		type: "session_hydrated",
@@ -308,6 +312,7 @@ export async function resetPeer(
 	ctx: HubContext,
 	peer: BrowserPeer,
 ): Promise<void> {
+	peer.selectionGeneration = (peer.selectionGeneration ?? 0) + 1;
 	if (peer.selectedSessionId) {
 		rejectPendingApprovalsForSession(
 			ctx,

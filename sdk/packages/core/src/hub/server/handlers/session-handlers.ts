@@ -1029,6 +1029,17 @@ export async function handleSessionMessages(
 			`Unknown session: ${sessionId}`,
 		);
 	}
+	if (envelope.payload?.live === true) {
+		if (!ctx.sessionHost.readLiveSessionMessages) {
+			return errorReply(
+				envelope,
+				"live_history_unavailable",
+				"This runtime cannot confirm the live conversation",
+			);
+		}
+		const messages = await ctx.sessionHost.readLiveSessionMessages(sessionId);
+		return okReply(envelope, { sessionId, messages, view: "live" });
+	}
 	const messages = await ctx.sessionHost.readSessionMessages(sessionId);
 	return okReply(envelope, { sessionId, messages });
 }

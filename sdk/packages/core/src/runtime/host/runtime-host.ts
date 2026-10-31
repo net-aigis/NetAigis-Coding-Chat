@@ -441,7 +441,8 @@ export interface RuntimeHost {
 	 * flush), so this is the accurate read for callers that need the
 	 * conversation of an in-flight or just-aborted turn — e.g. rebuilding a
 	 * session for a mode switch. Optional: hosts without live-session access
-	 * (e.g. hub clients) fall back to the persisted transcript.
+	 * fall back to the persisted transcript. Hub clients use the explicit
+	 * live-history protocol and reject an unconfirmed persisted response.
 	 */
 	readLiveSessionMessages?(
 		sessionId: string,
