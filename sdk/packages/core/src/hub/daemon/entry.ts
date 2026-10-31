@@ -16,6 +16,7 @@ import {
 	setActiveConnectorSupervisor,
 } from "../../services/connectors/connector-supervisor";
 import { reconnectDaemonConnectors } from "../../services/connectors/daemon-connector-reconnect";
+import { readRuntimeRecallConfiguration } from "../../services/recall-runtime-configuration";
 import { createLocalHubScheduleRuntimeHandlers } from "../daemon/runtime-handlers";
 import { resolveHubEndpointOptions } from "../discovery/defaults";
 import {
@@ -267,6 +268,7 @@ async function main(): Promise<void> {
 	let server: Awaited<ReturnType<typeof startHubWebSocketServer>>;
 	try {
 		server = await startHubWebSocketServerWithBindRetry(bindDeadline, {
+			recall: readRuntimeRecallConfiguration(),
 			actorTokens: await readProtectedActorTokens(
 				process.env.CLINE_HUB_ACTOR_TOKENS_FILE,
 			),

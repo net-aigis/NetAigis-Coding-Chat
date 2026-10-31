@@ -119,20 +119,18 @@ export function setModelToolEnabledGlobally(name: ModelToolName, enabled: boolea
 }
 
 export {
-	CommandExitError,
 	CommandAbortError,
 	CommandCompletionUnknownError,
+	CommandExitError,
 	CommandNotStartedError,
-	CommandTimeoutError,
 	CommandSpawnError,
 	CommandTerminationError,
+	CommandTimeoutError,
 } from "../../../../sdk/packages/core/src/extensions/tools/executors/bash"
 
 export function createShellExecutor() {
 	return async () => ""
 }
-// Opt-in for integration regressions that must observe real child processes.
-export { createShellExecutor as createProcessShellExecutor } from "../../../../sdk/packages/core/src/extensions/tools/executors/bash"
 
 export { augmentMcpTimeoutError } from "../../../../sdk/packages/core/src/extensions/mcp/timeout"
 // The real createShellTool, so tests exercise the actual description
@@ -148,6 +146,8 @@ export {
 	type PatchFileChange,
 } from "../../../../sdk/packages/core/src/extensions/tools/executors/apply-patch"
 export { PATCH_MARKERS, PatchActionType } from "../../../../sdk/packages/core/src/extensions/tools/executors/apply-patch-parser"
+// Opt-in for integration regressions that must observe real child processes.
+export { createShellExecutor as createProcessShellExecutor } from "../../../../sdk/packages/core/src/extensions/tools/executors/bash"
 export { createEditorExecutor } from "../../../../sdk/packages/core/src/extensions/tools/executors/editor"
 export type { EditFileInput } from "../../../../sdk/packages/core/src/extensions/tools/schemas"
 export type { ApplyPatchExecutor, EditorExecutor, ToolExecutors } from "../../../../sdk/packages/core/src/extensions/tools/types"
@@ -544,4 +544,6 @@ export async function loginOpenAICodex(): Promise<OAuthCredentials> {
 	return {}
 }
 
+// The actual outbox implementation is shared with the runtime, not replaced by a fixture.
+export { DurableRecallOutbox, getRecallSessionId } from "../../../../sdk/packages/core/src/services/recall-outbox"
 export { resolveMessageDisplayRole } from "../../../../sdk/packages/core/src/session/user-run-messages"

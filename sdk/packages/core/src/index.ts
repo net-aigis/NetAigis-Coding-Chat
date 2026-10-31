@@ -1142,6 +1142,13 @@ export type {
 	RegisterModelInput,
 	RegisterProviderInput,
 } from "./services/llms/runtime-types";
+export {
+	DurableRecallOutbox,
+	getRecallSessionId,
+	type RecallConfiguration,
+	type RecallDrainResult,
+	type RecallEvent,
+} from "./services/recall-outbox";
 export { SKILLS_CLI_PACKAGE, SKILLS_CLI_VERSION } from "./services/skills-cli";
 export {
 	TelemetryService,

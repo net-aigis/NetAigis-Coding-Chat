@@ -409,6 +409,8 @@ export interface RuntimeHost {
 	startSession(input: StartSessionInput): Promise<StartSessionResult>;
 	runTurn(input: SendSessionInput): Promise<AgentResult | undefined>;
 	getAuthenticatedActorId?(): string | undefined;
+	/** Runtime-owned archival is advertised only by a configured authoritative Hub. */
+	getRecallArchiveStatus?(): Promise<{ configured: boolean }>;
 	getSessionControl?(
 		sessionId: string,
 	): Promise<import("../../hub/session-control").SessionWriterControl>;

@@ -189,3 +189,12 @@ Umstellung Auswirkungen auf Extension-Daten, Sitzungen, Einstellungen,
 Secrets und Migration anhand des tatsächlichen Codes prüfen. Konkrete
 Probleme mit Nachweis benennen; keine alternative Identität eigenmächtig
 festlegen. Acer-Backend unverändert. Keine Phasen/Projektarbeiten wiederholen.
+
+
+## Verbindliche Gesamtkorrektur — 31.10.2026
+
+Durchgängig am Gesamtauftrag weiterarbeiten, ohne bereits abgeschlossene Phasen/Prüfungen zu wiederholen. Zwischenstände, Commits und Einzeltests sind keine Endpunkte. Keine vorzeitige Unterbrechung der Funktionsentwicklung zugunsten einer VSIX. Ziel bleibt der vollständig produktiv nutzbare eigene Fork **NetAigis Coding Chat**, `netaigis.netaigis-coding-chat`, `0.1.0` (technische Identität/Migration in `3ab2376e6`, vorhandene Grenzen beachten). Bestehende Entscheidungen und alle bisherigen Arbeiten erhalten.
+
+Noch offene Integration: Terminal-/Prozess-/Schleifenzustände nach nachgewiesenen weiteren Fehlern vervollständigen; lokale und gemeinsame bestehende Sitzungen übernehmen; authentifizierte Friseer/jimmi-Schreibübergabe erhalten; Recall durchgehend archivieren/wiederaufnehmen; vorhandenen Coding-Agent und Learning-Agent auf Acer integrieren. Den unabhängigen technischen Watchdog jetzt als **separaten Acer-Dienst**, außerhalb von Cline und getrennt von beiden Agenten, umsetzen. Keine KI-Selbstüberwachung in Cline. Dieselbe laufende Sitzung in VS Code und auf Android mit dem vorhandenen 125B-Modell tatsächlich Ende-zu-Ende prüfen.
+
+Danach erst fertige eigene VSIX, Regression/Abnahme, verifizierter Rückfall und produktiver Rollout. Für jeden noch nicht genehmigten produktiven Eingriff unmittelbar davor gezielte Freigabe einholen. Produktive Identitätsmigration weiterhin nur mit belegter Wiederherstellbarkeit und ausdrücklicher Freigabe. Keine fremden Projekte und keine willkürlichen neuen Ablagen. Nach technischen Unterbrechungen anhand dieser vorhandenen Projektdokumentation fortsetzen; nur bei einem echten nicht selbst lösbaren Blocker anhalten.

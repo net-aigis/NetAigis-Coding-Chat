@@ -101,6 +101,9 @@ export type {
 export class ClineCore {
 	readonly clientName: string | undefined;
 	readonly runtimeAddress: string | undefined;
+	async getRecallArchiveStatus(): Promise<{ configured: boolean }> {
+		return this.host.getRecallArchiveStatus?.() ?? { configured: false };
+	}
 	readonly automation: ClineCoreAutomationApi;
 	readonly settings: ClineCoreSettingsApi;
 	readonly pluginCommands: PluginCommandsApi;

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 	stopReplay: vi.fn(),
 	startReplay: vi.fn(),
 	unsubscribe: vi.fn(),
+	ownership: vi.fn(async () => ({ configured: false })),
 	config: {
 		baseUrl: "http://recall-fixture.invalid",
 		token: "fixture-token",
@@ -30,6 +31,7 @@ vi.mock("@cline/core", async (original) => ({
 				}
 			},
 			dispose: () => mocks.dispose(),
+			getRecallArchiveStatus: () => mocks.ownership(),
 			readLiveMessages: (...args: unknown[]) => mocks.messages(...(args as [])),
 		}),
 	},
@@ -52,9 +54,32 @@ vi.mock("./recall-outbox", () => ({
 beforeEach(() => {
 	vi.clearAllMocks()
 	mocks.listeners.clear()
+	mocks.ownership.mockResolvedValue({ configured: false })
 })
 
 describe("TOTAL RECALL runtime event subscription", () => {
+	const sharedSessionHub = { endpoint: "ws://127.0.0.1:12345", authToken: "fixture-hub-token" }
+	it("leaves archival to the owning runtime while still delivering UI events", async () => {
+		mocks.ownership.mockResolvedValueOnce({ configured: true })
+		const host = await VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub })
+		const ui = vi.fn()
+		host.subscribe(ui)
+		const event: CoreSessionEvent = { type: "status", payload: { sessionId: "same-session", status: "running" } }
+		for (const listener of mocks.listeners) listener(event)
+		expect(mocks.ownership).toHaveBeenCalledOnce()
+		expect(ui).toHaveBeenCalledExactlyOnceWith(event)
+		expect(mocks.archive).not.toHaveBeenCalled()
+		await host.dispose()
+	})
+
+	it("fails closed on a failed shared-runtime ownership query without starting a local archive", async () => {
+		mocks.ownership.mockRejectedValueOnce(new Error("hub disconnected"))
+		await expect(VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub })).rejects.toThrow("hub disconnected")
+		expect(mocks.dispose).toHaveBeenCalledOnce()
+		expect(mocks.startReplay).not.toHaveBeenCalled()
+		expect(mocks.listeners.size).toBe(0)
+	})
+
 	it("archives each Core event once, independently of the number of UI subscribers", async () => {
 		const host = await VscodeSessionHost.create({ mcpHub: {} as never })
 		const first = vi.fn(),

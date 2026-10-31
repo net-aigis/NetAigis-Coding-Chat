@@ -9,6 +9,7 @@ import type {
 	PendingPromptsRuntimeService,
 	RuntimeHost,
 } from "../../runtime/host/runtime-host";
+import type { RuntimeRecallArchiveOptions } from "../../services/recall-runtime-archive";
 import type { SessionHistorySearchOptions } from "../../session/search";
 import type { CoreSettingsService } from "../../settings";
 import type { AgendaTaskManagerOptions } from "../../tasks";
@@ -18,6 +19,8 @@ import type { HubEventLogOptions } from "./hub-event-log";
 import type { HubRunQueueOptions } from "./hub-run-queue";
 
 export interface HubWebSocketServerOptions {
+	/** Optional existing Recall API/outbox configuration; the runtime owns archival independently of clients. */
+	recall?: RuntimeRecallArchiveOptions;
 	/** Protected actor-to-token mapping. Presence enables authenticated writer controls. */
 	actorTokens?: Readonly<Record<string, string>>;
 	/** Override cloud credentials/controller construction for embedded hubs. */

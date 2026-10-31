@@ -31,6 +31,7 @@ import type {
 	RuntimeHost,
 } from "../../runtime/host/runtime-host";
 import type { PluginCommandsRuntimeService } from "../../services/plugin-command-api";
+import { RuntimeRecallArchive } from "../../services/recall-runtime-archive";
 import { SqliteSessionStore } from "../../services/storage/sqlite-session-store";
 import { ensureAgentSchedulesWorkspace } from "../../services/workspace/agent-schedules-workspace";
 import { withSessionHistoryOriginMetadata } from "../../session/history-origin";
@@ -305,6 +306,7 @@ export class HubServerTransport implements NativeHubTransport {
 	private readonly pendingPluginCommands = new Set<Promise<unknown>>();
 	private readonly plugins: PluginRegistry = getProcessPluginRegistry();
 	private unsubscribePluginStatus?: () => void;
+	private readonly recallArchive?: RuntimeRecallArchive;
 
 	private readonly cloud: HubCloudSessionService;
 
@@ -504,7 +506,14 @@ export class HubServerTransport implements NativeHubTransport {
 				telemetry: options.telemetry,
 			});
 		}
+		if (options.recall) {
+			this.recallArchive = new RuntimeRecallArchive(
+				this.sessionHost,
+				options.recall,
+			);
+		}
 		this.sessionHost.subscribe((event: CoreSessionEvent) => {
+			this.recallArchive?.observe(event);
 			void projectSessionEvent(this.ctx, event).catch((error) => {
 				logHubBoundaryError("session event handling failed", error);
 				captureSdkError(this.options.telemetry, {
@@ -682,6 +691,7 @@ export class HubServerTransport implements NativeHubTransport {
 	}
 
 	async start(): Promise<void> {
+		await this.recallArchive?.start();
 		this.sessionSearch.start();
 		await this.tasks.start();
 		await this.schedules.start();
@@ -788,6 +798,7 @@ export class HubServerTransport implements NativeHubTransport {
 		await this.sessionSearch.dispose();
 		await this.tasks.dispose();
 		await this.sessionHost.dispose("hub_server_stop");
+		await this.recallArchive?.stop();
 		await this.schedules.dispose();
 		if (this.cronService) {
 			try {
@@ -1301,6 +1312,7 @@ export class HubServerTransport implements NativeHubTransport {
 		}
 		return {
 			hubId: this.hubId,
+			recall: this.recallArchive?.status() ?? { configured: false },
 			draining: this.draining,
 			activeRpcTurns,
 			activeCloudCommands: this.cloud.activeCommands,

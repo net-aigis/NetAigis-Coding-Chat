@@ -114,6 +114,7 @@ export class VscodeSessionHost implements SdkSessionHost {
 		inner: ClineCore,
 		prepareStartSessionInput: (input: ClineCoreStartInput) => Promise<ClineCoreStartInput>,
 		options: VscodeSessionHostOptions,
+		runtimeOwnsRecall = false,
 	) {
 		this.inner = inner
 		this.runtimeAddress = inner.runtimeAddress
@@ -121,36 +122,40 @@ export class VscodeSessionHost implements SdkSessionHost {
 		this.gitTelemetry = new VscodeGitTelemetryManager(options.telemetry)
 		this.stopRecallReplay = startRecallOutbox(getRecallConfiguration)
 		// One journal subscription per host, independent of UI subscriptions.
-		this.unsubscribeRecall = inner.subscribe((event) => {
-			const config = getRecallConfiguration()
-			// Core notifications deliberately omit messages. Capture the canonical
-			// transcript explicitly; the journal is not a substitute chat history.
-			const captured = config.then((configuration) =>
-				event.type === "session_snapshot" && configuration?.enabled
-					? inner
-							.readLiveMessages(event.payload.sessionId)
-							.then(
-								(messages): CoreSessionEvent => ({
-									...event,
-									payload: { ...event.payload, snapshot: { ...event.payload.snapshot, messages } },
-								}),
-							)
-							.catch(() => {
-								Logger.error("[TOTAL RECALL] Snapshot transcript unavailable; no empty replacement was generated")
-								return event
-							})
-					: event,
-			)
-			// Keep notification order even if an earlier transcript read is slower.
-			this.recallCapture = this.recallCapture
-				.then(async () => {
-					const [record, configuration] = await Promise.all([captured, config])
-					void archiveSdkEvent(record, configuration).catch(() =>
-						Logger.error("[TOTAL RECALL] Event staging failed; canonical session history is retained"),
+		this.unsubscribeRecall = runtimeOwnsRecall
+			? () => {}
+			: inner.subscribe((event) => {
+					const config = getRecallConfiguration()
+					// Core notifications deliberately omit messages. Capture the canonical
+					// transcript explicitly; the journal is not a substitute chat history.
+					const captured = config.then((configuration) =>
+						event.type === "session_snapshot" && configuration?.enabled
+							? inner
+									.readLiveMessages(event.payload.sessionId)
+									.then(
+										(messages): CoreSessionEvent => ({
+											...event,
+											payload: { ...event.payload, snapshot: { ...event.payload.snapshot, messages } },
+										}),
+									)
+									.catch(() => {
+										Logger.error(
+											"[TOTAL RECALL] Snapshot transcript unavailable; no empty replacement was generated",
+										)
+										return event
+									})
+							: event,
 					)
+					// Keep notification order even if an earlier transcript read is slower.
+					this.recallCapture = this.recallCapture
+						.then(async () => {
+							const [record, configuration] = await Promise.all([captured, config])
+							void archiveSdkEvent(record, configuration).catch(() =>
+								Logger.error("[TOTAL RECALL] Event staging failed; canonical session history is retained"),
+							)
+						})
+						.catch(() => Logger.error("[TOTAL RECALL] Configuration unavailable for archival"))
 				})
-				.catch(() => Logger.error("[TOTAL RECALL] Configuration unavailable for archival"))
-		})
 	}
 	updateSessionModel?(sessionId: string, modelId: string): Promise<void> {
 		return this.inner.updateSessionModel(sessionId, modelId)
@@ -241,7 +246,13 @@ export class VscodeSessionHost implements SdkSessionHost {
 		if (options.getTerminalManager) {
 			Logger.log("[VscodeSessionHost] SDK run_commands suppressed; using custom foreground/background terminal tool")
 		}
-		return new VscodeSessionHost(inner, prepareStartSessionInput, options)
+		try {
+			const runtimeOwnsRecall = sharedSessionHub ? (await inner.getRecallArchiveStatus?.())?.configured === true : false
+			return new VscodeSessionHost(inner, prepareStartSessionInput, options, runtimeOwnsRecall)
+		} catch (error) {
+			await inner.dispose("recall_ownership_verification_failed")
+			throw error
+		}
 	}
 
 	async start(input: StartSessionInput): Promise<StartSessionResult>

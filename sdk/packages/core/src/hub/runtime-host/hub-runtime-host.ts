@@ -1624,6 +1624,17 @@ export class HubRuntimeHost implements RuntimeHost {
 			: [];
 	}
 
+	async getRecallArchiveStatus(): Promise<{ configured: boolean }> {
+		const reply = await this.client.command("hub.status", {});
+		if (!reply.ok)
+			throw new Error("Runtime Recall ownership could not be verified");
+		return {
+			configured:
+				(reply.payload?.recall as { configured?: unknown } | undefined)
+					?.configured === true,
+		};
+	}
+
 	async readLiveSessionMessages(
 		sessionId: string,
 	): Promise<import("@cline/llms").MessageWithMetadata[]> {
