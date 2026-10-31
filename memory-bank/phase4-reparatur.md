@@ -2121,3 +2121,149 @@ Sicherungen oder Tests. Listen-SHA256:
 77db857befc9765d66fc8e6c6d745a85b9d7bee72bc8b7d74b96f8dca98574f5.
 Reparatur-Arbeitsstand vollständig committet; die zwölf bereits vorhandenen
 unversionierten Altartefakte bleiben erhalten und ungestaged. Kein Push.
+
+### Acer-Root-Nachweis erhalten; geprüfter Anwendungsschritt wartet auf Freigabe
+
+Am 31.10.2026 ist der angefragte Root-Prüflauf durch den Betreiber ausgeführt
+worden. Keine neue Sicherung angefordert und keine Phase neu begonnen.
+Vorhandener Root-Sicherungsordner:
+/root/netaigis-recall-backups/phase2-20261030T165000Z/phase4-ollama-adapter-preflight.
+Gemeldete SHA256-Werte:
+
+- Manifest: 2e70f16496d30d3c2eac5308e59b366ee36ba8137ba47f90329c51bec9cbad83.
+- Archiv: a6bbd6a964f89050b30bb0ece1071f844f6b9fc49ab2b5112ffc9ea11a640af3.
+- Original: cdf5d6768d8fffb9e3d1d0f4b08db9784a5ce5b432003f4cf16d4f3a970c8b81.
+
+Der Betreiberlauf meldet tatsächliche Wiederherstellung, Eigentümer-/Modus-/
+mtime-/xattr-Vergleich sowie unveränderte Quelle/Dienste und keinen Modellaufruf.
+Alle drei Hashformate lokal geprüft; die exakte Manifestrekonstruktion aus den
+gemeldeten Feldern ergibt denselben Manifesthash. Nachweis gespeichert unter
+logs/p4-acer-root-preflight-operator-receipt.json im vorhandenen privaten
+Prüfverzeichnis. Die Root-Dateien wurden durch diesen Betreiberlauf geprüft,
+nicht durch einen behaupteten eigenen Root-Zugriff. Die Meldung enthält keine
+Freigabe für produktiven Modulwechsel oder Dienststeuerung.
+
+sdk/scripts/netaigis-coding-agent-adapter-maintenance.py bereitet den nächsten
+konkreten Schritt vor. Standardaktion inspect ist ausschließlich lesend. Der
+Kandidat setzt nur die bereits geprüften Änderungen für Anforderungslänge und
+Abschlussgründe in native_request/completion/sse_stream um. Keine Modell-,
+Endpunkt-, Routing-, Dienstidentitäts- oder Konfigurationsentscheidung geändert.
+Kombinations-SHA256 unverändert:
+307497023baea81eabda77d96045c81fecc605a296748dc0ad163f7e01c4ffd9.
+
+p4-acer-maintenance-builder-readonly.json: der neue exakte In-Memory-Bauer wurde
+gegen das tatsächliche aktuelle Acer-Modul geprüft; Original/Kandidat entsprechen
+genau den obigen Hashes. Privater Quelltext bleibt auf Acer, kein Kandidat dort
+gespeichert, keine Modell- oder Dienstaktion. Die bisherigen zehn Funktionsfälle
+des bytegleichen Kandidaten werden nicht unnötig wiederholt.
+
+Neue Wartungs-/Rückfallprüfungen mit tatsächlichem Dateiaustausch in privaten
+lokalen Fixtures und simuliertem Dienstcontroller:
+p4-acer-adapter-maintenance-fixtures 13/15: zwei Metadatenfehler reproduziert,
+weil ein gepufferter Flush nach utime den Originalzeitstempel überschrieb.
+Flush erfolgt nun vor Metadatenübernahme; p4-acer-adapter-maintenance-metadata
+16/16 bestanden. p4-acer-adapter-maintenance-rollback-guards 19/20: zwei
+Erweiterungszeilen des xattr-Tests waren versehentlich im folgenden Test gelandet;
+korrekt zurückgeordnet, keine Assertion entfernt. Danach
+p4-acer-adapter-maintenance-isolation 21/21 und abschließend
+p4-acer-adapter-maintenance-typed-hooks **23/23**, keine Skips, bestanden.
+Geprüft: echte Byte-/mtime-/Modus-/xattr-Rücknahme, Fehler nach atomarem Rename,
+ungesunder Kandidat, manuelle Rücknahme trotz ungesundem Kandidaten, aktive
+Verbindungen, fehlende Wartungsbestätigung, wiederholte Anwendung, geänderte
+Quell-/Sicherungsdateien, Symlinks und unbekannte Weitergabe/Hooks. Das ist noch
+kein produktiver Dienstneustart oder Modelltest. Das Archiv in den neuen
+Transaktionsfixtures ist ausdrücklich synthetisch; die echte tar-Wiederherstellung
+ist im vorhandenen Preflight und im Betreiberlauf separat belegt.
+
+Aktuelle lesende Acer-Prüfungen für den vorgesehenen Operationsumfang:
+p4-acer-coding-stop-scope-readonly und -all-readonly liefern leere Weitergaben,
+blenden aber trotz --all vier leere Exec-Hook-Arrays aus. Dies wird nicht als
+Vollnachweis ausgegeben. p4-acer-coding-hooks-dbus-readonly prüft dieselben
+Eigenschaften typisiert über systemd-D-Bus: alle vier Arrays tatsächlich leer.
+Der Wartungscontroller verwendet diesen typisierten Nachweis, falls systemctl
+die Felder auslässt. p4-acer-maintenance-controller-readonly bestätigt den
+tatsächlichen neuen Lesepfad, keine Stop-Weitergabe/Start- oder Stop-Hooks und
+die aktuelle Verbindungsprüfung. Coding-Agent weiterhin PID 671914,
+InvocationID 7e7e3c2ae9ba4761911394b27adf0871, kein Neustart vorgenommen.
+Die Verbindungsprüfung ersetzt keinen Auftragszähler: frei von laufenden
+Aufträgen, neuer Nutzung und parallelem Modellwechsel muss das freigegebene
+Wartungsfenster zusätzlich durch den Betreiber bestätigt sein.
+
+Der zur Freigabe vorgelegte produktive Umfang ist genau:
+
+1. Root-Artefakte, Prüfliste, unveränderte Originalquelle und Kandidat erneut
+   prüfen; bestehende Sicherungen niemals überschreiben.
+2. Bestätigtes ruhendes Wartungsfenster, gesunder Ausgangsdienst, keine bekannten
+   aktiven TCP-Verbindungen und keine unbewerteten Stop-Weitergaben/Hooks verlangen.
+3. Ausschließlich netaigis-coding-agent.service stoppen und inaktiv/PID 0 bestätigen.
+4. Ausschließlich /opt/netaigis-coding-agent/ollama_adapter.py atomar ersetzen,
+   Eigentümer/Modus/xattrs erhalten; keine Konfiguration ändern.
+5. Ausschließlich denselben Coding-Agent starten, systemd-Status und HTTP-200-
+   Health mit begrenztem Startzeitbudget prüfen; sechs bestehende Konfigurations-
+   und Unitdateien auf identische Bytes prüfen. Kein Modellaufruf im Wartungslauf.
+6. Bei Fehlern nur den gesicherten Originalstand wiederherstellen und denselben
+   Dienst starten; bei unbekannten konkurrierenden Änderungen nicht überschreiben.
+   Schlägt auch der Rückfall fehl, abbrechen und manuelle Klärung melden.
+
+Die neue Anwendung quittiert stages ausschließlich in application.jsonl bzw.
+rollback.jsonl (0600) unter dem vorhandenen Root-Preflight-Ordner. Ein bereits
+vorhandenes Journal wird nicht überschrieben. Für Prozessabbruch/Stromausfall
+bleibt die explizite Aktion rollback verfügbar; es wird keine automatische
+Rücknahme ohne laufenden Wartungsprozess behauptet. Andere Dienste einschließlich
+Learning-Agent, Recall, Modellrouter und Modell werden nicht gesteuert.
+
+### Bedienbefehl für den geprüften Acer-Wartungsschritt
+
+Im Benutzerterminal auf 440G5suse ausführen. Voreinstellung inspect ist lesend.
+Erst nach ausdrücklicher Freigabe und bestätigtem ruhendem Wartungsfenster action
+auf apply und maintenance_confirmed auf True setzen. Für einen freigegebenen
+Rückfall action=rollback. Benötigte sudo-Eingabe ausschließlich im Terminal.
+Die öffentlichen Skripte werden mit SHA256 festgelegt und nur im Speicher auf
+Acer ausgeführt; keine zusätzlichen Werkzeugdateien dort installiert.
+
+```sh
+python3 - <<'PY'
+from pathlib import Path
+import base64, hashlib, json, shlex, subprocess
+action = 'inspect'
+maintenance_confirmed = False
+root = Path('/home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts')
+names = {
+    'maintenance': 'netaigis-coding-agent-adapter-maintenance.py',
+    'finish': 'netaigis-coding-agent-finish-reason.py',
+    'patch': 'netaigis-coding-agent-token-limit.patch',
+}
+expected = {
+    'maintenance': '57764515ba8233a0a853a0bffdd01c548e43785de3254c05a687081d19a8d311',
+    'finish': 'ef0742af72db0418c70282a6227aff77f2db82ea5718e869cefdb5f6dc78cba2',
+    'patch': '4607e260ddd664af584d8097cb4ba7e8f7214e0ac6b82760ab706d169b697be9',
+}
+files = {key: (root / name).read_bytes() for key, name in names.items()}
+if any(hashlib.sha256(value).hexdigest() != expected[key] for key, value in files.items()):
+    raise SystemExit('Pruefskripte geaendert; nicht als Root ausfuehren')
+if action not in ('inspect', 'apply', 'rollback'):
+    raise SystemExit('Unbekannte Aktion')
+arguments = [action] + (['--maintenance-confirmed'] if maintenance_confirmed else [])
+bundle = base64.b64encode(json.dumps({
+    'code': files['maintenance'].decode(),
+    'assets': {key: files[key].decode() for key in ('finish', 'patch')},
+}).encode()).decode()
+loader = ('import base64,json,sys; p=json.loads(base64.b64decode(' + repr(bundle) + ')); '
+          + 'sys.argv=["acer-adapter-maintenance"]+' + repr(arguments) + '; '
+          + 'exec(compile(p["code"],"public-maintenance-helper","exec"),'
+          + '{"__name__":"__main__","REPAIR_ASSETS":p["assets"]})')
+with open('/dev/tty') as terminal:
+    raise SystemExit(subprocess.call([
+        'ssh', '-t', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes',
+        '-o', 'ConnectTimeout=7', '-o', 'ConnectionAttempts=1',
+        '-o', 'ControlMaster=no', '-o', 'ControlPath=none',
+        'friseer@192.168.178.43', 'sudo python3 -c ' + shlex.quote(loader),
+    ], stdin=terminal))
+PY
+```
+
+Noch nicht freigegeben/ausgeführt: apply, rollback oder Dienststeuerung.
+Nach Freigabe und belegtem erfolgreichem Anwendungslauf folgen die tatsächlichen
+Backend-/Recall-/Sitzungstests und der angeleitete Android-Test im bestehenden
+Gesamtauftrag. Unabhängiger Watchdog und produktive Fork-Migration/VSIX bleiben
+separat abzusichern; keine vorgezogene Gesamtabnahme.
