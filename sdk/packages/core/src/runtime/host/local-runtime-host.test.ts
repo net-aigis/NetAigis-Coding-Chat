@@ -1481,8 +1481,8 @@ describe("LocalRuntimeHost", () => {
 		const sessionId = "sess-fork-copy";
 		const manifest = createManifest(sessionId);
 		const initialMessages: MessageWithMetadata[] = [
-			{ role: "user" as const, content: "build a thing" },
-			{ role: "assistant" as const, content: "done" },
+			{ id: "original-user", role: "user" as const, content: "build a thing" },
+			{ id: "original-assistant", role: "assistant" as const, content: "done" },
 		];
 		const continuedMessages: MessageWithMetadata[] = [
 			...initialMessages,

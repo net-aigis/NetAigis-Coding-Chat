@@ -1814,3 +1814,40 @@ Live-Übernahme und Actor-Bindung). Recall-HTTP und Agenten bleiben Fixtures;
 kein Acer-/Android-/Modelllauf wird daraus abgeleitet. Authentifizierte Remote-
 Neuanlage lehnt fremde initialMessages weiterhin mit session_import_required ab;
 der vorhandene Import-/Provenienzvertrag wurde nicht aufgeweicht.
+
+### Dieselben Nachrichten-IDs im tatsächlichen Agenten und im Speicher
+
+Auf 7445b6384 fortgesetzt. p4-real-agent-initial-identities 0/2 (acht
+übersprungen) reproduziert mit tatsächlichem Agenten und File-/SQLite-Speicher:
+Nachrichten ohne ID blieben im Agenten ohne ID, während die Dateinormalisierung
+neue IDs erzeugte. Der neue Test sperrt global fetch gegen jeden Modell-/Provider-
+Request; keine Modellgenerierung oder Cloudanmeldung. Das Provider-/Modellpaar
+des Testaufbaus ist ausdrücklich eine Fixture mit unerreichbarem Loopback-Ziel.
+
+Fehlende IDs werden nun nur bei frischer Anfangshistorie vor Agentanlage einmal
+vergeben. p4-real-agent-initial-identities-fixed 116/119 zeigte den noch alten
+Bootstrap-Eingang: der Agent erhielt weiterhin das unveränderte ursprüngliche
+Array. Der gemeinsame Bootstrap erhält jetzt denselben vorbereiteten Stand wie
+die Persistenz. Der bestehende reine Speichermocktest benutzt feste vorhandene
+IDs und prüft damit deren Beibehaltung; die neue tatsächliche Agentprüfung
+deckt fehlende IDs unabhängig davon ab. Gespeicherte kanonische Historie und
+vorhandene IDs werden nicht neu nummeriert, Caller-Eingaben bleiben unverändert.
+
+p4-real-agent-initial-identities-canonical **130/130** bestanden einschließlich
+erster Anlage, bytegleichem Transkript nach Shutdown, kalter Wiederaufnahme mit
+identischen IDs, vorheriger Modellwechsel-/Initialhistorie-/Recall-Import-Verträge.
+Beide echten Agentfälle bestätigten **keinen einzigen fetch-Aufruf**.
+p4-real-agent-initial-types und p4-real-agent-initial-build Exit 0.
+
+Gezielte zusätzliche Acer-Vertragsprobe ohne Quellkopie und ohne Modellrequest:
+p4-acer-coding-completion-contract.json führt ausschließlich den reinen
+completion-Konverter samt direktem Formathelfer im separaten Prüfprozess aus.
+Quelle weiter SHA256 cdf5d6768d8fffb9e3d1d0f4b08db9784a5ce5b432003f4cf16d4f3a970c8b81.
+Synthetisches done_reason=length wird aktuell als finish_reason=stop ausgegeben;
+stop bleibt stop. Inhalt, Modellkennung und Tokenzähler bleiben erhalten, ein
+zusätzliches synthetisches thinking-Feld wird nicht weitergereicht. Das belegt
+die Antwortkonvertierung dieser Quelldatei, nicht den Speicherinhalt des bereits
+laufenden Python-Dienstes oder eine DeepSeek-Inkompatibilität. Der bestätigte
+Längenabschluss-Fehler erfordert eine weitere gezielte Integrationskorrektur;
+produktive Anwendung/HTTP-/Modellabnahme weiter offen. Keine vollständige oder
+stückweise Rekonstruktion des privaten Acer-Moduls im lokalen Repository.

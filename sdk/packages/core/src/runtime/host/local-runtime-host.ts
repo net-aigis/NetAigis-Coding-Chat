@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
@@ -683,7 +683,13 @@ export class LocalRuntimeHost implements RuntimeHost {
 		const startedAt = nowIso();
 		const startInput: ResolvedStartSessionInput =
 			await this.applyInitialOAuthCredentials(input);
-		const initialMessages = startInput.initialMessages ?? [];
+		// Fresh imported/seeded messages receive missing IDs once, before the
+		// agent clones them. Persisting later must not create a different identity.
+		const initialMessages = (startInput.initialMessages ?? []).map((message) =>
+			!existingResumeManifest && !message.id?.trim()
+				? { ...message, id: randomUUID() }
+				: message,
+		);
 		const initialUsage =
 			initialMessages.length > 0
 				? summarizeUsageFromMessages(initialMessages)
@@ -806,7 +812,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 			}),
 		);
 		bootstrap = await prepareLocalRuntimeBootstrap({
-			input: startInput,
+			input: { ...startInput, initialMessages },
 			localRuntime: input.localRuntime,
 			sessionId,
 			sessionOrigin,

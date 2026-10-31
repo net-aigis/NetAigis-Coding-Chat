@@ -1750,3 +1750,9 @@ and missing acknowledgements prevent publication. Manifest commits before the
 index revision releases the fence. Failed starts release only their new agent,
 runtime and sandbox, retain source/partial artifacts and surface the original
 error without a fabricated successful start or automatic resume of empty history.
+
+Fresh seeded messages without identifiers receive IDs before bootstrap and agent
+construction. The agent, native transcript and later cold resume therefore share
+the same identities. Existing IDs and existing canonical saved history are kept;
+the caller's input objects are not mutated. No model request is needed for this
+admission and persistence step.

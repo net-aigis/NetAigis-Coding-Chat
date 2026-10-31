@@ -18,6 +18,91 @@ import { CoreSessionService } from "../../session/services/session-service";
 import { LocalRuntimeHost } from "./local-runtime-host";
 
 it.each([
+	"files",
+	"sqlite",
+] as const)("retains the actual agent's initial message identities in %s across a cold resume without a model request", async (kind) => {
+	const root = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "agent-seed-identities-"),
+	);
+	const db =
+		kind === "sqlite"
+			? new SqliteSessionStore({ sessionsDir: join(root, "db") })
+			: undefined;
+	const service = db
+		? new CoreSessionService(db, {
+				sessionArtifactsDir: join(root, "sessions"),
+			})
+		: new FileSessionService(join(root, "sessions"));
+	const network = vi
+		.spyOn(globalThis, "fetch")
+		.mockRejectedValue(
+			new Error("No model/provider request is allowed in this admission test"),
+		);
+	const options = {
+		sessionService: service,
+		distinctId: "fixture-real-agent-identities",
+		runtimeBuilder: {
+			build: async () => ({ tools: [], shutdown: async () => {} }),
+		} as never,
+	};
+	const host = new LocalRuntimeHost(options);
+	let cold: LocalRuntimeHost | undefined;
+	try {
+		const input = {
+			config: {
+				sessionId: "same-session",
+				providerId: "openai",
+				modelId: "gpt-4.1",
+				apiKey: "fixture-no-model-request",
+				baseUrl: "http://127.0.0.1:9/v1",
+				cwd: root,
+				workspaceRoot: root,
+				systemPrompt: "fixture",
+				enableTools: false,
+				enableSpawnAgent: false,
+				enableAgentTeams: false,
+			},
+			interactive: true,
+			initialMessages: [
+				{ role: "user", content: "Original order" },
+				{ role: "assistant", content: "Original response" },
+			] as never,
+		};
+		const callerHistory = JSON.stringify(input.initialMessages);
+		const result = await host.startSession(input);
+		expect(JSON.stringify(input.initialMessages)).toBe(callerHistory);
+		const live = await host.readLiveSessionMessages(result.sessionId);
+		const stored = JSON.parse(
+			await readFile(result.messagesPath, "utf8"),
+		).messages;
+		expect(live.map((message) => message.id)).toEqual(
+			stored.map((message: { id: string }) => message.id),
+		);
+		expect(live.map((message) => message.content)).toEqual([
+			"Original order",
+			"Original response",
+		]);
+		const before = await readFile(result.messagesPath);
+		await host.dispose();
+		expect(await readFile(result.messagesPath)).toEqual(before);
+		cold = new LocalRuntimeHost(options);
+		await cold.startSession({ ...input, initialMessages: [] });
+		expect(
+			(await cold.readLiveSessionMessages(result.sessionId)).map(
+				(message) => message.id,
+			),
+		).toEqual(stored.map((message: { id: string }) => message.id));
+		expect(network).not.toHaveBeenCalled();
+	} finally {
+		await cold?.dispose();
+		await host.dispose();
+		db?.close();
+		network.mockRestore();
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
+it.each([
 	"symlink",
 	"changed-file",
 ])("does not publish an initial transcript replaced by %s after its write", async (replacement) => {
