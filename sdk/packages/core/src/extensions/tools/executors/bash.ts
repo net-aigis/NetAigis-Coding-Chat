@@ -455,9 +455,11 @@ export interface ShellExecutorOptions {
 
 	/**
 	 * Timeout for command execution in milliseconds
+	 * null disables the implicit deadline for commands owned by a managed runtime.
+	 * Explicit cancellation through context.signal remains active.
 	 * @default 30000 (30 seconds)
 	 */
-	timeoutMs?: number;
+	timeoutMs?: number | null;
 
 	/**
 	 * Maximum output kept, in characters. Output beyond this is
@@ -779,7 +781,7 @@ function createDetachedLog(retentionMs: number, marker: DetachedCommandMarker) {
 function spawnAndCollect(
 	config: SpawnConfig,
 	context: AgentToolContext,
-	timeoutMs: number,
+	timeoutMs: number | null,
 	maxOutputChars: number,
 	combineOutput: boolean,
 	detachedLogRetentionMs: number,
@@ -878,7 +880,7 @@ function spawnAndCollect(
 			}
 		};
 
-		let timeout: NodeJS.Timeout;
+		let timeout: NodeJS.Timeout | undefined;
 		let cancellation: Error | undefined;
 		let cancellationGrace: NodeJS.Timeout | undefined;
 		const abortHandler = () =>
@@ -943,13 +945,18 @@ function spawnAndCollect(
 			settle(() => reject(error));
 		};
 
-		timeout = setTimeout(
-			() =>
-				killAndReject(
-					new TimeoutError(`Command timed out after ${timeoutMs}ms`, timeoutMs),
-				),
-			timeoutMs,
-		);
+		if (timeoutMs !== null) {
+			timeout = setTimeout(
+				() =>
+					killAndReject(
+						new TimeoutError(
+							`Command timed out after ${timeoutMs}ms`,
+							timeoutMs,
+						),
+					),
+				timeoutMs,
+			);
+		}
 
 		if (context.signal) {
 			context.signal.addEventListener("abort", abortHandler, { once: true });
@@ -1008,6 +1015,12 @@ function spawnAndCollect(
 		child.once("spawn", () => {
 			if (killed) return;
 			context.emitUpdate?.({
+				observation: "process_started",
+				execution: {
+					state: "running",
+					pid: childPid,
+					observedAtMs: Date.now(),
+				},
 				stream: "stdout",
 				chunk: "",
 				executionId,
@@ -1177,6 +1190,28 @@ function spawnAndCollect(
 		// while a descendant holds the pipes would leave the log forever in
 		// the active state, waiting for a 'close' that never comes.
 		child.on("exit", (code, signal) => {
+			// This observation comes from ChildProcess.exit, never an idle/observation timer.
+			context.emitUpdate?.({
+				observation: "process_exit",
+				executionId,
+				execution: {
+					state: cancellation
+						? cancellation instanceof TimeoutError
+							? "timed_out"
+							: "aborted"
+						: code !== null
+							? code === 0
+								? "completed"
+								: "failed"
+							: signal
+								? "terminated"
+								: "unknown",
+					pid: childPid,
+					observedAtMs: Date.now(),
+					...(code !== null ? { exitCode: code } : {}),
+					...(signal ? { signal } : {}),
+				},
+			});
 			if (killed) return;
 			exitStreamGraceTimer = setTimeout(() => {
 				if (killed || settledOnExitGrace) return;

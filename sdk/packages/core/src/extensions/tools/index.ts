@@ -31,11 +31,11 @@ export {
 	type ApplyPatchExecutorOptions,
 	CommandAbortError,
 	CommandCompletionUnknownError,
-	CommandNotStartedError,
-	CommandTimeoutError,
 	CommandExitError,
+	CommandNotStartedError,
 	CommandSpawnError,
 	CommandTerminationError,
+	CommandTimeoutError,
 	computePatchChanges,
 	createApplyPatchExecutor,
 	createDefaultExecutors,
@@ -214,6 +214,9 @@ export function createBuiltinTools(
 		...executorOptions,
 		bash: {
 			...executorOptions.bash,
+			...(toolsConfig.bashTimeoutMs !== undefined
+				? { timeoutMs: toolsConfig.bashTimeoutMs }
+				: {}),
 			shell,
 		},
 	};
@@ -225,6 +228,10 @@ export function createBuiltinTools(
 
 	return createDefaultTools({
 		...toolsConfig,
+		...(toolsConfig.bashTimeoutMs === undefined &&
+		executorOptions.bash?.timeoutMs !== undefined
+			? { bashTimeoutMs: executorOptions.bash.timeoutMs }
+			: {}),
 		shell,
 		executors,
 	});

@@ -14,10 +14,15 @@ import {
 	createContributionRegistry,
 	type Message,
 } from "@cline/shared";
-import { setHomeDir } from "@cline/shared/storage";
-import { afterEach, describe, expect, it } from "vitest";
+import {
+	resolveClineDir,
+	setClineDir,
+	setHomeDir,
+} from "@cline/shared/storage";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createUserInstructionConfigService } from "../../extensions/config";
 import { PLAN_MODE_COMMAND_GUARD_EXTENSION_NAME } from "../../extensions/tools/command-guard-extension";
+import { RunCommandExecutionController } from "../../extensions/tools/executors/run-command-execution-controller";
 import { TelemetryService } from "../../services/telemetry/TelemetryService";
 import type { CoreSessionConfig } from "../../types/config";
 import { DefaultRuntimeBuilder } from "./runtime-builder";
@@ -63,10 +68,12 @@ async function collectExtensionTools(
 
 describe("DefaultRuntimeBuilder", () => {
 	const previousHome = process.env.HOME;
+	const previousClineDir = resolveClineDir();
 	const previousGlobalSettingsPath = process.env.CLINE_GLOBAL_SETTINGS_PATH;
 	const tempDirs: string[] = [];
 
 	afterEach(() => {
+		setClineDir(previousClineDir);
 		process.env.HOME = previousHome;
 		setHomeDir(previousHome ?? "~");
 		process.env.CLINE_GLOBAL_SETTINGS_PATH = previousGlobalSettingsPath;
@@ -83,6 +90,49 @@ describe("DefaultRuntimeBuilder", () => {
 		const names = runtime.tools.map((tool) => tool.name);
 		expect(names.length).toBeGreaterThan(0);
 		expect(names).not.toContain("spawn_agent");
+	});
+	it.each([
+		false,
+		true,
+	])("uses an implicit command deadline only without a managed process controller (managed=%s)", async (managed) => {
+		const runtime = await new DefaultRuntimeBuilder().build({
+			config: makeBaseConfig(),
+			runCommandExecutionController: managed
+				? new RunCommandExecutionController()
+				: undefined,
+		});
+		const tool = runtime.tools.find(
+			(candidate) => candidate.name === "run_commands",
+		);
+		if (!tool) throw new Error("Expected runtime command tool");
+		expect(tool.timeoutMs).toBe(managed ? undefined : 60_000);
+		const timers = vi.spyOn(globalThis, "setTimeout");
+		try {
+			const result = await tool.execute(
+				{
+					commands: [
+						{
+							command: process.execPath,
+							args: ["-e", "process.stdout.write('runtime-owned')"],
+						},
+					],
+				},
+				{
+					agentId: "fixture-agent",
+					conversationId: "fixture-session",
+					iteration: 1,
+				},
+			);
+			expect(result).toMatchObject([
+				{ success: true, result: expect.stringContaining("runtime-owned") },
+			]);
+			expect(timers.mock.calls.some((args) => args[1] === 30_000)).toBe(
+				!managed,
+			);
+		} finally {
+			timers.mockRestore();
+			await runtime.shutdown("test_finished");
+		}
 	});
 
 	it("enables provider web search by default without a local executor", async () => {
@@ -176,6 +226,7 @@ describe("DefaultRuntimeBuilder", () => {
 		setHomeDir(tempHome);
 
 		const globalAgentsDir = join(tempHome, ".cline", "agents");
+		setClineDir(join(tempHome, ".cline"));
 		mkdirSync(globalAgentsDir, { recursive: true });
 		writeFileSync(
 			join(globalAgentsDir, "code-reviewer.yml"),

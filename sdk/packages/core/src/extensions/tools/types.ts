@@ -337,9 +337,10 @@ export interface DefaultToolsConfig {
 
 	/**
 	 * Timeout for bash command execution in milliseconds
+	 * null removes the implicit deadline; explicit cancellation still applies.
 	 * @default 30000
 	 */
-	bashTimeoutMs?: number;
+	bashTimeoutMs?: number | null;
 
 	/**
 	 * Timeout for web fetch operations in milliseconds

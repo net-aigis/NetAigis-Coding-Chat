@@ -1491,3 +1491,19 @@ probe covers the existing Coding-Agent and Learning-Agent services; productive
 Hub/run-progress coverage still needs the deployed shared Runtime and actual
 external observability acceptance. A 200 health response alone proves no model
 turn, session recovery or complete application acceptance.
+
+
+### Fork: shared command process authority and explicit deadlines
+
+Shared VS Code connections retain the Hub-owned built-in command executor;
+they do not replace it with a client terminal callback. Local mode retains its
+existing foreground/background terminal integration. Runtime-managed commands
+explicitly disable the stand-alone helper deadline with null, consistently at
+the child-process executor, per-command wrapper and declared tool deadline.
+Positive configured limits and caller cancellation continue to terminate and
+drain output through the existing confirmed-cleanup path. Stand-alone SDK
+helpers keep their existing defaults. ChildProcess spawn/exit provide factual
+technical PID/time/code observations; an observation timer cannot provide exit
+confirmation. The external watchdog remains a separate infrastructure process; connecting
+it to shared-runtime observations is a remaining integration/deployment task.
+No self-monitoring AI is introduced.

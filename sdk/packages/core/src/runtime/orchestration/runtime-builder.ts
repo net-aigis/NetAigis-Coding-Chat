@@ -166,7 +166,12 @@ function createBuiltinToolsList(
 			cwd,
 			telemetry,
 			executorOptions: {
-				bash: { executionController: runCommandExecutionController },
+				bash: {
+					executionController: runCommandExecutionController,
+					// Managed processes end on observed exit or an explicit run cancellation,
+					// not the stand-alone helper's default 30-second kill timer.
+					timeoutMs: runCommandExecutionController ? null : undefined,
+				},
 			},
 			...preset,
 			enableSkills: !!skillsExecutor,

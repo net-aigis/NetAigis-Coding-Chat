@@ -165,6 +165,8 @@ export class VscodeSessionHost implements SdkSessionHost {
 		const sharedSessionHub = options.sharedSessionHub
 			? validateSharedSessionHubConnection(options.sharedSessionHub)
 			: getSharedSessionHubConnection()
+		// Shared commands must survive this client's disconnect and remain observable by the Hub.
+		const clientTerminalManager = sharedSessionHub ? undefined : options.getTerminalManager
 		// Build tool executor capabilities from options — only include keys that are provided.
 		// When a terminal manager is available, suppress the SDK's built-in run_commands
 		// tool by setting bash to undefined. Our custom run_commands (provided via
@@ -182,7 +184,7 @@ export class VscodeSessionHost implements SdkSessionHost {
 		if (options.readFileExecutor) {
 			toolExecutors.readFile = options.readFileExecutor
 		}
-		if (options.getTerminalManager) {
+		if (clientTerminalManager) {
 			// Setting bash to undefined suppresses the SDK's createShellTool():
 			// createDefaultTools() checks `enableBash && executors.bash` — falsy
 			// bash means no built-in run_commands tool is created.
@@ -201,9 +203,9 @@ export class VscodeSessionHost implements SdkSessionHost {
 			const requestedTerminalExecutionMode = StateManager.get().getGlobalStateKey("vscodeTerminalExecutionMode")
 			const extraTools = await createVscodeExtraTools(options.mcpHub, {
 				cwd: inputWithRemoteConfig.config.cwd,
-				getTerminalManager: options.getTerminalManager,
+				getTerminalManager: clientTerminalManager,
 				vscodeTerminalExecutionMode: getEffectiveTerminalExecutionMode(requestedTerminalExecutionMode),
-				foregroundCommands: options.foregroundCommands,
+				foregroundCommands: sharedSessionHub ? undefined : options.foregroundCommands,
 			})
 			const config: ClineCoreStartInput["config"] = {
 				...inputWithRemoteConfig.config,
@@ -243,7 +245,7 @@ export class VscodeSessionHost implements SdkSessionHost {
 		})
 
 		Logger.log("[VscodeSessionHost] Initialized with ClineCore + VSCode extra tools")
-		if (options.getTerminalManager) {
+		if (clientTerminalManager) {
 			Logger.log("[VscodeSessionHost] SDK run_commands suppressed; using custom foreground/background terminal tool")
 		}
 		try {

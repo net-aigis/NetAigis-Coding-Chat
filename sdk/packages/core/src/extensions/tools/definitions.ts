@@ -19,8 +19,8 @@ import { captureRunCommandsTimeout } from "../../services/telemetry/core-events"
 import {
 	CommandAbortError,
 	CommandCompletionUnknownError,
-	CommandNotStartedError,
 	CommandExitError,
+	CommandNotStartedError,
 	CommandTerminationError,
 	CommandTimeoutError,
 	createRollingCollector,
@@ -192,7 +192,7 @@ async function executeShellCommand(
 	command: string | StructuredCommandInput,
 	cwd: string,
 	context: AgentToolContext,
-	timeoutMs: number,
+	timeoutMs: number | null,
 ): Promise<string> {
 	const controller = new AbortController();
 	const stdout = createRollingCollector(MAX_COMMAND_OUTPUT_CHARS);
@@ -212,15 +212,15 @@ async function executeShellCommand(
 				totalChars: out.totalChars + err.totalChars,
 			},
 		);
-		return cancellation === "timed_out"
+		return cancellation === "timed_out" && timeoutMs !== null
 			? new CommandTimeoutError(timeoutMs, output)
 			: new CommandAbortError(output);
 	};
 	const cancel = (state: "timed_out" | "aborted") => {
-		if (cancellation) return;
+		if (cancellation || (state === "timed_out" && timeoutMs === null)) return;
 		cancellation = state;
 		controller.abort(
-			state === "timed_out"
+			state === "timed_out" && timeoutMs !== null
 				? new TimeoutError(`Command timed out after ${timeoutMs}ms`, timeoutMs)
 				: context.signal?.reason,
 		);
@@ -229,7 +229,10 @@ async function executeShellCommand(
 		grace = setTimeout(() => rejectForced(cancellationError()), 2000);
 	};
 	const onAbort = () => cancel("aborted");
-	const timer = setTimeout(() => cancel("timed_out"), timeoutMs);
+	const timer =
+		timeoutMs === null
+			? undefined
+			: setTimeout(() => cancel("timed_out"), timeoutMs);
 	context.signal?.addEventListener("abort", onAbort, { once: true });
 	if (context.signal?.aborted) onAbort();
 	try {
@@ -282,7 +285,7 @@ async function executeShellCommands(
 		executor: ShellExecutor;
 		cwd: string;
 		context: AgentToolContext;
-		timeoutMs: number;
+		timeoutMs: number | null;
 		timeoutSource: "default_setting" | "configured_setting";
 		telemetry?: ITelemetryService;
 	},
@@ -618,7 +621,8 @@ export function createShellTool(
 		shell?: string | (() => string);
 	} = {},
 ): AgentTool<unknown, ToolOperationResult[]> {
-	const timeoutMs = config.bashTimeoutMs ?? 30000;
+	const timeoutMs =
+		config.bashTimeoutMs === null ? null : (config.bashTimeoutMs ?? 30000);
 	const timeoutSource =
 		config.bashTimeoutMs === undefined
 			? "default_setting"
@@ -636,7 +640,7 @@ export function createShellTool(
 		name: "run_commands",
 		description: describe(),
 		inputSchema: zodToJsonSchema(RunCommandsInputSchema),
-		timeoutMs: timeoutMs * 2,
+		timeoutMs: timeoutMs === null ? 0 : timeoutMs * 2,
 		retryable: false,
 		maxRetries: 0,
 		execute: async (input, context) => {
@@ -664,6 +668,7 @@ export function createShellTool(
 			enumerable: true,
 		});
 	}
+	if (timeoutMs === null) delete tool.timeoutMs;
 	return tool;
 }
 

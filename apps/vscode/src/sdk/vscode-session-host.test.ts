@@ -2,7 +2,7 @@ import { type ClineCoreStartInput, type ITelemetryService, toClineCoreStartInput
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockClineCoreCreate = vi.hoisted(() => vi.fn())
-const mockCreateVscodeExtraTools = vi.hoisted(() => vi.fn(async () => []))
+const mockCreateVscodeExtraTools = vi.hoisted(() => vi.fn(async (_hub: unknown, _options?: unknown) => []))
 const mockInnerStart = vi.hoisted(() => vi.fn())
 
 vi.mock("@cline/core", async () => {
@@ -50,6 +50,27 @@ function makeTelemetry(): ITelemetryService {
 }
 
 describe("VscodeSessionHost telemetry wiring", () => {
+	it("retains the existing local terminal integration when no shared runtime is selected", async () => {
+		const getTerminalManager = vi.fn(() => { throw new Error("factory is lazy") })
+		const host = await VscodeSessionHost.create({ mcpHub: {} as never, getTerminalManager })
+		await host.start(gitStartInput)
+		expect(mockCreateVscodeExtraTools.mock.calls[0][1]).toMatchObject({ getTerminalManager })
+		expect(Object.hasOwn(mockClineCoreCreate.mock.calls[0][0].capabilities.toolExecutors, "bash")).toBe(true)
+		expect(getTerminalManager).not.toHaveBeenCalled()
+		await host.dispose()
+	})
+	it("keeps shared command processes owned by the hub rather than exporting a VS Code terminal callback", async () => {
+		const sharedSessionHub = { endpoint: "ws://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
+		const getTerminalManager = vi.fn(() => {
+			throw new Error("shared command must not acquire a client terminal")
+		})
+		const host = await VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub, getTerminalManager })
+		await host.start(gitStartInput)
+		expect(mockCreateVscodeExtraTools.mock.calls[0][1]).toMatchObject({ getTerminalManager: undefined })
+		expect(mockClineCoreCreate.mock.calls[0][0].capabilities.toolExecutors ?? {}).not.toHaveProperty("bash")
+		expect(getTerminalManager).not.toHaveBeenCalled()
+		await host.dispose()
+	})
 	beforeEach(() => {
 		vi.restoreAllMocks()
 		mockInnerStart.mockReset().mockResolvedValue({ sessionId: "core-task" })

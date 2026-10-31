@@ -53,9 +53,48 @@ function detachedCommandMarker(pid: number, processStartToken: string): string {
 }
 
 describe("createShellExecutor", () => {
+	it("keeps explicit cancellation active when the implicit process deadline is disabled", async () => {
+		const controller = new AbortController();
+		let ready!: () => void;
+		const started = new Promise<void>((resolve) => {
+			ready = resolve;
+		});
+		const shell = createShellExecutor({ timeoutMs: null });
+		const execution = shell(
+			{
+				command: process.execPath,
+				args: [
+					"-e",
+					"process.stdout.write('started'); setInterval(() => {}, 1000)",
+				],
+			},
+			process.cwd(),
+			{
+				...ctx,
+				signal: controller.signal,
+				emitUpdate: (update) => {
+					if ((update as { chunk?: string }).chunk?.includes("started"))
+						ready();
+				},
+			},
+		);
+		try {
+			await started;
+			controller.abort();
+			await expect(execution).rejects.toMatchObject({
+				output: expect.stringContaining("started"),
+				execution: { state: "aborted", terminationConfirmed: true },
+			});
+		} finally {
+			controller.abort();
+			await execution.catch(() => {});
+		}
+	});
 	it("runs a simple command and returns stdout", async () => {
 		// Test capture independently of the operator's Bash startup output.
-		const shell = createShellExecutor({ shell: process.platform === "win32" ? undefined : "/bin/sh" });
+		const shell = createShellExecutor({
+			shell: process.platform === "win32" ? undefined : "/bin/sh",
+		});
 		const output = await shell("echo hello", process.cwd(), ctx);
 		expect(output.trim()).toBe("hello");
 	});
@@ -606,7 +645,9 @@ describe("createShellExecutor", () => {
 		// Models emit e.g. { command: "echo hello" } — a full command line in
 		// the object form. Spawning it verbatim fails with ENOENT; it must be
 		// routed through the shell like the string form.
-		const output = await createShellExecutor({ shell: process.platform === "win32" ? undefined : "/bin/sh" })({ command: "echo hello" }, process.cwd(), ctx);
+		const output = await createShellExecutor({
+			shell: process.platform === "win32" ? undefined : "/bin/sh",
+		})({ command: "echo hello" }, process.cwd(), ctx);
 		expect(output.trim()).toBe("hello");
 	});
 
