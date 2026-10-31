@@ -9,6 +9,42 @@ function record(value: unknown): Record<string, unknown> {
 		? (value as Record<string, unknown>)
 		: {};
 }
+
+export const RUNTIME_OWNER_METADATA_FIELDS = [
+	"runtimeOwnerObservation",
+	"terminal_marker",
+	"terminal_marker_at",
+	"terminal_marker_pid",
+	"terminal_marker_source",
+] as const;
+
+/** Losing a runtime owner is not a waitpid result for that owner or its tools. */
+export function hasUnconfirmedRuntimeOwner(
+	metadata: Record<string, unknown> | null | undefined,
+): boolean {
+	if (!metadata) return false;
+	const value = record(metadata.runtimeOwnerObservation);
+	if (
+		value.version === 1 &&
+		value.state === "terminated" &&
+		value.terminationConfirmed === true
+	)
+		return false;
+	return (
+		metadata.runtimeOwnerObservation !== undefined ||
+		(metadata.terminal_marker_source === "stale_session_reconciler" &&
+			metadata.terminal_marker === "failed_external_process_exit")
+	);
+}
+
+export function assertRuntimeOwnerConfirmed(
+	metadata: Record<string, unknown> | null | undefined,
+): void {
+	if (hasUnconfirmedRuntimeOwner(metadata))
+		throw new Error(
+			"Runtime owner exit is unconfirmed; saved work was retained without automatic replay",
+		);
+}
 /** The runtime-only metadata is protected from remote session.update/create writes. */
 export function readCommandObservationJournal(
 	value: unknown,

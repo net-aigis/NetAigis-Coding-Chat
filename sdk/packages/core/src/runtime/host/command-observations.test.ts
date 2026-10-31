@@ -1,5 +1,36 @@
 import { expect, it } from "vitest";
-import { hasUnresolvedCommandObservation } from "./command-observations";
+import { assertSnapshotImportComplete } from "../../session/snapshot-import-state";
+import {
+	hasUnconfirmedRuntimeOwner,
+	hasUnresolvedCommandObservation,
+} from "./command-observations";
+
+it("treats lost legacy and current owner state as unknown, while undefined optional metadata stays absent", () => {
+	expect(
+		hasUnconfirmedRuntimeOwner({ runtimeOwnerObservation: undefined }),
+	).toBe(false);
+	expect(() =>
+		assertSnapshotImportComplete({ runtimeSnapshotImport: undefined }),
+	).not.toThrow();
+	for (const metadata of [
+		{
+			terminal_marker_source: "stale_session_reconciler",
+			terminal_marker: "failed_external_process_exit",
+		},
+		{
+			runtimeOwnerObservation: {
+				version: 1,
+				state: "unknown",
+				exitConfirmed: false,
+			},
+		},
+		{
+			runtimeOwnerObservation: { version: 1, state: "completed", exitCode: 0 },
+		},
+		{ runtimeOwnerObservation: null },
+	])
+		expect(hasUnconfirmedRuntimeOwner(metadata)).toBe(true);
+});
 
 const messages = [
 	{

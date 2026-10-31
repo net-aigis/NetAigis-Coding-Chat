@@ -4,8 +4,7 @@ export const SNAPSHOT_IMPORT_METADATA_KEY = "runtimeSnapshotImport";
 export function assertSnapshotImportComplete(
 	metadata: Record<string, unknown> | null | undefined,
 ): void {
-	if (!metadata || !Object.hasOwn(metadata, SNAPSHOT_IMPORT_METADATA_KEY))
-		return;
+	if (!metadata || metadata[SNAPSHOT_IMPORT_METADATA_KEY] === undefined) return;
 	const state = metadata[SNAPSHOT_IMPORT_METADATA_KEY] as Record<
 		string,
 		unknown

@@ -385,7 +385,7 @@ export function buildManifestFromRow(
 	overrides?: {
 		status?: SessionStatus;
 		endedAt?: string;
-		exitCode?: number;
+		exitCode?: number | null;
 		metadata?: Record<string, unknown>;
 	},
 ): SessionManifest {
@@ -396,7 +396,10 @@ export function buildManifestFromRow(
 		pid: row.pid,
 		started_at: row.startedAt,
 		ended_at: overrides?.endedAt ?? row.endedAt ?? undefined,
-		exit_code: overrides?.exitCode ?? row.exitCode ?? undefined,
+		exit_code:
+			overrides?.exitCode === null
+				? null
+				: (overrides?.exitCode ?? row.exitCode ?? undefined),
 		status: (overrides?.status ?? row.status) as SessionStatus,
 		interactive: row.interactive,
 		provider: row.provider,

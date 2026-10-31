@@ -1,5 +1,9 @@
 import { COMMAND_OBSERVATIONS_METADATA_KEY } from "../../extensions/tools/executors/run-command-execution-controller";
-import { hasUnresolvedCommandObservation } from "../../runtime/host/command-observations";
+import {
+	hasUnconfirmedRuntimeOwner,
+	hasUnresolvedCommandObservation,
+	RUNTIME_OWNER_METADATA_FIELDS,
+} from "../../runtime/host/command-observations";
 import {
 	assertSnapshotImportComplete,
 	SNAPSHOT_IMPORT_METADATA_KEY,
@@ -145,6 +149,7 @@ export class HubSessionAccess {
 			return false;
 		const { session } = await this.state(id);
 		assertSnapshotImportComplete(session.metadata);
+		if (hasUnconfirmedRuntimeOwner(session.metadata)) return false;
 		if (
 			![
 				"idle",
@@ -344,6 +349,8 @@ export class HubSessionAccess {
 				const metadata = { ...record(envelope.payload?.metadata) };
 				delete metadata[COMMAND_OBSERVATIONS_METADATA_KEY];
 				delete metadata[SNAPSHOT_IMPORT_METADATA_KEY];
+				for (const field of RUNTIME_OWNER_METADATA_FIELDS)
+					delete metadata[field];
 				const control: SessionWriterControl = {
 					version: 1,
 					revision: 1,
@@ -499,6 +506,12 @@ export class HubSessionAccess {
 						metadata: {
 							...session.metadata,
 							...record(envelope.payload.metadata),
+							...Object.fromEntries(
+								RUNTIME_OWNER_METADATA_FIELDS.map((field) => [
+									field,
+									session.metadata?.[field],
+								]),
+							),
 							[SESSION_CONTROL_METADATA_KEY]: control,
 							hubCapabilityOwnerClientId:
 								session.metadata?.hubCapabilityOwnerClientId,

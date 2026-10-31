@@ -1668,3 +1668,11 @@ remain separate. There is no cross-service transaction with the Recall journal.
 Restores are refused while draining and never automatically replayed after an
 uncertain dispatch. VS Code's Recall browser uses the explicitly selected Hub,
 binds its inspected reference to that connection and makes no local fallback.
+
+PID-based stale-session reconciliation reports loss of the runtime owner as a
+runtime failure with unknown exit, not an invented numeric code. Its protected
+`runtimeOwnerObservation` and legacy stale markers prevent automatic resume,
+handover or archive recovery until actual termination evidence is available.
+Detection time is not a child-process exit time. Actor metadata writes cannot
+clear or forge this observation. The local admission reader serves this state
+without imposing a session-list dependency on minimal runtime backends.

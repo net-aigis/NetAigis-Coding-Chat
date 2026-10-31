@@ -1,6 +1,9 @@
 /** Reads the existing append-only TOTAL RECALL journal. No invented server routes. */
 import type { ITelemetryService } from "@cline/shared";
-import { hasUnresolvedCommandObservation } from "../runtime/host/command-observations";
+import {
+	hasUnconfirmedRuntimeOwner,
+	hasUnresolvedCommandObservation,
+} from "../runtime/host/command-observations";
 import type { CoreSessionSnapshot } from "../session/session-snapshot";
 import {
 	copyRecallArchiveKey,
@@ -116,6 +119,8 @@ export function sessionSnapshotRecoveryProblem(
 ): TotalRecallSessionSnapshot["restoration"]["reason"] {
 	if (!snapshot || snapshot.version !== 1 || !validRecoveryShape(snapshot))
 		return "invalid_snapshot";
+	if (hasUnconfirmedRuntimeOwner(snapshot.metadata))
+		return "unconfirmed_process";
 	if (
 		!["idle", "completed", "cancelled", "aborted", "error", "failed"].includes(
 			snapshot.status,

@@ -138,7 +138,11 @@ import {
 import type { RuntimeBuilder } from "../orchestration/session-runtime";
 import { SessionRuntime } from "../orchestration/session-runtime-orchestrator";
 import { PendingPromptsController } from "../turn-queue/pending-prompt-service";
-import { hasUnresolvedCommandObservation } from "./command-observations";
+import {
+	assertRuntimeOwnerConfirmed,
+	hasUnresolvedCommandObservation,
+	RUNTIME_OWNER_METADATA_FIELDS,
+} from "./command-observations";
 import { manifestToSessionRecord } from "./history";
 import { AgentEventBridge } from "./local/agent-event-bridge";
 import {
@@ -575,6 +579,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 		if (!manifest) throw new SessionNotFoundError(id);
 		await this.assertSessionImportAdmission(id);
 		assertSnapshotImportComplete(manifest.metadata);
+		assertRuntimeOwnerConfirmed(manifest.metadata);
 		if (
 			![
 				"idle",
@@ -1376,6 +1381,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 	async runTurn(input: SendSessionInput): Promise<AgentResult | undefined> {
 		const session = this.getSessionOrThrow(input.sessionId);
 		assertSnapshotImportComplete(session.sessionMetadata);
+		assertRuntimeOwnerConfirmed(session.sessionMetadata);
 		// Only the input the queue drain replays carries this marker; any
 		// other input during a queued run is fresh user input.
 		const replayingQueuedPrompt = session.replayingQueuedPrompt === true;
@@ -1706,6 +1712,13 @@ export class LocalRuntimeHost implements RuntimeHost {
 		return this.queueManifestMutation(sessionId, async () => {
 			const currentMetadata =
 				resident?.sessionMetadata ?? (await this.getRow(sessionId))?.metadata;
+			if (updates.metadata !== undefined) {
+				const metadata = { ...updates.metadata };
+				for (const field of RUNTIME_OWNER_METADATA_FIELDS)
+					if (currentMetadata && Object.hasOwn(currentMetadata, field))
+						metadata[field] = currentMetadata[field];
+				updates = { ...updates, metadata };
+			}
 			if (
 				updates.metadata !== undefined &&
 				currentMetadata?.[COMMAND_OBSERVATIONS_METADATA_KEY] !== undefined
@@ -3213,12 +3226,12 @@ export class LocalRuntimeHost implements RuntimeHost {
 
 	// ── Session service invocation ──────────────────────────────────────
 	private async assertSessionImportAdmission(sessionId: string): Promise<void> {
-		assertSnapshotImportComplete(
-			await this.invokeOptionalValue<Record<string, unknown>>(
-				"readSessionImportMetadata",
-				sessionId,
-			),
+		const metadata = await this.invokeOptionalValue<Record<string, unknown>>(
+			"readSessionAdmissionMetadata",
+			sessionId,
 		);
+		assertSnapshotImportComplete(metadata);
+		assertRuntimeOwnerConfirmed(metadata);
 	}
 
 	private invoke<T>(method: string, ...args: unknown[]): Promise<T> {

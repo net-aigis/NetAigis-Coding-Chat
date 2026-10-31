@@ -1380,3 +1380,36 @@ und Modellabnahme, eigenständiger externer Watchdog und produktiver Rollout.
 Neue native PID-Bereinigungskante erkannt: bisher wird bei fehlendem Runtime-PID
 Exit 1 erfunden. Für historische Importzeilen bereits umgangen; allgemeine
 Korrektur mit eigenem Regressionsnachweis bleibt der nächste Prozessstatuspunkt.
+
+### Fehlender Runtime-PID ist kein bestätigter Exit
+
+Auf 4d835acb0 fortgesetzt. p4-runtime-owner-exit-red reproduziert den künstlichen
+Exit 1 in beiden realen Persistenzbackends (0/2 bestanden). Korrektur: Session
+meldet Runtime-Ausfall als failed, numerischer Exit bleibt null; zusätzliche
+runtimeOwnerObservation benennt ausdrücklich unknown/exitConfirmed=false und
+den Beobachtungszeitpunkt. endedAt ist hier die Erkennung des Runtime-Ausfalls,
+kein nachgewiesenes Ende eines Kindprozesses. Historie bleibt bytegleich.
+Der bisherige terminal_marker bleibt aus Kompatibilitätsgründen erhalten,
+gilt aber auch im Altbestand niemals als tatsächlicher Exitbeleg.
+
+Unbestätigte Ownerzustände sperren automatische Wiederaufnahme, Übernahme und
+Archiv-Import. Metadaten-Updates eines Actors können die Laufzeitbeobachtung
+nicht entfernen oder durch eine behauptete Bestätigung ersetzen. Abwesende
+optionale Felder mit undefined bleiben abwesend; null/beschädigte Nachweise
+bleiben gesperrt. Keine Prozessbeendigung, erfundener Rückgabecode oder
+automatische Wiederholung eines alten Werkzeugs als Wiederherstellungsersatz.
+Gezielte native Zustandsabfrage heißt intern readSessionAdmissionMetadata;
+Minimalbackends brauchen weiterhin keine zusätzliche listSessions-Implementierung.
+
+p4-runtime-owner-exit **58/58**, anschließend zusätzliche Admission-/Legacy-/
+Manipulationsfälle p4-runtime-owner-admission **23/23** bestanden (überlappende
+Verträge, nicht als 81 neue unabhängige Fälle zählen). Core-Typprüfung
+p4-runtime-owner-types Exit 0. p4-owner-import-guard-contract 2/2 bestanden,
+sieben unbetroffene Fälle übersprungen; p4-runtime-owner-build Exit 0.
+Die technische Kaltstartklärung alter unbekannter Prozesse bleibt offen; die
+neue Sperre allein erfüllt sie noch nicht. Zusätzlich im bestehenden Android-
+Dashboard nachgewiesen: agent-events setzt content_end ohne Fehler pauschal auf
+completed und ended ebenfalls auf completed. Dieser gemeinsame UI-Pfad muss
+nun denselben tatsächlichen Prozessbeleg wie die VS-Code-Ansicht verwenden.
+Die abgeschlossenen echten Sleeps und ursprünglichen Terminalpatches bleiben
+erhalten; keine pauschale Wiederholung.

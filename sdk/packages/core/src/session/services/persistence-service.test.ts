@@ -327,7 +327,7 @@ describe("UnifiedSessionPersistenceService", () => {
 	});
 
 	sqliteIt(
-		"reconciles dead running sessions into failed manifests with terminal markers",
+		"marks an unavailable runtime as failed without inventing its exit code",
 		async () => {
 			const dbDir = mkdtempSync(join(tmpdir(), "stale-session-reconcile-db-"));
 			const sessionsDir = mkdtempSync(
@@ -365,7 +365,7 @@ describe("UnifiedSessionPersistenceService", () => {
 			expect(rows[0]).toMatchObject({
 				sessionId,
 				status: "failed",
-				exitCode: 1,
+				exitCode: null,
 			});
 			expect(rows[0]?.endedAt).toBeTruthy();
 
@@ -373,7 +373,7 @@ describe("UnifiedSessionPersistenceService", () => {
 				readFileSync(artifacts.manifestPath, "utf8"),
 			) as Record<string, unknown>;
 			expect(manifest.status).toBe("failed");
-			expect(manifest.exit_code).toBe(1);
+			expect(manifest.exit_code).toBeNull();
 			expect(manifest.ended_at).toBeTruthy();
 			expect(manifest.metadata).toMatchObject({
 				terminal_marker: "failed_external_process_exit",

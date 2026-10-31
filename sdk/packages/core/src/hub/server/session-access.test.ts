@@ -412,6 +412,12 @@ describe("authenticated writer handover in existing session metadata", () => {
 				sharedSessionControl: { revision: 999 },
 				runtimeCommandObservations: { version: 1, entries: [{ forged: true }] },
 				hubCapabilityOwnerActorId: "jimmi",
+				runtimeOwnerObservation: {
+					version: 1,
+					state: "terminated",
+					terminationConfirmed: true,
+				},
+				terminal_marker_source: "forged",
 			},
 		});
 		expect(f.dispatch.mock.calls[0][0].payload?.metadata).toMatchObject({
@@ -422,6 +428,40 @@ describe("authenticated writer handover in existing session metadata", () => {
 			(f.dispatch.mock.calls[0][0].payload?.metadata as Record<string, unknown>)
 				.runtimeCommandObservations,
 		).toBeUndefined();
+		expect(
+			(f.dispatch.mock.calls[0][0].payload?.metadata as Record<string, unknown>)
+				.runtimeOwnerObservation,
+		).toBeUndefined();
+		expect(
+			(f.dispatch.mock.calls[0][0].payload?.metadata as Record<string, unknown>)
+				.terminal_marker_source,
+		).toBeUndefined();
+	});
+	it.each([
+		"legacy",
+		"current",
+	])("blocks writer handover with unconfirmed %s runtime-owner state", async (kind) => {
+		const f = fixture();
+		Object.assign(
+			f.row.metadata,
+			kind === "legacy"
+				? {
+						terminal_marker_source: "stale_session_reconciler",
+						terminal_marker: "failed_external_process_exit",
+					}
+				: {
+						runtimeOwnerObservation: {
+							version: 1,
+							state: "unknown",
+							exitConfirmed: false,
+						},
+					},
+		);
+		const result = await f.command("session.control.claim", jimmi, {
+			expectedRevision: 1,
+		});
+		expect(result.error?.code).toBe("session_not_quiescent");
+		expect(f.dispatch).not.toHaveBeenCalled();
 	});
 	it("checks modern tool-result records and requires a numeric exit code for completion", () => {
 		const tool = (result: unknown) => [

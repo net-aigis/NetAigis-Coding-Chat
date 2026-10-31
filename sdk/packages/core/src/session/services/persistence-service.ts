@@ -94,16 +94,11 @@ export class UnifiedSessionPersistenceService {
 		return this.manifestStore.ensureSessionsDir();
 	}
 
-	async readSessionImportMetadata(
+	async readSessionAdmissionMetadata(
 		sessionId: string,
 	): Promise<Record<string, unknown> | undefined> {
 		const metadata = (await this.adapter.getSession(sessionId))?.metadata;
-		return metadata && Object.hasOwn(metadata, SNAPSHOT_IMPORT_METADATA_KEY)
-			? {
-					[SNAPSHOT_IMPORT_METADATA_KEY]:
-						metadata[SNAPSHOT_IMPORT_METADATA_KEY],
-				}
-			: undefined;
+		return metadata ?? undefined;
 	}
 
 	async importSessionSnapshot(
@@ -557,6 +552,14 @@ export class UnifiedSessionPersistenceService {
 
 			const nextMetadata = {
 				...(latest.metadata ?? {}),
+				runtimeOwnerObservation: {
+					version: 1,
+					state: "unknown",
+					pid: latest.pid,
+					observedAt: detectedAt,
+					exitConfirmed: false,
+					reason: "runtime_pid_unavailable",
+				},
 				terminal_marker: reason,
 				terminal_marker_at: detectedAt,
 				terminal_marker_pid: latest.pid,
@@ -567,7 +570,7 @@ export class UnifiedSessionPersistenceService {
 				sessionId: latest.sessionId,
 				status: "failed",
 				endedAt: detectedAt,
-				exitCode: 1,
+				exitCode: null,
 				metadata: nextMetadata,
 				expectedStatusLock: latest.statusLock,
 			});
@@ -581,7 +584,7 @@ export class UnifiedSessionPersistenceService {
 			const manifest = buildManifestFromRow(latest, {
 				status: "failed",
 				endedAt: detectedAt,
-				exitCode: 1,
+				exitCode: null,
 				metadata: nextMetadata,
 			});
 			const { path: manifestPath } = this.manifestStore.readManifestFile(
@@ -599,7 +602,7 @@ export class UnifiedSessionPersistenceService {
 				...latest,
 				status: "failed",
 				endedAt: detectedAt,
-				exitCode: 1,
+				exitCode: null,
 				metadata: nextMetadata,
 				statusLock: changed.statusLock,
 				updatedAt: detectedAt,
