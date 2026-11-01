@@ -21,8 +21,11 @@ import {
 	resolveProviderFetch,
 	updateHistoryItem,
 } from "./cline-session-factory"
+import { readDynamicContext } from "./model-catalog/dynamic-context"
 import { parseProviderId } from "./model-catalog/provider-id"
 import { createProviderConfigStore } from "./model-catalog/store"
+
+vi.mock("./model-catalog/dynamic-context", () => ({ readDynamicContext: vi.fn(async () => undefined) }))
 
 const mocks = vi.hoisted(() => {
 	const providerSettingsManager = {
@@ -87,6 +90,7 @@ const previousGlobalSettingsPath = process.env.CLINE_GLOBAL_SETTINGS_PATH
 const previousDataDir = process.env.CLINE_DATA_DIR
 
 beforeEach(() => {
+	vi.mocked(readDynamicContext).mockReset().mockResolvedValue(undefined)
 	tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cline-session-factory-"))
 	process.env.CLINE_DATA_DIR = tempDir
 	process.env.CLINE_GLOBAL_SETTINGS_PATH = path.join(tempDir, "global-settings.json")
@@ -498,6 +502,34 @@ describe("buildSessionConfig", () => {
 			providerId: "openai-compatible",
 			baseUrl: "http://127.0.0.1:4141/v1",
 		})
+	})
+
+	it("uses the live dynamic request policy for inference and compaction without changing the selected model or endpoint", async () => {
+		vi.mocked(readDynamicContext).mockResolvedValue({
+			loadedCapacity: 32768,
+			requestLimit: 1000000,
+			tiers: [32768, 65536, 1000000],
+			observedAtMs: 100,
+		})
+		mocks.stateManager.getApiConfiguration.mockReturnValue({
+			actModeApiProvider: "openai",
+			actModeOpenAiModelId: "interchangeable-selected-model",
+			openAiApiKey: "fixture-key",
+			openAiBaseUrl: "http://127.0.0.1:4141/v1",
+		} as any)
+		const config = await buildSessionConfig({ cwd: "/tmp/workspace" })
+		expect(config.modelId).toBe("interchangeable-selected-model")
+		expect(config.baseUrl).toBe("http://127.0.0.1:4141/v1")
+		expect(config.knownModels?.[config.modelId].contextWindow).toBe(1000000)
+		expect((config.providerConfig as any).knownModels).toBe(config.knownModels)
+		expect(readDynamicContext).toHaveBeenCalledWith(
+			expect.objectContaining({
+				providerId: "openai-compatible",
+				baseUrl: config.baseUrl,
+			}),
+			config.modelId,
+			expect.any(Function),
+		)
 	})
 
 	it("falls back to the providers.json base URL when legacy state has none", async () => {

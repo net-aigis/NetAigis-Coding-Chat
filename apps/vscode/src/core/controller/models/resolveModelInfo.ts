@@ -1,5 +1,6 @@
 import type { ProviderModelsResult } from "@/sdk/model-catalog/contracts"
 import { providerAllowsCustomModelIds } from "@/sdk/model-catalog/custom-model-ids"
+import { readDynamicContext } from "@/sdk/model-catalog/dynamic-context"
 import { ResolveModelInfoRequest, ResolveModelInfoResponse } from "@/shared/proto/cline/models"
 import { toProtobufModelInfo } from "@/shared/proto-conversions/models/typeConversion"
 import { type ProviderCatalogController, parseProviderIdRequest } from "./providerCatalogShared"
@@ -35,6 +36,17 @@ import { type ProviderCatalogController, parseProviderIdRequest } from "./provid
  * placeholder rather than fabricating a model info.
  */
 export async function resolveModelInfo(
+	controller: ProviderCatalogController,
+	request: ResolveModelInfoRequest,
+): Promise<ResolveModelInfoResponse> {
+	const response = await resolveStoredModelInfo(controller, request)
+	if (!response.modelInfo || !response.modelId) return response
+	const endpoint = controller.getProviderConfigStore().read(parseProviderIdRequest(response.providerId))
+	response.modelInfo.dynamicContext = await readDynamicContext(endpoint, response.modelId)
+	return response
+}
+
+async function resolveStoredModelInfo(
 	controller: ProviderCatalogController,
 	request: ResolveModelInfoRequest,
 ): Promise<ResolveModelInfoResponse> {

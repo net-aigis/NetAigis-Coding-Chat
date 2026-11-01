@@ -70,6 +70,8 @@ interface PriceTier {
 }
 
 export interface ModelInfo {
+	/** Live allocation observed at our configured endpoint; never a bundled model guess. */
+	dynamicContext?: DynamicContextInfo
 	name?: string
 	maxTokens?: number
 	contextWindow?: number
@@ -114,6 +116,13 @@ export interface ModelInfo {
 	operation?: ModelOperation
 	/** SDK execution modes preserved for operation-specific clients. */
 	operationModes?: readonly ModelOperationMode[]
+}
+
+export interface DynamicContextInfo {
+	loadedCapacity: number
+	requestLimit: number
+	tiers: number[]
+	observedAtMs: number
 }
 
 export interface OpenAiCompatibleModelInfo extends ModelInfo {

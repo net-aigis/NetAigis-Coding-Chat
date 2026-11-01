@@ -1,3 +1,4 @@
+import type { DynamicContextInfo } from "@shared/api"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import debounce from "debounce"
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -20,6 +21,7 @@ interface ContextWindowProgressProps extends ContextWindowInfoProps {
 	useAutoCondense: boolean
 	lastApiReqTotalTokens?: number
 	contextWindow?: number
+	dynamicContext?: DynamicContextInfo
 	compactDisabled: boolean
 	compactTask: () => Promise<boolean>
 	onSendMessage?: (command: string, files: string[], images: string[]) => void
@@ -59,6 +61,7 @@ ConfirmationDialog.displayName = "ConfirmationDialog"
 
 const ContextWindow: React.FC<ContextWindowProgressProps> = ({
 	contextWindow = 0,
+	dynamicContext,
 	compactDisabled,
 	compactTask,
 	lastApiReqTotalTokens = 0,
@@ -99,15 +102,16 @@ const ContextWindow: React.FC<ContextWindowProgressProps> = ({
 	}, [])
 
 	const tokenData = useMemo(() => {
-		if (!contextWindow) {
+		const limit = dynamicContext?.requestLimit ?? contextWindow
+		if (!limit) {
 			return null
 		}
 		return {
-			percentage: (lastApiReqTotalTokens / contextWindow) * 100,
-			max: contextWindow,
+			percentage: (lastApiReqTotalTokens / limit) * 100,
+			max: limit,
 			used: lastApiReqTotalTokens,
 		}
-	}, [contextWindow, lastApiReqTotalTokens])
+	}, [contextWindow, dynamicContext, lastApiReqTotalTokens])
 
 	const debounceCloseHover = useCallback((e: React.MouseEvent) => {
 		e.preventDefault()
@@ -182,12 +186,25 @@ const ContextWindow: React.FC<ContextWindowProgressProps> = ({
 							</HoverCardTrigger>
 						</HoverCard>
 					</div>
-					<span className="cursor-pointer text-sm" title="Maximum context window size for this model">
+					<span
+						className="cursor-pointer text-sm"
+						title={
+							dynamicContext
+								? "Configured dynamic request limit; larger allocations must be confirmed by the backend"
+								: "Maximum context window size for this model"
+						}>
+						{dynamicContext && "Dynamic · "}
 						{formatTokenNumber(tokenData.max)}
 					</span>
 				</div>
 				<CompactTaskButton disabled={compactDisabled} onClick={handleCompactClick} />
 			</div>
+			{dynamicContext && (
+				<div className="text-xs text-description" title={new Date(dynamicContext.observedAtMs).toLocaleString()}>
+					Last confirmed allocation: {formatTokenNumber(dynamicContext.loadedCapacity)} tokens. Grows on demand;
+					allocation may fail.
+				</div>
+			)}
 			{confirmationNeeded && <ConfirmationDialog onCancel={handleCancel} onConfirm={handleConfirm} />}
 		</div>
 	)

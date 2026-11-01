@@ -13,6 +13,7 @@ function makeController(currentSettings = DEFAULT_AUTO_APPROVAL_SETTINGS, taskId
 		})),
 		postStateToWebview: vi.fn(async () => undefined),
 		stateManager: {
+			getGlobalSettingsKey: vi.fn(() => currentSettings),
 			setGlobalState: vi.fn(),
 			setTaskSettings: vi.fn(),
 		},
@@ -84,7 +85,7 @@ describe("updateAutoApprovalSettings", () => {
 		assert.equal(controller.postStateToWebview.mock.calls.length, 1)
 	})
 
-	it("ignores stale auto-approval settings versions", async () => {
+	it("rejects stale auto-approval settings versions and republishes the authoritative state", async () => {
 		const controller = makeController(
 			{
 				...DEFAULT_AUTO_APPROVAL_SETTINGS,
@@ -93,18 +94,21 @@ describe("updateAutoApprovalSettings", () => {
 			"task-1",
 		)
 
-		await updateAutoApprovalSettings(
-			controller,
-			AutoApprovalSettingsRequest.create({
-				version: 3,
-				actions: {
-					readFiles: false,
-				},
-			}),
+		await assert.rejects(
+			updateAutoApprovalSettings(
+				controller,
+				AutoApprovalSettingsRequest.create({
+					version: 3,
+					actions: {
+						readFiles: false,
+					},
+				}),
+			),
+			/auto_approval_version_conflict/,
 		)
 
 		assert.equal(controller.stateManager.setGlobalState.mock.calls.length, 0)
 		assert.equal(controller.stateManager.setTaskSettings.mock.calls.length, 0)
-		assert.equal(controller.postStateToWebview.mock.calls.length, 0)
+		assert.equal(controller.postStateToWebview.mock.calls.length, 1)
 	})
 })

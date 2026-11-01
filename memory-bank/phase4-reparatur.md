@@ -3110,3 +3110,125 @@ Zählkorrektur wiederverwendeter Dateien getestet: p4-context-incremental-reused
 Root-Ausführung, externe Zweitkopie und tatsächliche Prüfung dieses neuen
 Zweidateien-Nachweises stehen noch aus. Vorher keine Anwendung vorbereiteter
 produktiver Kontextänderungen.
+
+
+### Client-Anbindung für gemeldete 32,8k-Anzeige implementiert
+
+NetAigis Coding Chat fragt ausschließlich am explizit konfigurierten OpenAI-
+kompatiblen /models-Endpunkt die optionale versionierte Laufzeitfähigkeit ab.
+Keine Modellnamenliste, keine neue Modellauswahl, keine geänderte Route. Exakt
+gewähltes Modell, Status ready/on_demand, positive konsistente Stufen erforderlich;
+unbekannte, doppelte, fremde oder fehlerhafte Angaben werden verworfen. Abruf
+auf drei Sekunden/ein MiB begrenzt, keine Redirects oder Geheimnisse in Logs.
+Anzeige trennt zuletzt bestätigte Zuteilung und dynamische Anforderungsgrenze.
+Bestehende Modellmetadaten bleiben erhalten. Sitzungsaufbau übernimmt die explizite
+Laufzeitgrenze in denselben knownModels für Inferenz und Kontextkomprimierung;
+die Zuteilung muss auf dem Server vor jeder Inferenz tatsächlich bestätigt werden.
+Kein statischer Katalogwert erklärt dynamische Vergrößerung für funktionsfähig.
+
+Gezielte Prüfungen:
+- p4-dynamic-context-host: 117/118 bestanden. Neuer positiver Sitzungstest verwendete
+  versehentlich actModeApiModelId statt des bestehenden actModeOpenAiModelId.
+  Nur Fixture-Feld korrigiert; p4-dynamic-context-factory-selected: 1 bestanden,
+  90 unbetroffene Fälle übersprungen. Kein Produktionsfehler daraus behauptet.
+- p4-dynamic-context-ui: 6/6 bestanden, einschließlich dynamische Anzeige,
+  zuletzt bestätigte 32,8k und unveränderte manuelle Komprimierung.
+- p4-dynamic-context-extension-types und -webview-types: Exit 0.
+- p4-dynamic-context-proto: Exit 0. Additiver optionaler Vertrag; erzeugte Dateien
+  wie im Projekt vorgesehen ignoriert und aus versionierter Protoquelle erzeugt.
+- p4-dynamic-context-webview-build: Exit 0 (104,48 s).
+- p4-dynamic-context-extension-build: Sandboxfehler The service was stopped beim
+  esbuild-Unterprozess. Nur diesen Build nativ wiederholt:
+  p4-dynamic-context-extension-build-native Exit 0 (2,79 s).
+
+Vorbereiteter Sicherungsbefehl (benötigt bestehenden Root-Terminalweg, nicht neue
+Zugangsdaten):
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-preflight.py --remote --router-context-delta
+Am 01.11. Benutzer um Ausführung gebeten, da sudo -n nicht verfügbar ist.
+Dies ist keine Anwendungs-/Dienstfreigabe. Neue produktive Kontextsteuerung erst
+nach geprüftem Zweidateien-Export, externer Kopie, vollständigem Anwendungs- und
+Rückfallnachweis sowie gezielter zusätzlicher Acer-Freigabe. Bis dahin zeigen
+bestehende Server ohne bestätigte neue Fähigkeit weiterhin ihre bisherigen Werte.
+
+
+#### Zusätzliche Zweidateien-Sicherung tatsächlich abgeschlossen
+
+Benutzer führte den bestehenden Root-Terminalweg aus: phase4-dynamic-context-delta,
+2 Dateien, 5 alte unveränderte Dateien weiterverwendet. Root-Archiv/Restore mit
+Owner/Mode/mtime/xattrs erfolgreich; keine Quelldatei oder Dienste geändert.
+Archiv SHA256 bb6f13391c00e8e05d6c0073777204616cd6bdd77f559ccb79a0398e5e8fb4a6,
+Manifest 17acd9e1eecc8eafd0337a763e6e05566cb9cc616419103f30e6e4321bf18f58,
+SHA256SUMS 492950ddec354c5a41c217c3f395448f15ad832543682c0fc5314a6a87612d55.
+Geschützten Export danach unabhängig per SSH auf Typ/Owner/0700 bzw.0600 und
+alle drei Prüfsummen geprüft; externe Kopie unter
+/home/friseer/MyContainer/backups/cline-phase2-20261030T173159+0100/phase4-dynamic-context-delta.
+Dort vollständige Archiv-Mitgliederliste auf genau zwei reguläre erwartete Dateien
+geprüft, erneut per tar tatsächlich nach restore-probe wiederhergestellt und Bytes,
+Modi und mtimes gegen Manifest geprüft. Native Root-Owner-Wiederherstellung belegt
+Acer, nicht die unprivilegierte lokale Probe. Geschützter Beleg external-verification.json.
+Keine Secrets in Git übernommen, vorherige Sicherungen unverändert.
+
+Wichtige tatsächliche Launcher-Prüfung anhand der bereits gesicherten Unit:
+MainPID/User=Root gehört zum runuser-Wrapper, der Modellserver startet bereits
+als friseer. Der echte Launcher verwendet die vorhandene Strata-Virtualenv
+/home/friseer/.local/share/strata/terminal/0.1.53/python/bin/python3 -u,
+keinen angenommenen System-Python. foreground_argv übernimmt dessen exakten
+Programm-/Argumentvektor, entfernt nur den nachgewiesenen selben Benutzer-Wrapper
+und ersetzt ausschließlich den --config-Pfad durch die private effektive Datei.
+Kein Modell-/Engine-/Gewichtsaustausch. Zwei ergänzte reine Tests und vorhandene
+zehn bestanden: p4-context-foreground-profile 12/12; tatsächlichen gesicherten
+Launcher ebenfalls erfolgreich im Speicher geprüft. Produktive Anwendung offen.
+
+#### Weitere tatsächliche Ursache der scheinbar gesetzten Werkzeugfreigaben
+
+p4-dynamic-permissions-vscode-native: echtes installiertes Kandidaten-VSIX in
+abgeschottetem Profil unter VS Code 1.144.0; fehlgeschlagen nach 43,15 s.
+Host-Speicher begann korrekt mit verweigerten Aktionen/Version 1. Die Oberfläche
+behielt jedoch ihre permissiveren Standardwerte derselben Version, weil
+ExtensionStateContext nur incomingVersion > currentVersion übernahm. Das erklärt
+sichtbare Häkchen bei tatsächlich fehlenden Host-Freigaben. Nach Klick auf die
+fünf angezeigten Häkchen speicherte der bereits korrigierte RPC-Wettlauf Version 6
+korrekt mit vier deaktivierten Aktionen und aktivierten Commands; Fehler war
+hier die falsche erste Anzeige, nicht verloren gegangene fünf RPCs.
+
+Echten StateContext-Provider zusätzlich mit gespeicherten Version-1-Verweigerungen
+getestet: p4-auto-approve-hydration-red 1/2 bestanden, genau dieser Fall rot.
+Korrektur: gleiche autoritative Version übernehmen, ältere weiterhin abweisen.
+p4-auto-approve-hydration-green: 5/5 inklusive der drei Klick-Wettlauf-Fälle.
+Xvfb blieb im fehlgeschlagenen Test bis zum kontrollierten eigenen Cleanup aktiv
+und endete mit Exit 0. Dieser Fehlversuch ist kein Xvfb-Absturz und kein
+produktiver Modelltest. Neue Webview samt Typprüfung erfolgreich gebaut
+(p4-hydration-webview-build 101,54 s), eigener zweiter VSIX-Kandidat separat
+verpackt; erster Kandidat und bisheriges produktives Paket unverändert erhalten.
+Wiederholung nur des betroffenen nativen Tests läuft im separaten Testprofil.
+
+
+#### Native Wiederholung bestanden und aktueller Arbeitsstand gesichert
+
+p4-dynamic-permissions-vscode-corrected: Exit 0 (32,06 s), echter VS-Code-Host
+1.144.0, tatsächlich installiertes eigenes VSIX aus isoliertem Extension-Verzeichnis.
+Alle fünf Freigaben im selben Renderzustand geklickt; Host-Datei danach Version 6
+und alle fünf Flags true, tatsächliche Checkboxen alle aktiviert. Test-Chat über
+explizites lokales Fixture-Backend beendet; dynamische Anzeige 1,0m als
+Anforderungsgrenze und 32,8k als zuletzt bestätigte Zuteilung gleichzeitig sichtbar.
+actualModel=false/fixtureProvider=true im Ergebnis. Weder DeepSeek- noch 1m-
+Hardware-Abnahme daraus ableiten. Xvfb blieb bis zum eigenen Cleanup aktiv,
+Exit 0; keine produktive Instanz beendet oder installiert.
+
+Zusätzlich bestehende drei Auto-Approval-Handler-Tests auf den nun synchronen
+Zustandsabruf und expliziten Versionskonflikt angepasst; zusammen mit den drei
+neuen Hostfällen p4-existing-auto-approve-handler 6/6 bestanden.
+05dc81b6e erhält den tatsächlichen Strata-Virtualenv-Launcher bei der späteren
+Kontextsteuerung. coding-agent-v4 bleibt 624c2cd6661e100680d8b61daa3a3447f4708536.
+
+Neuer geprüfter Testkandidat (keine produktive Installation):
+tmp/phase4-checks-20261030T193507+0100/netaigis-coding-chat-0.1.0-context-hydration-candidate.vsix
+SHA256 1c3f993434cea487b097f61995cca7182ac8afe5175a1d3230407dcb837952cb,
+14.223.177 Bytes, 148 Archivmitglieder, ZIP-Integrität und eigene Identität geprüft.
+Bisheriger erster Kandidat 820bd8862a4f629014b18bf96f1354abe0453192a6dac310a04e5f8148e7104b
+und älteres VSIX edef0ae50f424ada4feed54e151f1bc9a849fb76b7f147bfa61d34ba49d04c75 bleiben
+unverändert. Alle ursprünglichen Sitzungen und Sicherungen erhalten.
+
+Neue öffentliche Nachweise einschließlich Fehlversuchen versiegelt: 99 Dateien,
+tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.context-and-approval-20261101,
+SHA256 31a58f9b8ce3a4a4d47f1ec76e18f567c5b0f6ad1f02f127c26b3ce60d395036. Alle Einträge nach dem Schreiben erneut gelesen.

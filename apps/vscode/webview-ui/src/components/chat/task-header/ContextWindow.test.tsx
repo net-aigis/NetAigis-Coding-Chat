@@ -73,4 +73,20 @@ describe("ContextWindow compact button", () => {
 
 		expect(screen.getByRole("button", { name: /compact task/i })).toBeDisabled()
 	})
+
+	it("labels dynamic request policy separately from the last confirmed allocation", () => {
+		render(
+			<ContextWindow
+				compactDisabled={false}
+				compactTask={vi.fn()}
+				contextWindow={32768}
+				dynamicContext={{ loadedCapacity: 32768, requestLimit: 1000000, tiers: [32768, 1000000], observedAtMs: 100 }}
+				lastApiReqTotalTokens={100000}
+				useAutoCondense={false}
+			/>,
+		)
+		expect(screen.getByText("Dynamic · 1.0m")).toBeInTheDocument()
+		expect(screen.getByText(/Last confirmed allocation: 32.8k tokens/)).toBeInTheDocument()
+		expect(screen.getByRole("progressbar")).toHaveTextContent("10")
+	})
 })

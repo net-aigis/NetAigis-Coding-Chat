@@ -450,7 +450,10 @@ export const ExtensionStateContextProvider: React.FC<{
 							// Versioning logic for autoApprovalSettings
 							const incomingVersion = stateData.autoApprovalSettings?.version ?? 1
 							const currentVersion = prevState.autoApprovalSettings?.version ?? 1
-							const shouldUpdateAutoApproval = incomingVersion > currentVersion
+							// The host's first saved version may equal the UI defaults.
+							// Equal authoritative snapshots must replace those defaults;
+							// strictly older replies still cannot undo a newer grant.
+							const shouldUpdateAutoApproval = incomingVersion >= currentVersion
 
 							// Route the snapshot's transcript through the convergent-replica reducer:
 							// merge by ts/seq within the same epoch (never truncate), replace on a

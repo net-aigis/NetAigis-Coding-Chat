@@ -47,6 +47,7 @@ import { type BedrockProviderConfig, buildBedrockProviderConfig } from "./bedroc
 import { buildAgentHooks } from "./hooks-adapter"
 import { readTaskHistory, resolveDataDir } from "./legacy-state-reader"
 import type { ResolvedModelSelection } from "./model-catalog/contracts"
+import { readDynamicContext } from "./model-catalog/dynamic-context"
 import { nonNegativeFiniteNumber, positiveFiniteNumber, toSdkApiFormat } from "./model-catalog/model-values"
 import { parseProviderId } from "./model-catalog/provider-id"
 import { toSdkProviderId } from "./model-catalog/sdk-provider-id"
@@ -1142,6 +1143,27 @@ export async function buildSessionConfig(input: SessionConfigInput): Promise<Cor
 		}
 	} catch (error) {
 		Logger.warn(`[SessionFactory] Failed to resolve known models for provider=${sdkProviderId}:`, error)
+	}
+	// Only an explicit live capability may enlarge the loaded allocation.
+	// Model names and static catalogs cannot promise automatic allocation.
+	if (sdkProviderId === "openai-compatible") {
+		const dynamicContext = await readDynamicContext(
+			{
+				providerId: sdkProviderId,
+				baseUrl,
+				apiKey,
+				headers: createProviderConfigStore().read(parseProviderId(providerId)).headers,
+			},
+			modelId,
+			resolveProviderFetch(sdkProviderId, baseUrl),
+		)
+		if (dynamicContext) {
+			const existing = knownModels?.[modelId] ?? { id: modelId, name: modelId }
+			knownModels = {
+				...knownModels,
+				[modelId]: { ...existing, contextWindow: dynamicContext.requestLimit },
+			}
+		}
 	}
 
 	// Always pass a providerConfig so the proxy/CA-aware fetch reaches the SDK

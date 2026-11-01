@@ -253,6 +253,7 @@ const TaskHeader: React.FC<TaskHeaderProps> = ({
 							compactDisabled={compactDisabled}
 							compactTask={compactTask}
 							contextWindow={selectedModelInfo?.contextWindow}
+							dynamicContext={selectedModelInfo?.dynamicContext}
 							lastApiReqTotalTokens={lastApiReqTotalTokens}
 							onSendMessage={onSendMessage}
 							tokensIn={tokensIn}

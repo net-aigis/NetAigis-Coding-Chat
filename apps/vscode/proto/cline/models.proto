@@ -120,6 +120,15 @@ message OpenRouterModelInfo {
   optional double temperature = 14;
   optional bool supports_reasoning = 15;
   optional ApiFormat api_format = 16;
+  optional DynamicContextInfo dynamic_context = 17;
+}
+
+// A live observation of the selected configured runtime, not a model catalog limit.
+message DynamicContextInfo {
+  int64 loaded_capacity = 1;
+  int64 request_limit = 2;
+  repeated int64 tiers = 3;
+  int64 observed_at_ms = 4;
 }
 
 // User-authored per-model metadata stored in models.json.
