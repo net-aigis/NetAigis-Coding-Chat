@@ -180,11 +180,17 @@ class Supervisor:
                 raise Refused("model_process_exited_before_ready")
             try:
                 actual = self.health_probe()
-                if actual >= context:
-                    self.current, self.state = actual, "ready"
-                    return
-            except (OSError, ValueError, Refused):
-                pass
+            except Refused as error:
+                if str(error) != "backend_not_ready":
+                    raise
+                actual = None
+            except (OSError, ValueError):
+                actual = None
+            if actual is not None:
+                if type(actual) is not int or actual < context:
+                    raise Refused("backend_reported_smaller_context")
+                self.current, self.state = actual, "ready"
+                return
             # Bounded readiness polling inside the model service, never shell sleeps.
             try:
                 self.process.wait(timeout=min(0.25, max(0.01, deadline - time.monotonic())))

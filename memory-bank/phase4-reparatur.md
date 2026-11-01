@@ -3312,3 +3312,38 @@ Profilstand und abschließender eigener Rollout. Keine Phase als fertig markiert
 
 Neue Ablauf-Nachweise versiegelt: 9 Dateien, tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.context-activation-20261101,
 SHA256 0ad1ec7aa7f9d64ce67ddc39ba86367441d6d3733c7d062cf11d90a624efa323. Erneut vollständig geprüft.
+
+
+#### Abschließende Bereitschaftskorrektur vor dem Acer-Schritt
+
+Vor der Anwendung zwei weitere konkrete Fälle im vorbereiteten Controller
+reproduziert: ein bereits bereites Backend mit zu kleiner Kapazität und ein
+bereites anderes Modell wurden bis zum Bereitschaftsdeadline erneut abgefragt.
+p4-context-ready-mismatch-red: 0/2 bestanden. Korrektur trennt vorübergehend nicht
+bereit von diesen abschließenden Widersprüchen; letztere scheitern sofort mit
+konkretem Fehler statt die Wartefrist auszuschöpfen. p4-context-ready-mismatch-green
+2/2 bestanden. Die zehn betroffenen realen lokalen Prozess-/HTTP-/Socketfälle
+nochmals gezielt geprüft: p4-context-final-allocation-native 10/10 bestanden.
+Aktualisierte öffentliche Asset-Prüfung ebenfalls bestanden. Ablauf- und
+Konfigurationskandidaten unverändert, nur Controller-Quellbytes korrigiert.
+
+Neuer Controller SHA256 c6959442e1df00ca02cac31c399052cd27fd45b57473388ece297290778ae0f5;
+Aktivierungshelfer pinnt genau diese Version. Privates candidate-plan-v2/manifest.json
+unter derselben geprüften Delta-Sicherung referenziert sechs unveränderte
+Kandidaten aus candidate-plan und nur ein neu bereitgestelltes Controller-Artefakt.
+Die identische bereits geprüfte Unit wurde nicht erneut gebaut/getestet.
+Vorherige Kandidaten und Sicherungen unverändert; keine produktive Datei geändert.
+
+Gesonderte Freigabe für diesen zusätzlichen Acer-Eingriff bleibt erforderlich:
+sieben oben konkret aufgezählte Ziele, genau die drei betroffenen Units,
+daemon-reload, tatsächlicher erster Zuwachs auf mindestens 65536. ai-agent.service,
+Modellwahl, vorhandene API-Endpunkte und produktive VS-Code-Installation bleiben
+dabei unberührt. Der ursprüngliche Gesamtauftrag bleibt über diesen Schritt hinaus
+offen. Der Notfallaufruf ist ausschließlich nach gesonderter Notfallbestätigung
+vorgesehen und kein automatischer Ablauf nach einem fehlgeschlagenen Test:
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-activate.py emergency --remote --maintenance-confirmed --external-copy-verified --emergency-confirmed
+Er markiert die neue Reparatur weiterhin als erforderlich; neue Artefakte und
+Benutzerarbeit werden nicht gelöscht. Die produktive Funktionsprüfung steht aus.
+
+Zusätzliche neun Nachweise einschließlich roter Vorläufe versiegelt: tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.context-ready-final-20261101,
+SHA256 904366a73d15f2cadc1c7eaf932c7c9afd2709f77fc1c052a7b08a6a30b1052d. Alle Einträge erneut gelesen.

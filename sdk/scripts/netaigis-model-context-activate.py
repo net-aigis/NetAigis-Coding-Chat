@@ -29,7 +29,7 @@ BACKUPS = {
 ASSETS = {
     "netaigis-model-context-candidate.py": "dccc61275baada11f45d938f720ff63cdf92abab78fddd2b4461cd7305840423",
     "netaigis-model-profile.py": "8bf8418428f6c9bbd7074b531b22695ee95f5d9058177794821474a18ed34798",
-    "netaigis-model-context.py": "abf5781d1aec3b103a87217b824ec83f5eb2851abbcf2eb0c77cc5e49abc9f49",
+    "netaigis-model-context.py": "c6959442e1df00ca02cac31c399052cd27fd45b57473388ece297290778ae0f5",
     "netaigis-model-router-context.py": "f2e5e20a460a5e1b1767c61da11a43285a2f06a531aeee5f8700ad64ff8cccea",
     "netaigis-coding-agent-context-tiers.py": "1000d91195192a3494fde738bbf0967103c9eadf348a992cd26716695f290a71",
     "netaigis-coding-agent-adapter-maintenance.py": "724ef51566b333b228c317cad588da0829ebd0f8ee3de1ba6d3c35538b63f47e",
@@ -38,7 +38,7 @@ CANDIDATES = {
     "/opt/ai-model-router/model_router.py": "f7c9a3e84b69928088383a2646213e4fe62b31ba4b8da7a2f42a2ce3a0cbdd66",
     "/etc/ai-model-router.json": "cebf45cd7b71590ab77953d2a5bb00c97f02d9f2ecde80f563de32c092b34e99",
     "/opt/netaigis-coding-agent/context_session.py": "5f2f007ef5df7681f2494dec20da63592060822578aa1704dc27e3d1ae2a2847",
-    "/opt/ai-model-router/netaigis-model-context.py": "abf5781d1aec3b103a87217b824ec83f5eb2851abbcf2eb0c77cc5e49abc9f49",
+    "/opt/ai-model-router/netaigis-model-context.py": "c6959442e1df00ca02cac31c399052cd27fd45b57473388ece297290778ae0f5",
     "/opt/ai-model-router/netaigis-model-profile.py": "8bf8418428f6c9bbd7074b531b22695ee95f5d9058177794821474a18ed34798",
     "/etc/systemd/system/ai-deepseek.service": "9962b23d242a733c361240f0f053c5a32220ca95c9582d491104f3e02396dba4",
     "/etc/systemd/system/netaigis-coding-agent.service.d/context-allocation.conf": "7597baba1bda8a7bdd29cd8d2fb62cca67c0833447192e4f4e9d211504855e17",
