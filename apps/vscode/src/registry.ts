@@ -10,6 +10,8 @@ const prefix = name === "claude-dev" ? "cline" : name
  */
 const ClineCommands = {
 	ConfigureSharedRuntime: `${prefix}.runtime.configure`,
+	ClaimSharedSession: `${prefix}.runtime.claimSession`,
+	ReleaseSharedSession: `${prefix}.runtime.releaseSession`,
 	PlusButton: prefix + ".plusButtonClicked",
 	McpButton: prefix + ".mcpButtonClicked",
 	MarketplaceButton: prefix + ".marketplaceButtonClicked",

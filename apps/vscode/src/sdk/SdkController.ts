@@ -114,6 +114,7 @@ import { readCurrentMessages } from "./session-host"
 import {
 	SharedRuntimeConfigurationError,
 	type SharedSessionHubConnection,
+	type SharedSessionWriterSnapshot,
 	saveSharedSessionHubConnection,
 	verifySharedSessionHubActor,
 } from "./shared-session-hub"
@@ -2241,6 +2242,26 @@ export class Controller {
 				return actor
 			}),
 		)
+	}
+
+	async sharedSessionWriterControl(
+		action: "get" | "claim" | "release",
+		expectedRevision?: number,
+		expectedSessionId?: string,
+	): Promise<SharedSessionWriterSnapshot> {
+		const task = this.task
+		if (!task) throw new SharedRuntimeConfigurationError("Für die Schreibübergabe eine bestehende Sitzung auswählen.")
+		if (action !== "get" && (!expectedSessionId || task.taskId !== expectedSessionId)) {
+			throw new SharedRuntimeConfigurationError(
+				"Die Sitzungsauswahl hat sich seit der Bestätigung geändert; keine Schreibübergabe ausgeführt.",
+			)
+		}
+		return this.sessions.controlSharedSessionWriter({
+			sessionId: task.taskId,
+			action,
+			expectedRevision,
+			isCurrent: () => this.task === task,
+		})
 	}
 
 	// ---- Mode switching ----

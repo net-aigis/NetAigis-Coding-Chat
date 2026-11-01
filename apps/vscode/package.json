@@ -133,6 +133,14 @@
 		},
 		"commands": [
 			{
+				"command": "netaigis-coding-chat.runtime.claimSession",
+				"title": "NetAigis Coding Chat: Schreibrecht für gemeinsame Sitzung übernehmen"
+			},
+			{
+				"command": "netaigis-coding-chat.runtime.releaseSession",
+				"title": "NetAigis Coding Chat: Schreibrecht für gemeinsame Sitzung freigeben"
+			},
+			{
 				"command": "netaigis-coding-chat.runtime.configure",
 				"title": "NetAigis Coding Chat: Gemeinsame Runtime verbinden"
 			},

@@ -1823,3 +1823,13 @@ An unused read-only history host and its metadata cache are released under a
 history-read exclusion guard; active hosts and in-flight reads are never stopped.
 Failed persistence restores the previous selection; an unverified disk rollback
 blocks subsequent connection reads instead of reporting a usable configuration.
+
+VS Code writer claim/release commands inspect the currently displayed canonical
+session, then pass its ID and inspected revision through an explicit confirmation.
+The lifecycle uses the existing session host's Core connection for both control
+and subsequent turns; a temporary setup/Recall client can never hold its lease.
+Pending starts/stops, changed selections and an unconfirmed personal identity
+prevent a change. The inspected CAS revision is retained across a fresh identity
+read, and an uncertain write is never retried automatically. Server-side process
+and author checks remain authoritative; the client does not relabel old process
+states or modify history to make a handover pass.

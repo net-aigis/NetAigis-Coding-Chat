@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest"
-import { registerSharedRuntimeCommand } from "@/hosts/vscode/shared-runtime-command"
+import { registerSharedRuntimeCommand, registerSharedSessionWriterCommands } from "@/hosts/vscode/shared-runtime-command"
 import { SharedRuntimeConfigurationError } from "./shared-session-hub"
 
 const ui = vi.hoisted(() => ({ register: vi.fn(), input: vi.fn(), success: vi.fn(), failure: vi.fn() }))
@@ -8,7 +8,13 @@ vi.mock("vscode", () => ({
 	window: { showInputBox: ui.input, showInformationMessage: ui.success, showErrorMessage: ui.failure },
 }))
 vi.mock("@/registry", () => ({
-	ExtensionRegistryInfo: { commands: { ConfigureSharedRuntime: "netaigis-coding-chat.runtime.configure" } },
+	ExtensionRegistryInfo: {
+		commands: {
+			ConfigureSharedRuntime: "netaigis-coding-chat.runtime.configure",
+			ClaimSharedSession: "netaigis-coding-chat.runtime.claimSession",
+			ReleaseSharedSession: "netaigis-coding-chat.runtime.releaseSession",
+		},
+	},
 }))
 beforeEach(() => {
 	vi.resetAllMocks()
@@ -50,4 +56,61 @@ it("does not leak arbitrary transport or storage errors containing a credential"
 	await callback(configure)()
 	expect(JSON.stringify(ui.failure.mock.calls)).not.toContain("fixture-personal")
 	expect(ui.success).not.toHaveBeenCalled()
+})
+
+function writerCallback(
+	action: "claim" | "release",
+	control: Parameters<typeof registerSharedSessionWriterCommands>[0],
+): () => Promise<void> {
+	registerSharedSessionWriterCommands(control)
+	return ui.register.mock.calls.find(([id]) => id === `netaigis-coding-chat.runtime.${action}Session`)?.[1]
+}
+const inspected = { sessionId: "canonical-existing", actorId: "jimmi", control: { version: 1 as const, revision: 17 } }
+it.each([
+	"claim",
+	"release",
+] as const)("sends %s only after confirmation, for the inspected ID and CAS revision", async (action) => {
+	const result = {
+		...inspected,
+		control: {
+			...inspected.control,
+			revision: 18,
+			...(action === "claim"
+				? { writer: { actorId: "jimmi", clientId: "fixture", connectionId: "fixture-connection" } }
+				: {}),
+		},
+	}
+	const control = vi.fn().mockResolvedValueOnce(inspected).mockResolvedValueOnce(result)
+	ui.success.mockResolvedValueOnce(action === "claim" ? "Schreibrecht übernehmen" : "Schreibrecht freigeben")
+	await writerCallback(action, control)()
+	expect(control.mock.calls).toEqual([["get"], [action, 17, "canonical-existing"]])
+	expect(ui.success.mock.calls[0][1]).toEqual({ modal: true })
+	expect(ui.success.mock.calls[1][0]).toContain("bestätigt")
+})
+it("cancelling writer handover reads the confirmed state without changing it", async () => {
+	const control = vi.fn().mockResolvedValue(inspected)
+	await writerCallback("claim", control)()
+	expect(control).toHaveBeenCalledExactlyOnceWith("get")
+})
+it("does not retry or report a successful handover after a lost acknowledgement", async () => {
+	const control = vi
+		.fn()
+		.mockResolvedValueOnce(inspected)
+		.mockRejectedValueOnce(new Error("fixture-personal credential in transport error"))
+	ui.success.mockResolvedValueOnce("Schreibrecht übernehmen")
+	await writerCallback("claim", control)()
+	expect(control).toHaveBeenCalledTimes(2)
+	expect(ui.success).toHaveBeenCalledOnce()
+	expect(ui.failure).toHaveBeenCalledOnce()
+	expect(JSON.stringify(ui.failure.mock.calls)).not.toContain("fixture-personal")
+})
+it("does not claim success when the reply refers to another session or fails to grant the actor", async () => {
+	const control = vi
+		.fn()
+		.mockResolvedValueOnce(inspected)
+		.mockResolvedValueOnce({ ...inspected, sessionId: "other" })
+	ui.success.mockResolvedValueOnce("Schreibrecht übernehmen")
+	await writerCallback("claim", control)()
+	expect(ui.success).toHaveBeenCalledOnce()
+	expect(ui.failure).toHaveBeenCalledWith(expect.stringContaining("nicht bestätigt"))
 })

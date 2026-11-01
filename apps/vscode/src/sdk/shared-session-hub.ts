@@ -1,11 +1,16 @@
 /** A transport connection to the existing SDK hub, separate from model routing. */
-import { NodeHubClient } from "@cline/core/hub"
+import { NodeHubClient, type SessionWriterControl } from "@cline/core/hub"
 import { StateManager } from "@/core/storage/StateManager"
 
 const CONNECTION_KEY = "shared-session-hub_connection"
 export interface SharedSessionHubConnection {
 	endpoint: string
 	authToken: string
+}
+export interface SharedSessionWriterSnapshot {
+	sessionId: string
+	actorId: string
+	control: SessionWriterControl
 }
 
 /** Only these fixed, credential-free messages may be displayed by the setup command. */

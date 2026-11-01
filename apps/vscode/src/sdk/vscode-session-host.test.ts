@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mockClineCoreCreate = vi.hoisted(() => vi.fn())
 const mockCreateVscodeExtraTools = vi.hoisted(() => vi.fn(async (_hub: unknown, _options?: unknown) => []))
 const mockInnerStart = vi.hoisted(() => vi.fn())
+const mockWriter = vi.hoisted(() => ({ actorId: vi.fn(), get: vi.fn(), claim: vi.fn(), release: vi.fn() }))
 
 vi.mock("@cline/core", async () => {
 	const actual = await vi.importActual<typeof import("@cline/core")>("@cline/core")
@@ -50,6 +51,24 @@ function makeTelemetry(): ITelemetryService {
 }
 
 describe("VscodeSessionHost telemetry wiring", () => {
+	it("uses its existing Core connection for writer inspection, claim and release", async () => {
+		const sharedSessionHub = { endpoint: "wss://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
+		const host = await VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub })
+		mockWriter.actorId.mockReturnValue("jimmi")
+		mockWriter.get.mockResolvedValue({ version: 1, revision: 4 })
+		mockWriter.claim.mockResolvedValue({ version: 1, revision: 5 })
+		mockWriter.release.mockResolvedValue({ version: 1, revision: 6 })
+		expect(host.getAuthenticatedActorId()).toBe("jimmi")
+		await expect(host.getSessionControl("same-session")).resolves.toMatchObject({ revision: 4 })
+		await host.claimSessionControl("same-session", 4)
+		await host.releaseSessionControl("same-session", 5)
+		expect(mockWriter.get).toHaveBeenCalledExactlyOnceWith("same-session")
+		expect(mockWriter.claim).toHaveBeenCalledExactlyOnceWith("same-session", 4)
+		expect(mockWriter.release).toHaveBeenCalledExactlyOnceWith("same-session", 5)
+		expect(mockClineCoreCreate).toHaveBeenCalledOnce()
+		expect(mockInnerStart).not.toHaveBeenCalled()
+		await host.dispose()
+	})
 	it("retains the existing local terminal integration when no shared runtime is selected", async () => {
 		const getTerminalManager = vi.fn(() => {
 			throw new Error("factory is lazy")
@@ -76,7 +95,9 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks()
 		mockInnerStart.mockReset().mockResolvedValue({ sessionId: "core-task" })
+		for (const method of Object.values(mockWriter)) method.mockReset()
 		mockClineCoreCreate.mockReset().mockResolvedValue({
+			sessionControl: mockWriter,
 			subscribe: () => () => {},
 			start: mockInnerStart,
 			stop: async () => {},

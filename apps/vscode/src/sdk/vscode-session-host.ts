@@ -161,6 +161,19 @@ export class VscodeSessionHost implements SdkSessionHost {
 		return this.inner.updateSessionModel(sessionId, modelId)
 	}
 
+	getAuthenticatedActorId(): string | undefined {
+		return this.inner.sessionControl.actorId()
+	}
+	getSessionControl(sessionId: string) {
+		return this.inner.sessionControl.get(sessionId)
+	}
+	claimSessionControl(sessionId: string, expectedRevision: number) {
+		return this.inner.sessionControl.claim(sessionId, expectedRevision)
+	}
+	releaseSessionControl(sessionId: string, expectedRevision: number) {
+		return this.inner.sessionControl.release(sessionId, expectedRevision)
+	}
+
 	static async create(options: VscodeSessionHostOptions): Promise<VscodeSessionHost> {
 		const sharedSessionHub = options.sharedSessionHub
 			? validateSharedSessionHubConnection(options.sharedSessionHub)

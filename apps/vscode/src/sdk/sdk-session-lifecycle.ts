@@ -16,7 +16,11 @@ import type { ActiveSession } from "./cline-session-factory"
 import type { SdkForegroundCommandCoordinator } from "./sdk-foreground-command-coordinator"
 import { buildToolPolicies } from "./sdk-tool-policies"
 import type { SdkSessionHost } from "./session-host"
-import { SharedRuntimeConfigurationError } from "./shared-session-hub"
+import {
+	getSharedSessionHubConnection,
+	SharedRuntimeConfigurationError,
+	type SharedSessionWriterSnapshot,
+} from "./shared-session-hub"
 import { VscodeSessionHost } from "./vscode-session-host"
 
 type RequestToolApprovalHandler = NonNullable<Parameters<typeof VscodeSessionHost.create>[0]["requestToolApproval"]>
@@ -161,6 +165,53 @@ export class SdkSessionLifecycle {
 				"Während des Verbindungswechsels kann keine Sitzung gestartet oder angehängt werden.",
 			)
 		}
+	}
+
+	/** Writer authority must belong to the same client/connection used for the actual turn. */
+	async controlSharedSessionWriter(input: {
+		sessionId: string
+		action: "get" | "claim" | "release"
+		expectedRevision?: number
+		isCurrent: () => boolean
+	}): Promise<SharedSessionWriterSnapshot> {
+		const assertCurrent = () => {
+			this.assertRuntimeSelectionIdle()
+			if (
+				!input.sessionId ||
+				!input.isCurrent() ||
+				this.pendingStarts.size ||
+				this.pendingStops.size ||
+				(this.activeSession && this.activeSession.sessionId !== input.sessionId)
+			) {
+				throw new SharedRuntimeConfigurationError(
+					"Die ausgewählte Sitzung ist nicht stabil; keine Schreibübergabe bestätigt.",
+				)
+			}
+		}
+		assertCurrent()
+		if (!getSharedSessionHubConnection()) {
+			throw new SharedRuntimeConfigurationError("Für Schreibübergaben zuerst die gemeinsame Runtime verbinden.")
+		}
+		if (input.action !== "get" && (!Number.isSafeInteger(input.expectedRevision) || Number(input.expectedRevision) < 0)) {
+			throw new SharedRuntimeConfigurationError("Vor der Schreibübergabe die bestätigte Zuständigkeitsrevision lesen.")
+		}
+		const host = this.activeSession?.sdkHost ?? (await this.getOrCreateSharedHost())
+		assertCurrent()
+		if (!host.getSessionControl || !host.getAuthenticatedActorId) {
+			throw new SharedRuntimeConfigurationError("Die ausgewählte Runtime bietet keine persönliche Schreibzuständigkeit.")
+		}
+		let control = await host.getSessionControl(input.sessionId)
+		const actorId = host.getAuthenticatedActorId()
+		if (!actorId) throw new SharedRuntimeConfigurationError("Keine persönliche Runtime-Anmeldung bestätigt.")
+		assertCurrent()
+		if (input.action !== "get") {
+			const change = input.action === "claim" ? host.claimSessionControl : host.releaseSessionControl
+			if (!change)
+				throw new SharedRuntimeConfigurationError("Die ausgewählte Runtime unterstützt diese Schreibübergabe nicht.")
+			// Keep the inspected revision across dialogs and this fresh auth read. No retry after an uncertain write.
+			control = await change.call(host, input.sessionId, input.expectedRevision as number)
+		}
+		return { sessionId: input.sessionId, actorId, control }
 	}
 
 	/** Resolves once no tracked session start is in flight. */

@@ -3744,3 +3744,37 @@ weiter ausstehend. Nächste Arbeit: Schreibübergabe im VS-Code-Client explizit
 bedienbar machen, vorhandenen Hub mit denselben kanonischen Daten kontrolliert
 bereitstellen, Recall und physisches Android tatsächlich abnehmen. Alte unbekannte
 Prozesszustände bleiben gesperrt; keine alten Exitcodes nachträglich erfunden.
+
+### Schreibübergabe: VS-Code-Bedienung auf derselben Runtime-Verbindung
+
+Auf d7bba0f59 fortgesetzt. Eigene Command-IDs runtime.claimSession und
+runtime.releaseSession ergänzen die Verbindungseinrichtung. Zuerst tatsächlichen
+Writerzustand für die aktuell angezeigte Session-ID lesen; danach ausdrückliche
+Bestätigung mit dieser ID, persönlicher Akteur-ID und unveränderter CAS-Revision.
+Eine inzwischen gewechselte Aufgabenansicht kann nicht versehentlich dieselbe
+Revision auf eine andere Sitzung anwenden. Der Host leitet get/claim/release und
+Akteurabfrage direkt an seine bereits vorhandene Core-Verbindung weiter. Kein
+temporärer Anmeldeclient hält ein nutzloses Schreibrecht für einen später anderen
+Client. Derselbe gecachte Host wird für den nachfolgenden kanonischen Start benutzt.
+
+Vor Mutation erneute persönliche Anmeldung/Zustand lesen, dabei die zuvor
+bestätigte Revision NICHT durch die frisch gelesene ersetzen. Konkurrenz, unbekannte
+Prozesse oder verlorene Quittung bleiben Fehler ohne automatische Wiederholung.
+Ausstehende Starts/Stops und andere aktive Session blockieren; die Sitzung wird
+zum Einrichten der Übergabe weder gestartet noch beendet oder neu erzeugt. Das
+ausdrücklich folgende Starten durch den Nutzer verwendet dieselbe ID/Verbindung.
+Antwort mit anderer ID, anderem Akteur oder fehlendem gefordertem Writerzustand
+wird nicht als Erfolg angezeigt. Lokaler Betrieb erhält keine fingierte Akteur-ID.
+Serverseitige geschützte Zustände und unveränderliche Urheberschaft unverändert.
+
+p4-vscode-writer-controls 86/86 bestanden: neue Lifecycle-/Command-/Host-
+Vertragsfälle sowie betroffene bestehende Lifecycle- und Recall-Tests. Prüfung
+verwendet gezielte Host-Fixtures, keine produktive Übergabeabnahme. Der reale
+Anmelde-Transportnachweis aus dem vorherigen Schritt bleibt bestehen.
+p4-vscode-writer-controls-types Exit 0. Keine erneute Migration/Installation,
+kein produktiver Hub und keine Änderung an Acer-Diensten in diesem Schritt.
+
+Die gemeinsame echte Modell-/VS-Code-/Android-Abnahme ist weiterhin erforderlich.
+Der nächste isolierte Integrationstest soll den tatsächlich konfigurierten
+Coding-Agent-Zugang nutzen und den bereits vorhandenen Hub mit der echten neuen
+VS-Code-Anbindung verbinden; dabei keine produktiven Sitzungsdaten verändern.

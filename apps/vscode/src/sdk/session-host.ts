@@ -20,9 +20,14 @@ import type {
 	StartSessionInput,
 	StartSessionResult,
 } from "@cline/core"
+import type { SessionWriterControl } from "@cline/core/hub"
 import type { AgentResult } from "@cline/shared"
 
 export interface SdkSessionHost {
+	getAuthenticatedActorId?(): string | undefined
+	getSessionControl?(sessionId: string): Promise<SessionWriterControl>
+	claimSessionControl?(sessionId: string, expectedRevision: number): Promise<SessionWriterControl>
+	releaseSessionControl?(sessionId: string, expectedRevision: number): Promise<SessionWriterControl>
 	readonly runtimeAddress: string | undefined
 	start(input: StartSessionInput): Promise<StartSessionResult>
 	start(input: ClineCoreStartInput): Promise<StartSessionResult>
