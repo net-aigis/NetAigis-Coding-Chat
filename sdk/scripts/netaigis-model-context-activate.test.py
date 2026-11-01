@@ -1,5 +1,7 @@
 """Isolated transaction tests: actual fixture files, no Root/systemd/model access."""
 import importlib.util
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -11,6 +13,99 @@ path = Path(__file__).with_name("netaigis-model-context-activate.py")
 spec = importlib.util.spec_from_file_location("context_activation", path)
 activation = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(activation)
+
+
+def input_record(path):
+    info = path.stat()
+    return {"sha256": activation.digest(path.read_bytes()), "attributes": {
+        "uid": info.st_uid, "gid": info.st_gid, "mode": info.st_mode & 0o7777,
+        "mtime_ns": info.st_mtime_ns,
+        "xattrs": {key: activation.base64.b64encode(os.getxattr(path, key)).decode()
+                   for key in os.listxattr(path)}}}
+
+
+class RestoredInputOwnership(unittest.TestCase):
+    def test_prepare_preserves_manifest_owner_instead_of_requiring_the_operator_owner(self):
+        with tempfile.TemporaryDirectory(dir=os.environ["CLINE_DATA_DIR"]) as root:
+            folder = Path(root) / "phase4-model-context-preflight"
+            restored = folder / "restore-probe/fixture/runtime.json"
+            restored.parent.mkdir(parents=True)
+            restored.write_bytes(b"user-owned-runtime")
+            original_record = input_record(restored)
+            manifest = json.dumps({"files": {"/fixture/runtime.json": original_record}}).encode()
+            (folder / "manifest.json").write_bytes(manifest)
+            (folder / "artifacts.tar").write_bytes(b"fixture-archive")
+            assets = {name: path.with_name(name).read_bytes() for name in activation.ASSETS}
+            primitives = activation.module(assets["netaigis-coding-agent-adapter-maintenance.py"], "primitives")
+            regular = primitives["regular"]
+            # Fixture manifests stand in for Root-owned private backup envelopes;
+            # the real input reader still sees the original non-Root file owner.
+            primitives["regular"] = lambda p, private=False: p.read_bytes() if private else regular(p)
+            builder = {"EXPECTED": {"/fixture/runtime.json": activation.digest(restored.read_bytes())},
+                       "ROUTER": "/fixture/router.py", "CONFIG": "/fixture/config.json", "ASSETS": (),
+                       "build": lambda inputs, assets: {}}
+            with mock.patch.object(activation, "PARENT", Path(root)), \
+                 mock.patch.object(activation, "BACKUPS", {folder.name: (activation.digest(manifest), activation.digest(b"fixture-archive"))}), \
+                 mock.patch.object(activation, "private_directory"), \
+                 mock.patch.object(activation, "module", side_effect=lambda source, name: builder if name == "builder" else primitives), \
+                 mock.patch.object(activation, "CANDIDATES", {}), \
+                 mock.patch.object(activation.os, "geteuid", return_value=0):
+                result = activation.prepare(assets)
+            self.assertEqual(result[2]["/fixture/runtime.json"], b"user-owned-runtime")
+            self.assertEqual(input_record(restored), original_record)
+
+    def test_manifest_owner_mode_time_xattrs_and_hash_are_all_enforced(self):
+        with tempfile.TemporaryDirectory(dir=os.environ["CLINE_DATA_DIR"]) as root:
+            source = Path(root) / "runtime.json"
+            source.write_bytes(b"unchanged")
+            record = input_record(source)
+            self.assertEqual(activation.verified_input(source, record), b"unchanged")
+            for key in ("uid", "gid", "mode", "mtime_ns", "xattrs"):
+                modified = json.loads(json.dumps(record))
+                modified["attributes"][key] = {"user.unexpected": "eA=="} if key == "xattrs" else modified["attributes"][key] + 1
+                with self.subTest(attribute=key), self.assertRaisesRegex(activation.Refused, "attributes_changed"):
+                    activation.verified_input(source, modified)
+            with self.assertRaisesRegex(activation.Refused, "content_changed"):
+                activation.verified_input(source, {**record, "sha256": "0" * 64})
+            self.assertEqual(input_record(source), record)
+
+    def test_a_symlink_or_an_inode_replaced_during_read_is_refused(self):
+        with tempfile.TemporaryDirectory(dir=os.environ["CLINE_DATA_DIR"]) as root:
+            source = Path(root) / "runtime.json"
+            source.write_bytes(b"unchanged")
+            record = input_record(source)
+            link = Path(root) / "link.json"
+            link.symlink_to(source)
+            with self.assertRaisesRegex(activation.Refused, "path_changed"):
+                activation.verified_input(link, record)
+            real_read = os.read
+            replaced = False
+            def raced_read(fd, count):
+                nonlocal replaced
+                if not replaced:
+                    replacement = Path(root) / "replacement.json"
+                    replacement.write_bytes(b"replacement")
+                    replacement.replace(source)
+                    replaced = True
+                return real_read(fd, count)
+            with mock.patch.object(activation.os, "read", side_effect=raced_read), \
+                 self.assertRaisesRegex(activation.Refused, "changed_during_read"):
+                activation.verified_input(source, record)
+
+    def test_preparation_failure_reports_no_productive_write_or_service_action(self):
+        output = io.StringIO()
+        with mock.patch.object(__import__("sys"), "argv", ["context", "apply"]), \
+             mock.patch.object(activation.os, "geteuid", return_value=0), \
+             mock.patch.object(activation.os, "umask"), \
+             mock.patch.object(activation, "prepare", side_effect=activation.Refused("verified_input_attributes_changed")), \
+             contextlib.redirect_stdout(output):
+            self.assertEqual(activation.main(), 1)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["stage"], "before_mutation")
+        self.assertFalse(report["source_modified"])
+        self.assertFalse(report["service_modified"])
+        self.assertEqual(report["file_writes_confirmed"], 0)
+        self.assertNotIn("new_implementation_retained", report)
 
 
 class ContextActivation(unittest.TestCase):
@@ -31,6 +126,7 @@ class ContextActivation(unittest.TestCase):
         self.inputs = {str(self.runtime): b"original-runtime", str(self.transient): b"original-unit",
                        str(self.router): b"original-router", str(self.config): config, str(self.tracker): b"original-tracker"}
         for name, data in self.inputs.items(): Path(name).write_bytes(data)
+        self.records = {name: input_record(Path(name)) for name in self.inputs}
         self.candidates = {str(self.router): b"new-router", str(self.config): config, str(self.tracker): b"new-tracker",
                            str(self.unit): b"new-unit", str(self.helper): b"new-controller"}
         self.builder = {"RUNTIME": str(self.runtime), "TRANSIENT": str(self.transient), "MODEL_UNIT": str(self.unit),
@@ -77,7 +173,7 @@ class ContextActivation(unittest.TestCase):
         return {"model": "fixture-model", "current_context": 65536}
 
     def run_action(self, action="apply", maintenance=True, external=True, emergency=False):
-        return activation.transact(self.builder, self.primitives, self.inputs, {}, self.candidates,
+        return activation.transact(self.builder, self.primitives, self.inputs, self.records, self.candidates,
                                    action=action, maintenance=maintenance, external=external, emergency=emergency)
 
     def test_missing_confirmation_cannot_write_or_stop(self):
@@ -104,6 +200,15 @@ class ContextActivation(unittest.TestCase):
         self.assertIn(("start", "netaigis-coding-agent.service"), self.events)
         entries = [json.loads(line) for line in next(self.backup.glob("activation-*.jsonl")).read_text().splitlines()]
         self.assertEqual(entries[-1]["stage"], "repair_required")
+        self.assertTrue(entries[-1]["new_implementation_retained"])
+        self.assertTrue(entries[-1]["service_action_attempted"])
+        self.assertIsNone(entries[-1]["source_modified"])
+
+    def test_live_runtime_validation_preserves_the_manifest_owner_under_root(self):
+        before = input_record(self.runtime)
+        with mock.patch.object(activation.os, "geteuid", return_value=0):
+            self.assertTrue(self.run_action()["ok"])
+        self.assertEqual(input_record(self.runtime), before)
 
     def test_a_forged_allocation_cannot_replace_the_independent_backend_observation(self):
         self.mocks[7].return_value = 32768

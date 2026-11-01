@@ -3347,3 +3347,52 @@ Benutzerarbeit werden nicht gelöscht. Die produktive Funktionsprüfung steht au
 
 Zusätzliche neun Nachweise einschließlich roter Vorläufe versiegelt: tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.context-ready-final-20261101,
 SHA256 904366a73d15f2cadc1c7eaf932c7c9afd2709f77fc1c052a7b08a6a30b1052d. Alle Einträge erneut gelesen.
+
+### Acer-Kontextschritt freigegeben: Eigentümerprüfung vor Mutation korrigiert
+
+Der Benutzer hat den begrenzten Eingriff aus ec3ad4cdb freigegeben und über
+seinen Root-Terminalweg ausgeführt. Ergebnis: ok=false, Refused,
+file_owner_type_or_protection_changed. Die bisherige pauschale Ausgabe
+new_implementation_retained=true war in diesem Fall falsch: prepare scheiterte
+vor der Transaktion und vor jeglichem Schreiben produktiver Dateien.
+
+Ursache anhand des vorhandenen authentifizierten Sicherungsmanifests und des
+tatsächlichen Prüfcodes belegt: Die ursprüngliche DeepSeek-Runtime-JSON gehört
+UID/GID 1000, Modus 0644. Der wiederverwendete Adapter-Prüfer regular verlangte
+auch für diese Restore-Eingabe Eigentümer Root. Dieselbe falsche Forderung war
+auch für die Prüfung der unveränderten produktiven Runtime vorhanden.
+Keine produktiven Rechte als Umgehung ändern.
+
+Nach dem Fehlversuch ausschließlich lesend auf Acer kontrolliert: Router,
+Konfiguration, Context-Tracker, Runtime-JSON und transiente Unit haben weiterhin
+ihre gepinnten ursprünglichen SHA256; alle vier neuen Ziele fehlen weiterhin.
+Modell PID 1745000, Router 1913536, Coding 1754988 und Learning 618787 sind weiterhin
+active/running mit ihren unveränderten InvocationIDs. Keine Dienstaktion oder
+Modellanfrage durchgeführt. Originalbranch und installierte Erweiterung unberührt.
+
+Korrektur ausschließlich am lokalen Aktivierungshelfer: Restore-Eingaben und die
+Original-Runtime mit SHA256, UID, GID, Modus, mtime und sämtlichen xattrs gegen
+den authentifizierten Manifestdatensatz prüfen. O_NOFOLLOW, Inode-/Metadaten-
+Abgleich vor/nach dem Lesen und feste Größenbegrenzung verhindern eine still
+geänderte Eingabe. Root-eigene private Backup-Manifeste/-Archive sowie die
+Deployment-Ziele behalten die strengen bisherigen Prüfungen. Die sieben
+produktiven Kandidaten und ihre bereits geprüften Digests bleiben identisch.
+Fehlerberichte unterscheiden jetzt vor Mutation, begonnene Schreibversuche,
+bestätigte Schreibvorgänge und begonnene Dienstaktionen; unbekannte Ergebnisse
+werden nicht als erfolgte Installation oder sichere Unverändertheit ausgegeben.
+
+Regression p4-context-owner-prepare-red: echter prepare-Aufruf mit ursprünglichem
+Benutzereigentum und simuliertem Root-Aufrufer reproduziert exakt denselben
+Refused-Fehler (0/1). Nach Korrektur p4-context-owner-and-transaction-green:
+22/22 bestanden, einschließlich der bisherigen 17 Ablaufprüfungen, geprüfter
+Originaleigentümer bei Restore und produktiver Runtime, Attribute-/Hashabweichung,
+Symlink-/Inode-Wechsel und korrekter Vor-Mutations-Fehlermeldung. Testdateien echt,
+Root/systemd/Modell weiterhin simuliert; keine produktive Kontextabnahme behauptet.
+
+Die erteilte Eingriffsfreigabe bleibt gültig. Derselbe Aufruf muss wegen fehlendem
+passwortlosem Root im bestehenden Benutzerterminal erneut ausgeführt werden:
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-activate.py apply --remote --maintenance-confirmed --external-copy-verified
+Passwort ausschließlich im Terminal. Keine erneute Freigabe, neue Sicherung oder
+Rechteänderung erforderlich. Anschließend tatsächliche Kontextvergrößerung und
+Inferenz prüfen; eine Million Tokens, Sitzungswiederaufnahme und der übrige
+Gesamtauftrag bleiben bis zu ihrem jeweiligen Nachweis offen.

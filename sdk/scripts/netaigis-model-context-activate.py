@@ -127,6 +127,47 @@ def private_directory(path):
         raise Refused("protected_existing_backup_required")
 
 
+def verified_input(path, record):
+    """Read a pinned source using its original owner, without changing protections.
+
+    Unlike Root-owned backup envelopes and deployment targets, an original model
+    runtime legitimately belongs to the model user. Bind content and attributes
+    to the authenticated manifest, and check the same open inode before/after.
+    """
+    if path.resolve() != path:
+        raise Refused("verified_input_path_changed")
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode) or before.st_size > 16 * 1024 * 1024:
+            raise Refused("verified_input_type_or_size_changed")
+        attributes = {"uid": before.st_uid, "gid": before.st_gid,
+                      "mode": stat.S_IMODE(before.st_mode), "mtime_ns": before.st_mtime_ns,
+                      "xattrs": {key: base64.b64encode(os.getxattr(descriptor, key)).decode()
+                                 for key in os.listxattr(descriptor)}}
+        if attributes != record["attributes"]:
+            raise Refused("verified_input_attributes_changed")
+        chunks, size = [], 0
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk: break
+            size += len(chunk)
+            if size > 16 * 1024 * 1024:
+                raise Refused("verified_input_type_or_size_changed")
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        current = path.lstat()
+        fields = ("st_dev", "st_ino", "st_mode", "st_uid", "st_gid", "st_size", "st_mtime_ns", "st_ctime_ns")
+        if any(getattr(before, key) != getattr(observed, key) for observed in (after, current) for key in fields):
+            raise Refused("verified_input_changed_during_read")
+        content = b"".join(chunks)
+        if digest(content) != record["sha256"]:
+            raise Refused("verified_input_content_changed")
+        return content
+    finally:
+        os.close(descriptor)
+
+
 def prepare(assets):
     validate_assets(assets)
     builder = module(assets["netaigis-model-context-candidate.py"], "builder")
@@ -143,8 +184,8 @@ def prepare(assets):
     for name, sha in builder["EXPECTED"].items():
         backup = "phase4-dynamic-context-delta" if name in (builder["ROUTER"], builder["CONFIG"]) else "phase4-model-context-preflight"
         path = PARENT / backup / "restore-probe" / name.lstrip("/")
-        data = primitives["regular"](path)
         record = manifests[backup]["files"][name]
+        data = verified_input(path, record)
         if digest(data) != sha or record["sha256"] != sha:
             raise Refused("verified_restored_input_changed")
         inputs[name], records[name] = data, record
@@ -258,12 +299,17 @@ def ready(builder, config):
     raise Refused("new_model_readiness_deadline")
 
 
-def transact(builder, primitives, inputs, records, candidates, *, action, maintenance, external, emergency=False):
+def transact(builder, primitives, inputs, records, candidates, *, action, maintenance, external, emergency=False, activity=None):
+    activity = activity if activity is not None else new_activity()
     if action not in ("apply", "inspect", "emergency"):
         raise Refused("unsupported_action")
     plans = check_targets(primitives, inputs, records, candidates)
     # The original runtime JSON is intentionally never rewritten.
-    if digest(primitives["regular"](Path(builder["RUNTIME"]))) != digest(inputs[builder["RUNTIME"]]):
+    try:
+        runtime = verified_input(Path(builder["RUNTIME"]), records[builder["RUNTIME"]])
+    except Refused:
+        raise Refused("selected_runtime_source_changed") from None
+    if digest(runtime) != digest(inputs[builder["RUNTIME"]]):
         raise Refused("selected_runtime_source_changed")
     transient = Path(builder["TRANSIENT"])
     if os.path.lexists(transient):
@@ -306,13 +352,16 @@ def transact(builder, primitives, inputs, records, candidates, *, action, mainte
             # transient service, which can disappear when its process terminates.
             for plan in plans:
                 if plan["current"] == digest(plan["candidate"]): continue
+                activity["mutation_attempted"] = True
                 if plan.get("new") and plan["current"] is None:
                     new_file(plan["source"], plan["candidate"])
                 else:
                     primitives["replace_verified"](plan, plan["candidate"], plan["current"])
+                activity["file_writes_confirmed"] += 1
                 record({"stage": "file_written", "path": str(plan["source"]), "sha256": digest(plan["candidate"])})
             no_connections()
             for unit in UNITS:
+                activity["service_action_attempted"] = True
                 service("stop", unit); stopped.append(unit); record({"stage": "stopped", "unit": unit})
             service("daemon-reload")
             service("start", "ai-deepseek.service")
@@ -356,7 +405,7 @@ def transact(builder, primitives, inputs, records, candidates, *, action, mainte
                     "learning_service_unchanged": True, "model_request": False, "inference_acceptance_pending": True,
                     "one_million_allocation_pending": True, "new_version_repair_remains_required": action == "emergency"}
         except BaseException:
-            record({"stage": "repair_required", "new_implementation_retained": True})
+            record({**failure_activity(activity), "stage": "repair_required"})
             # Restore availability using the NEW implementation, never silently
             # overwrite it with the original after the first failed check.
             for unit in reversed(stopped):
@@ -365,6 +414,20 @@ def transact(builder, primitives, inputs, records, candidates, *, action, mainte
             raise
         finally:
             os.close(lock)
+
+
+def new_activity():
+    return {"mutation_attempted": False, "file_writes_confirmed": 0, "service_action_attempted": False}
+
+
+def failure_activity(activity):
+    result = {**activity, "automatic_rollback": False,
+              "stage": "mutation_started" if activity["mutation_attempted"] else "before_mutation",
+              "source_modified": None if activity["mutation_attempted"] else False,
+              "service_modified": None if activity["service_action_attempted"] else False}
+    if activity["file_writes_confirmed"]:
+        result["new_implementation_retained"] = True
+    return result
 
 
 def main():
@@ -398,13 +461,15 @@ def main():
     if os.geteuid() != 0:
         raise SystemExit("Existing Root terminal required for inspect/apply; no password in chat")
     os.umask(0o077)
+    activity = new_activity()
     try:
         builder, primitives, inputs, records, candidates = prepare(assets)
         report = transact(builder, primitives, inputs, records, candidates, action=options.action,
-                          maintenance=options.maintenance_confirmed, external=options.external_copy_verified, emergency=options.emergency_confirmed)
+                          maintenance=options.maintenance_confirmed, external=options.external_copy_verified,
+                          emergency=options.emergency_confirmed, activity=activity)
     except Exception as error:
         report = {"ok": False, "action": options.action, "failure_class": type(error).__name__,
-                  "new_implementation_retained": True, "repair_required": True, "model_request": False}
+                  "repair_required": True, "model_request": False, **failure_activity(activity)}
         if type(error).__name__ == "Refused" and re.fullmatch(r"[a-z_]{1,120}", str(error)):
             report["reason"] = str(error)
         if isinstance(error, Refused) and error.path in CANDIDATES: report["path"] = error.path
