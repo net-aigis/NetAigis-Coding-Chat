@@ -2915,3 +2915,16 @@ dynamische Kontextvergrößerung, vollständige produktive Recall-/Learning-Abna
 gemeinsame Android-Livesitzung und Watchdog-Dauerbetrieb bleiben offen. Ihre
 Fertigstellung wird durch eine etwaige freigegebene Zwischeninstallation nicht
 als erledigt markiert.
+
+Prüfnachweise anschließend tatsächlich versiegelt und nochmals per SHA256 gelesen:
+44 zusätzliche Protokoll-/Metadaten-/Treiberartefakte unter
+tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.router-and-live-vsix-20261101,
+SHA256 a0be37d3d699dde782f9078a9730af0e6ff581e61012cce71e1de9488515d199.
+28 tatsächliche Transfer-/Import-/Rücknahme-/Neustartartefakte ausschließlich im
+geschützten migration-probe/SHA256SUMS.verified-transfer-probe,
+SHA256 254eac95babb333832125e3ab127dac2c63c0566b9959aed4016270edc6d9486.
+Vorherige Siegel unverändert. Paketprüfsumme erneut bestätigt. Keine produktiven
+Sitzungsinhalte oder Zugangsdaten in Git kopiert. Nach Commit d3e4a7ebe konkrete
+Benutzerfreigabe zur beschriebenen begrenzten produktiven Zwischeninstallation/
+Migration angefragt; bis zur Antwort nicht anwenden. Der übrige Gesamtauftrag
+bleibt offen und darf durch diesen Übergabestand nicht ersetzt werden.
