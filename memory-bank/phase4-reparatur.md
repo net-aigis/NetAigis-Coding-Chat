@@ -3481,3 +3481,62 @@ Cleanup aktiv, keine produktive VS-Code-Instanz beendet. Bestehende ältere Pake
 Sicherungen und Originaldaten unverändert erhalten. Produktiver eigener Rollout,
 alte unbekannte Sitzungs-/Werkzeugzustände, Recall/Learning-Gesamtabnahme,
 gemeinsame Android-Runtime und externer Watchdog bleiben offen.
+
+### Echte Werkzeugfreigaben: fehlender Übergang nach nicht gestartetem Terminal
+
+p4-native-five-grants hat im tatsächlich installierten isolierten Paket Read und
+Edit erfolgreich ausgeführt, scheiterte dann an Commands. Kanonischer Tool-Result
+für grant-2: success=false, execution.state=not_started, Begründung fehlende
+Shell-Integration. Kein falscher Abschluss, kein früher 3-Sekunden-Timer und kein
+Abbruch eines laufenden Benutzerbefehls; der Befehl war bewusst nicht versendet
+worden. MCP war korrekt verbunden und im tatsächlichen Toolkatalog vorhanden.
+Die gespeicherten Häkchen waren richtig; die fehlende Ausführungsanbindung war
+ein weiterer eigenständiger Fehler hinter der Benutzerbeobachtung.
+
+createVscodeShellExecutor verwendet jetzt nach genau diesem typisierten
+CommandNotStartedError den vorhandenen direkt überwachten Child-Process-Executor.
+Originalcommand/argv, Arbeitsverzeichnis, Shell-Snapshot, Abbruchsignal und
+derselbe bereits korrigierte Timeout bleiben erhalten. Bei unbekanntem Ausgang,
+bestätigtem Fehler oder Abbruch kein zweiter Aufruf. Die sichere Verweigerung in
+VscodeTerminalProcess bleibt bestehen; kein ungeprüftes sendText und keine
+Verlängerung eines Beobachtungstimers als Ersatz. Commit 1c5db6c56 und seine
+Ausgabeerhaltkorrekturen unverändert erhalten.
+
+Neue echte Child-Process-Regressionen: p4-terminal-fallback-red 4/6, genau
+Ausführung und Timeout-Übergang rot. Nach Korrektur zunächst 78/79 im kombinierten
+Lauf; der einzige verbleibende Test erwartete fälschlich ein entferntes Newline.
+Der vorhandene Prozess-Executor erhält dieses korrekt. Nur diese Testerwartung
+korrigiert; p4-terminal-fallback-output-corrected 6/6. Die 73 bestehenden
+Vordergrund-/Telemetryfälle waren bereits grün und wurden nicht erneut wiederholt.
+Geprüft sind einmalige tatsächliche Ausführung, Nichtausführung bei unbekanntem
+Status/Exit 7/allgemeinem Fehler/Abbruch sowie bestätigter Timeout mit Teilausgabe.
+Die fünf früher erfolgreich gemessenen sleep-Laufzeiten wurden nicht wiederholt.
+Erweiterungstypprüfung p4-terminal-fallback-types bestanden (128,52 s).
+
+p4-native-five-grants-fixed: Exit 0 (83,76 s), echtes VS Code 1.144.0,
+installiertes neues eigenes VSIX, fünf tatsächliche Werkzeuge ohne weitere
+Bestätigung: read_files, editor, run_commands, fetch_web_content und
+permission_fixture__permission_probe. Gelesener Inhalt geprüft, Datei tatsächlich
+geändert, Command-Marker tatsächlich geschrieben, Webmarker tatsächlich geladen,
+MCP-Aufruf auf dem separaten lokalen Fixture-Server angekommen. Kanonischer
+Command-Result success=true, completed, PID 2329139, bestätigter Exitcode 0;
+kein aus einer bloßen Rückgabe erfundener Prozessstatus. Xvfb im roten und grünen
+Versuch bis zum eigenen Cleanup aktiv, Exit 0. Keine produktive Instanz beendet.
+Modell im GUI-Lauf ausdrücklich Fixture; die zuvor separat nachgewiesenen echten
+Coding-Agent-Antworten nach Kontextzuwachs bleiben als eigener Nachweis erhalten.
+
+Neuer Kandidat netaigis-coding-chat-0.1.0-terminal-fallback-candidate.vsix:
+SHA256 6777bc58774d87b847666782b247092a82f448ff4d855db8232858aa51b957bd,
+14.225.385 Bytes, 148 ZIP-Mitglieder, Integrität/eigene Identität geprüft.
+Vorherige Kandidaten nicht überschrieben. 59 neue Ergebnis-/Prozessbelege
+einschließlich Fehlversuchen versiegelt und erneut vollständig gelesen:
+tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.context-million-and-tool-grants-20261101,
+SHA256 77620f1d050d91e2768e8a83d1ba380583be0a7a5362ba30c8852258e79087a3.
+
+Anschließende gezielte Prüfung des produktiven Profils: weiterhin weder eigene
+noch Original-Cline-Pakete im Erweiterungsregister, beide Daten-Namensräume fehlen.
+Historische Shared-Process-Logs belegen den expliziten Uninstall aus dem Profil
+um 17:22:41 und die spätere Entfernung von der Platte um 17:30:03; Initiator und
+Ursache verschwundener Daten weiterhin ungeklärt. Keine Benutzerentscheidung
+hieraus erfinden. Die bereits freigegebene eigene Wiederinstallation mit
+abgesicherter Datenübernahme wird vorbereitet; der Gesamtauftrag läuft weiter.

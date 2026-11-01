@@ -5,7 +5,8 @@
  * It supports two execution modes, switchable dynamically per invocation:
  *
  *   - **Foreground (vscodeTerminal):** Uses VscodeTerminalManager for visible
- *     VS Code terminals with shell integration.
+ *     VS Code terminals with shell integration. A confirmed never-started
+ *     refusal can use the existing directly monitored process executor.
  *
  *   - **Background (backgroundExec):** Delegates to the SDK's createShellExecutor()
  *     for headless child_process.spawn execution.
@@ -610,7 +611,7 @@ function createVscodeShellExecutor(options: VscodeRunCommandsToolOptions, state:
 		// tool call, not the setting's current value (see createVscodeRunCommandsTool).
 		const { profileId, shell } = state.snapshot
 
-		if (executionMode === "backgroundExec") {
+		const executeBackground = async (): Promise<string> => {
 			// Background path — use SDK's createShellExecutor.
 			// Recreate the executor if the shell has changed
 			if (!bgExecutor || bgExecutorShell !== shell) {
@@ -641,20 +642,29 @@ function createVscodeShellExecutor(options: VscodeRunCommandsToolOptions, state:
 				throw error
 			}
 		}
+		if (executionMode === "backgroundExec") return executeBackground()
 
 		// Foreground path — use VscodeTerminalManager
 		if (!terminalManager) {
 			terminalManager = getTerminalManager()
 		}
-		return await executeForeground(
-			command,
-			commandCwd || cwd,
-			terminalManager,
-			MAX_COMMAND_OUTPUT_CHARS,
-			context.signal,
-			options.foregroundCommands,
-			profileId,
-			context.emitUpdate,
-		)
+		try {
+			return await executeForeground(
+				command,
+				commandCwd || cwd,
+				terminalManager,
+				MAX_COMMAND_OUTPUT_CHARS,
+				context.signal,
+				options.foregroundCommands,
+				profileId,
+				context.emitUpdate,
+			)
+		} catch (error) {
+			// This typed refusal proves the user's command was never dispatched.
+			// Lost observation, a failed exit or cancellation must never replay it.
+			if (!(error instanceof CommandNotStartedError) || context.signal?.aborted) throw error
+			Logger.log("[VscodeRunCommands] Terminal did not start the command; using monitored child execution")
+			return executeBackground()
+		}
 	}
 }
