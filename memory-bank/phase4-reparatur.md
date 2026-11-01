@@ -3642,3 +3642,38 @@ nutzbare eigene Installation mit echtem Chat/Edit/Read/Commands und dynamischer
 Backend-Grenze; vollständige alte Sitzungswiederaufnahme bei unbekannten Prozessen,
 durchgehende Recall-/Learning-Abnahme, gemeinsame authentifizierte Friseer/jimmi-
 Runtime mit Android und unabhängiger Watchdog-Dauerbetrieb bleiben offen.
+
+#### Separater Watchdog: begrenzter Root-Aktivierungshelfer vorbereitet
+
+netaigis-watchdog-activate.py stellt ausschließlich drei gepinnte öffentliche
+Artefakte neu bereit: /usr/local/libexec/netaigis-watchdog.py,
+/etc/systemd/system/netaigis-watchdog.service und netaigis-watchdog.timer.
+Der Standard-Enable-Link unter timers.target.wants wird auf Kollision geprüft.
+Unbekannte bestehende Dateien oder fremde Links werden nicht überschrieben.
+Bestehende kontrollierte Backup-Ablage wird nur um ein privates Aktivierungsjournal
+mit vorheriger Abwesenheit und Dienstzuständen ergänzt. Keine neue Sicherung
+unveränderter Modell-/Coding-/Learning-Dateien.
+
+Nach gesonderter Freigabe: daemon-reload, nur den eigenen Beobachtungsdienst
+einmal starten und dessen echte strukturierte Journalausgabe aus genau dieser
+systemd-Invocation prüfen. Erst dann ausschließlich den eigenen Timer aktivieren.
+DynamicUser sowie die vorhandenen Dateisystem-/Netzwerkbeschränkungen bleiben
+erhalten. Kein beobachteter Dienst wird gestartet, gestoppt oder neu konfiguriert,
+keine Inferenz angefordert. Beobachtete Fehler/unbekannte Zustände bleiben solche;
+ein erwarteter Exit 1 bei erkanntem Infrastrukturproblem wird nicht zu gesund
+umetikettiert. Fehlende echte Beobachtung verhindert Aktivierungserfolg.
+Vor/nach die vier beobachteten Unit-Zustände vergleichen; keine automatische
+Rücknahme oder Löschung neuer Artefakte nach Fehlern.
+
+p4-watchdog-enable-link-scope: 11/11 bestanden. Echte lokale Fixture-Dateien und
+atomare Veröffentlichung, Root/systemd/Journald simuliert. Geprüft sind zusätzliche
+Freigabe, Assetdrift, Kollisionen, ausschließlich eigene Steueraktionen,
+vollständige Veröffentlichung vor Start, kein Timer vor echter Beobachtung,
+korrekte Behandlung von ungesund/unbestätigtem Prozess und Erhaltung der Belege.
+Dies ersetzt noch nicht den produktiven DynamicUser-/Timer-Nachweis.
+
+Konkreter Aufruf ausschließlich nach neuer gezielter Watchdog-Freigabe:
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-watchdog-activate.py apply --remote --installation-approved
+Passwort nur im bestehenden Root-Terminalweg. Keine Freigabe oder Ausführung
+für diesen neuen Dienst bislang vorausgesetzt. Nach Anwendung echte Journald-
+Beobachtung, periodischen Lauf und unveränderte vier KI-Dienste prüfen.
