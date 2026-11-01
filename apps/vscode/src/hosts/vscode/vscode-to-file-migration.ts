@@ -271,7 +271,7 @@ export async function exportVSCodeStorageToSharedFiles(
 
 /** File-backed values win; retain native secrets for an independently tested rollback. */
 export async function migrateLegacyRecallSecrets(
-	context: Pick<vscode.ExtensionContext, "secrets">,
+	vscodeContext: Pick<vscode.ExtensionContext, "secrets">,
 	storage: Pick<StorageContext, "secrets">,
 ): Promise<number> {
 	const sentinel = "netaigis-recall_migration_v1"
@@ -280,7 +280,8 @@ export async function migrateLegacyRecallSecrets(
 	for (const suffix of ["base_url", "token", "project", "actor"] as const) {
 		const key = `netaigis-recall_${suffix}`
 		if (storage.secrets.get(key) !== undefined) continue
-		const value = await context.secrets.get(key)
+		// Read the authorized migration source; the file-backed destination may still be empty.
+		const value = await vscodeContext.secrets.get(key)
 		if (value !== undefined && value !== "") batch[key] = value
 	}
 	const count = Object.keys(batch).length
