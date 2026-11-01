@@ -203,3 +203,21 @@ Danach erst fertige eigene VSIX, Regression/Abnahme, verifizierter Rückfall und
 ## Verbindliche Modellunabhängigkeit – jüngste Benutzerkorrektur
 
 Terminal, Sitzungs-Runtime, TOTAL RECALL, Coding-/Learning-Anbindung, Watchdog und Android-Zugriff dürfen nicht an ein bestimmtes Modell oder eine Parameterzahl gebunden sein. Modelle müssen austauschbar bleiben. Der Benutzer präzisierte zuletzt: Der Wechsel zu **„DeepSeek 4.1 1017B“ steht unmittelbar bevor**; dies ist ein geplanter Zielname, kein von uns erbrachter Betriebs-/Metadatennachweis. Die unmittelbar vorherige Aussage über ein bereits installiertes DeepSeek ist damit zeitlich korrigiert. Keine automatische Modellumstellung oder Rückkehr zu Qwen; bestehende Endpunkte/Routingentscheidungen erhalten. Funktionstests verwenden die jeweils tatsächlich aktiv konfigurierte Modell-/Providerkombination und dokumentieren Wechselzustände. Historische Modellnamen im Verlauf erhalten, daraus keine feste technische Bindung oder automatische Auswahl ableiten.
+
+01.11.2026 — Nutzer meldet „deepseek läuft“ und die erfolgreiche Anwendung des
+freigegebenen Acer-Adapters. Der aktuelle Betrieb ist jetzt gezielt belegt:
+vorhandener Modelllistener 11442 meldet `deepseek-v4.1-flash-1017-iq2_xs` und
+beantwortet begrenzte normale/Streaming-Modellanfragen. Keine Behauptung einer
+gemessenen Parameterzahl. Der bestehende Modellrouter verweist dagegen noch
+auf das alte Qwen-Profil/11440; Coding-Agent-Aufruf derzeit HTTP 503. Dies ist
+ein offener Integrationsfehler, keine abgeschlossene produktive Abnahme.
+
+Weitere verbindliche Präzisierung: **Kontextgröße bleibt dynamisch**. Den
+funktionierenden Vergrößerungspfad des vorherigen Modells als Grundlage
+verwenden, keine feste 32k-Grenze und keine neue Cline-Reparatur für jeden
+folgenden Modellwechsel. Modell-/Startprofile sind Konfiguration der bestehenden
+Backend-Infrastruktur; Cline, Sitzung, Recall und Werkzeuge bleiben modellneutral.
+Der vorhandene Strata-Profil-/Runtime-Mechanismus ist zu verwenden, soweit seine
+tatsächlichen Schnittstellen passen; keine ungeprüften Startbefehle, Downloads,
+falsche Quantisierung oder Rückkehr zum alten Modell. Details und tatsächliche
+Prüfgrenzen im neuesten Abschnitt von [phase4-reparatur.md](phase4-reparatur.md).

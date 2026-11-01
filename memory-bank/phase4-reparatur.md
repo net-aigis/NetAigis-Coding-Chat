@@ -2365,3 +2365,212 @@ Bis zu einem tatsächlichen Anwendungsergebnis bleibt der Acer-Adapter unveränd
 und keine produktive Installation oder Abnahme wird behauptet. Nach Eingang der
 Ausgabe konkrete Fehler reparieren bzw. den tatsächlich installierten neuen Stand
 prüfen und am Gesamtauftrag weiterarbeiten.
+
+### 01.11.2026 — Adapter angewendet; Modellwechsel und dynamischer Kontext noch offen
+
+Der vorstehende Wartezustand ist durch den tatsächlichen Betreiberlauf erledigt.
+Kein erneuter Auftrag und keine Wiederholung von Phase 1–3. Betreiber meldet
+`ok=true`, Aktion apply, installierten Adapter-SHA256
+307497023baea81eabda77d96045c81fecc605a296748dc0ad163f7e01c4ffd9 und Coding-Agent
+aktiv/laufend, PID 1754988, InvocationID a38f8b4ae8a54bb1a35397c965b82b84,
+NRestarts 0, unveränderte Konfigurationsbytes. Root-Journal:
+`/root/netaigis-recall-backups/phase2-20261030T165000Z/phase4-ollama-adapter-preflight/application-1793517793059932457-682893d52195448baba757bf9dd50d35.jsonl`.
+Empfangener Nachweis: logs/p4-acer-adapter-apply-operator-receipt.json im bestehenden
+privaten Prüfverzeichnis. Eigene unabhängige lesende Prüfung bestätigt Hash,
+PID und InvocationID (p4-acer-applied-version-live-precheck.json); kein behaupteter
+eigener Root-Zugriff auf das Journal. Learning-Agent ai-agent.service weiterhin
+PID 618787 und Health 200. Coding-Health ebenfalls 200, aber das ist kein
+Nachweis einer funktionierenden Modellanfrage.
+
+Tatsächliche Ursache des gegenwärtigen Integrationsfehlers:
+
+- ai-model-router.service läuft als friseer, PID 1754987, Port 11441. Seine
+  Konfiguration `/etc/ai-model-router.json`, SHA256
+  1d354e9e42e277a8c3db3039b9ed83d327b90d33d1d5a533965e65af5cb9c121, verweist für
+  Coding und Learning weiterhin auf 127.0.0.1:11440 und das alte Qwen-Modell.
+  Router-Health liefert HTTP 503 mit Connection refused.
+- ai-deepseek.service läuft als Root-Dienst, PID 1745000, mit dem bestehenden
+  `/home/friseer/ai-staging/deepseek-v4.1-flash-1017-iq2_xs/deepseek-runtime-32k.json`
+  auf 11442. Health 200; tatsächlicher Katalogname
+  `deepseek-v4.1-flash-1017-iq2_xs`. Damit wird keine Parameterzahl bewiesen.
+  Der Dienst ist transient, Fragment /run/systemd/transient/ai-deepseek.service;
+  nicht ungeprüft in eine andere Betriebsform umwandeln.
+- Der echte Coding-Aufruf an 11436/v1/chat/completions liefert HTTP 503.
+  Dagegen funktionieren derselbe vorhandene DeepSeek direkt nichtstreamend und
+  streamend: HTTP 200, begrenzter Abschluss length, SSE mit bestätigtem DONE.
+  Jeweils max_tokens=8; keine Rohtexte gespeichert. Das sind Komponentenprüfungen,
+  keine gemeinsame VS-Code-/Android-Sitzung und keine Gesamtmodellabnahme.
+
+Neue lesende Befunde am bestehenden privaten Routermodul:
+`/opt/ai-model-router/model_router.py`, SHA256
+20a5c578fcbeb00afa3b2a92d930582c238e738526c8ffc20b098f67a2410e0c.
+do_ollama_chat verweigert stream=true, verwirft options.num_predict und reserviert
+pauschal 4096 Ausgabetokens für die Kontextberechnung. Kein zweiter Router oder
+neuer Speicher aufgebaut. sdk/scripts/netaigis-model-router-protocol.py bereitet
+einen bytefesten Patch genau dieser bestehenden Methode vor: Ausgabelimit reicht
+bis max_tokens und Kontextreserve; SSE wird fortlaufend in native NDJSON-Records
+übersetzt. Geteilte Toolargumente werden vollständig zusammengesetzt. Inhalt,
+Reasoning und bestätigte Abschlussgründe bleiben getrennt; unvollständige Streams
+erzeugen einen Fehler und keinen erfundenen done-Abschluss. Bestehende Locks,
+Rollen, Endpunkte, Kontextstufen und increase_context bleiben unverändert.
+
+p4-router-native-protocol: 19/19 lokale Tests einschließlich echtem Loopback-HTTP.
+Nach Ergänzung der verbindlichen Modellwechsel-Regressionsprüfung:
+p4-router-replacement-model-regression **20/20**. Derselbe Patch arbeitet mit zwei
+verschiedenen konfigurierten Modellnamen/Adressen und dynamischen 64k-/128k-Stufen;
+keine Modellnamen im Produktionspatch. Das ist kein echter produktiver Modellwechsel.
+
+Der Patch ist auf Acer ausschließlich im Speicher auf die tatsächliche private
+Quelle angewendet und gegen das laufende DeepSeek geprüft worden. Kandidat-SHA256
+881524c8f65ac9ed90a78753f5fe002aec1e602e93ae08f05d9f7ed5a26040be.
+p4-acer-router-candidate-real-model-in-memory: beide Antwortarten HTTP 200, jeweils
+8 Inhaltszeichen, Abschluss length, Streaming 10 native Records ohne Fehler.
+Wichtig: Endpunkt/Modell nur im Test-Arbeitsspeicher umgebunden; Kontextbedarf und
+Vergrößerung dort ausdrücklich simuliert. Keine private Quelle übertragen, keine
+Router-/Konfigurationsdatei gespeichert, kein Dienst gesteuert, kein Modell neu
+geladen. Kein Beleg produktiver dynamischer Kontextvergrößerung.
+
+Zusätzlicher echter Formatterfehler reproduziert: Der installierte Adapter
+verwirft message.thinking und message.reasoning_content. Der separate bytefeste
+Kandidat sdk/scripts/netaigis-coding-agent-reasoning.py erhält diese Felder als
+OpenAI-reasoning_content, ohne sie in die Antwort zu mischen. Die tatsächlich
+vorhandene verschachtelte chunk/emit-Kodierung bleibt erhalten. Der erste
+synthetische Lauf bestand 8/8, aber der Schutzabgleich an der tatsächlichen Quelle
+verweigerte korrekt den abweichenden Encoder-Anker. Nach gezielter Anpassung und
+zusätzlicher verschachtelter Encoderprüfung lokal **9/9**. Der erste anschließende
+Remote-Harness verwechselte Byte-SSE mit Text und scheiterte mit TypeError;
+kein produktiver Fehler. Nach UTF-8-Normalisierung des Prüfharness bestehen
+**8/8** Fälle an den tatsächlichen privaten Formatterfunktionen im Acer-Speicher:
+beide Reasoning-Felder, normal/Streaming und stop/length. Abschlussgrund und
+eigentliche Antwort bleiben erhalten. Quelle dabei unverändert. Kandidat-SHA256
+f5f4e835b19ca38d1388b7a8222088b0449945888b3b283f670e1eeaed994147.
+Dieser zusätzliche Formatterkandidat ist noch nicht installiert und noch nicht
+in die Root-Wartungshashes aufgenommen; der bereits angewendete Helfer bleibt
+unverändert. Alle fehlgeschlagenen Prüfnachweise bleiben erhalten.
+
+#### Dynamische Kontextgröße und künftige Modellwechsel
+
+Nutzerkorrekturen ausdrücklich übernommen: Die Kontextgröße ist dynamisch;
+das frühere Modell konnte dies bereits. Kein fixes 32k-Limit einführen, keinen
+DeepSeek-Sonderweg als vollständige Austauschbarkeit ausgeben. Ein besseres
+kompatibles Modell darf keinen erneuten Cline-Quellpatch erfordern.
+
+Der tatsächliche frühere Vergrößerungspfad wurde gezielt untersucht, nicht neu
+erfunden: context_needed/selected_tier berechnen die nächste Stufe; increase_context
+liest die reale Health-Kapazität und startet bei Bedarf Strata mit --context neu.
+Sein 64k-Aufruf wurde ausschließlich im Speicher abgefangen, niemals ausgeführt:
+konfiguriert sind noch family=qwen, model=iq3_xxs, altes GGUF-Verzeichnis, --mtp on
+und Port 11440. Bestehende Stufen 32k, 64k, 128k, 256k, 512k sowie konfigurierte
+größere Stufen bleiben unangetastet; deren tatsächliche Nutzbarkeit wird nicht
+aus der bloßen Liste behauptet. Vorhandene friseer-Strata-Profile für 32/64/128/
+256/512k sind nachgewiesen. Dies ist die Grundlage der weiteren Anbindung.
+
+Der installierte CLI-Katalog kennt unter family=deepseek41 die aktuell laufende
+Quantisierung IQ2_XS nicht. Ein ausdrücklich änderungsfreier launch-Plan ohne
+Familie würde sogar Qwen auswählen; diese Ausgabe wurde als Fehlzuordnung erkannt
+und nie gestartet. Direkter Pack-Pfad wird vom alten launch-Weg als fehlendes GGUF
+abgewiesen. Keine angebotene andere Quantisierung ausgewählt und kein Download.
+Der vorhandene generische Weg `strata serve --profile <bestehende Runtime-JSON>
+--plan --json` validiert das aktuelle vorbereitete Pack dagegen erfolgreich und
+modellunabhängig. Bestehende profile/runtime-Befehle bieten kontrollierte Neustarts
+mit Owner-/Instanz-/Quellhash-Guards. Diese vorhandenen Komponenten weiterverwenden;
+keine zweite Modellverwaltung in Cline bauen. Die Vergrößerungsanbindung an die
+jetzige Root-Instanz ist noch nicht implementiert oder produktiv geprüft.
+
+Nächster notwendiger Schritt ist die vollständige Verknüpfung der bestehenden
+dynamischen Stufenwahl mit dem jeweils ausgewählten, tatsächlich startbaren
+Backendprofil einschließlich dessen Eigentümer-/Neustartzuständigkeit. Ein bloßer
+Port-/Namensaustausch reicht nicht. Konfigurationswechsel, ggf. Betriebsanpassung
+des Modellservers und Routerdienständerung sind durch die bisherige ausdrücklich
+auf Adapter/Coding-Dienst beschränkte Freigabe nicht gedeckt. Vor einem solchen
+produktiven Eingriff konkreten Kandidaten, nötige Sicherungs-/Wiederherstellungsprobe
+für die bisher nicht gesicherten betroffenen Dateien und gesonderte Freigabe
+vorbereiten. Keine vorhandene Phase-2-Sicherung wiederholen. Bis dahin keine
+ungeprüften Produktionsänderungen und keine Gesamt-/Modellwechselabnahme behaupten.
+
+Gemeinsame Runtime, Friseer/jimmi, Recall, separate Agenten, externer Watchdog,
+echter Android-Browsertest durch den Benutzer, Identitätsmigration und abschließende
+produktive Fork-VSIX bleiben verbindlich offen, soweit nicht bereits im Verlauf
+belegt abgeschlossen. Nicht durch diesen Komponentenfortschritt ersetzen.
+
+#### Nachgeprüfte Grenzen auf dem Weg zu 1 Million Tokens
+
+Nutzer fragt ausdrücklich, weshalb 1 Million fehlt und ob sein System dies nicht
+mehr könne. p4-acer-one-million-context-limits-readonly belegt drei Grenzen:
+produktives /opt/netaigis-coding-agent/context_session.py, SHA256
+685a355e75d42902700792890eef1a2a4d7df8e8cfa797d5c264fd55e8875aa2, endet bei
+262144; Router documented_max ist 524288 trotz größerer Listenstufen; Modell-Health
+meldet loaded=true/max_context=32768. Der native Learning-Pfad begrenzt zusätzlich
+auf min(_MAX,262144); seine Wirkung auf große vollständige Agentenaufrufe ist noch
+separat zu prüfen. Diese Softwaregrenzen sind keine nachgewiesenen Modell- oder
+Hardwaremaxima. Der Modellkatalog weist keine höhere Kontextfähigkeit aus;
+fit_max_tokens=false in der Laufzeitdatei beweist ebenfalls keine absolute Grenze.
+
+Hardware-Momentaufnahme: MemTotal 65246864 kB, MemAvailable 13521672 kB; RTX 5080
+Laptop GPU mit 16303 MiB insgesamt/528 MiB frei. Kein Beleg für oder gegen die
+Tragfähigkeit von 1 Million: erforderlicher KV-/Zustandsspeicher nicht gemessen,
+kein tatsächlicher 1-Million-Modelllauf. Kein großer Prompt, Modellneustart oder
+Konfigurationswechsel vorgenommen. Ziel nicht auf 32k/256k/512k reduziert.
+
+sdk/scripts/netaigis-coding-agent-context-tiers.py bereitet eine gezielte Korrektur
+des vorhandenen Trackers vor: NETAIGIS_CONTEXT_TIERS konfiguriert die Stufen;
+Überschreitung meldet deren tatsächliches Maximum. Bestehende Defaults bleiben
+bis zur freigegebenen Konfiguration erhalten. Keine Modellnamen oder feste
+1-Million-Obergrenze im neuen Parser; höhere/niedrigere Fähigkeiten erfordern
+Konfiguration, keinen Cline-Quellpatch. Sonstiger Trackingcode einschließlich
+Sticky-Stufen, TTL und Actor-/Projekt-/Gesprächs-Isolation bleibt bytegleich.
+p4-configurable-context-million-stages **10/10** lokal bestanden. Zusätzlich
+p4-acer-actual-context-million-selection-memory **7/7** an der tatsächlichen
+privaten Trackerklasse im Acer-Speicher: alte Sperre reproduziert, neue Stufen
+524288/786432/1000000 bis zur exakten Grenze ausgewählt, Überschreitung verweigert,
+Sticky-/Actor-Isolation erhalten. Nur Tokenbedarfs-Fixture, kein Modelllasttest.
+Kandidat-SHA256 5f2f007ef5df7681f2494dec20da63592060822578aa1704dc27e3d1ae2a2847.
+Nicht installiert. Diese weitere Moduldatei ist vom bisherigen Adapter-Preflight
+und dessen begrenzter produktiver Freigabe nicht abgedeckt.
+
+#### Noch notwendiger privilegierter, ausschließlich lesender Profilnachweis
+
+Zur Wiederverwendung der vorhandenen Profilverwaltung fehlt die Zuordnung des
+Root-Modellprozesses zu vorhandenen Root-Strata-Profilen. Sichtbare friseer-Profile
+sind alte Qwen-Profile; daraus wird kein Fehlen von Root-Profilen abgeleitet.
+Kein nachgewiesener nichtinteraktiver Root-Zugang; der bereits verwendete
+Betreiberterminalweg bleibt für diesen Nachweis erforderlich.
+
+sdk/scripts/netaigis-model-runtime-inspect.py fragt nur systemctl show und strata
+profile list --json ab. Ausgabe: Dienstzustand und ausschließlich Metadaten von
+Profilen mit der bereits belegten aktuellen Laufzeitdatei. Keine fremden
+Profilinhalte, Secrets, Starts/Stops, Modellanfragen, Profilanlagen oder
+Konfigurationswrites. Vor-/Nachzustand muss stabil sein; Abfragefehler bedeutet
+unbekannt, niemals fälschlich leere Profilliste. p4-root-model-profile-readonly-
+inspector **7/7** lokale Verträge einschließlich Datenschutzfilter und Transport.
+Auf 440G5suse im bestehenden Benutzerterminal ausführen:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-runtime-inspect.py --remote --unit ai-deepseek.service --runtime-config /home/friseer/ai-staging/deepseek-v4.1-flash-1017-iq2_xs/deepseek-runtime-32k.json
+```
+
+Passwort ausschließlich im Terminal. Keine neue Modell-/Namensentscheidung oder
+produktive Änderungsfreigabe. Anhand dieses fehlenden Nachweises den vorhandenen
+Eigentümer-/Profilweg vervollständigen. Zusätzliche produktive Änderungen außerhalb
+des Adapterumfangs benötigen vorbereitete Wiederherstellung und gezielte Freigabe.
+
+Die ersten 34 neuen Nachweise einschließlich Fehlversuchen sind nachgelesen und
+versiegelt: SHA256SUMS.acer-model-exchange-20261101, Listen-SHA256
+c14e05a6685fd7101b309f5c425dc1b3eae3dc0d4fa4826e90f95f4152b46797.
+
+Der vorstehende Root-Nachweis ist inzwischen durch den Betreiber ausgeführt
+(p4-root-model-profile-operator-receipt.json): ok=true, euid=0, stabile
+ai-deepseek-Invocation ca4d0bddc32e4575b19aed99c229507c/PID 1745000;
+profile_query_ok=true, matching_profiles=[], root_profile_count=0. Kein Modellaufruf
+und keine Quell-/Konfigurations-/Dienständerung. Die laufende Root-Instanz ist damit
+auch nicht über ein vorhandenes gespeichertes Root-Strata-Profil zugeordnet.
+Diese Frage nicht erneut stellen und den lesenden Betreiberlauf nicht wiederholen.
+
+Nächste Arbeit: den bestehenden dynamischen Vergrößerungspfad mit dem ausgewählten
+Laufzeitprofil verbinden. Weil der Router als friseer und der gegenwärtige
+Modellprozess als Root läuft, eine enge privilegierte Schnittstelle zur vorhandenen
+systemd-/Strata-Laufzeit prüfen; keine zweite Modell-/Sitzungsverwaltung und kein
+eigenmächtiger Wechsel des Dienstbenutzers. Modellnamen, Enginepfad, Kontextargument
+und Grenzen bleiben Konfigurationsdaten. Privilegierte produktive Anwendung erst
+mit überprüfter Wiederherstellung und zusätzlicher konkreter Freigabe; bisherigen
+Adapter/Coding-Agent unverändert weiterbetreiben.
