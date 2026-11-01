@@ -2574,3 +2574,51 @@ eigenmächtiger Wechsel des Dienstbenutzers. Modellnamen, Enginepfad, Kontextarg
 und Grenzen bleiben Konfigurationsdaten. Privilegierte produktive Anwendung erst
 mit überprüfter Wiederherstellung und zusätzlicher konkreter Freigabe; bisherigen
 Adapter/Coding-Agent unverändert weiterbetreiben.
+
+#### Vorbereitung der neu erforderlichen Modell-/Kontextsicherung
+
+Die installierte Strata-Hilfe nennt für DeepSeek-V4.1-Flash ausdrücklich „512k and
+1m“. Dies unterstützt das Entwicklungsziel, ersetzt aber weder den Lasttest der
+laufenden Quantisierung noch den Nachweis ausreichenden Speichers. Die aktuelle
+Runtime-Datei ist kanonisch, die vorhandene Exportablage gehört UID/GID 1000 und
+hat Modus 0700. Der geplante neue Exportunterordner existiert noch nicht.
+
+sdk/scripts/netaigis-model-context-preflight.py sichert genau sieben jetzt neu
+betroffene Dateien: Routerquelle/-konfiguration, produktives Kontextmodul,
+aktuell bereits aktualisierten Adapter, aktuelle DeepSeek-Runtime-Datei sowie
+beide bisher nicht erfassten Router-/Modelldienstdefinitionen. Die fünf bereits
+gelesenen Inhalts-SHA256 sind festgelegt. Kein neuer Abzug der Cline-Sitzungen,
+Recall-Datenbank, Repositorys oder bereits abgeschlossenen Phase-2-Artefakte.
+
+Neue Artefakte ausschließlich unter vorhandenen geschützten Eltern:
+`/root/netaigis-recall-backups/phase2-20261030T165000Z/phase4-model-context-preflight`
+und `/home/friseer/recall-phase2-export-20261030T165000Z/phase4-model-context-preflight`.
+Exklusive Neuanlage, Originale und bestehende Sicherungen nie überschreiben.
+Tatsächliche GNU-tar-Wiederherstellung in restore-probe, SHA256, UID/GID/Modus,
+mtime und sämtliche xattrs prüfen; Originaldateien sowie Dienstzustand vor/nach
+müssen identisch bleiben. Archive und Export werden synchronisiert, Exportdateien
+0600 im privaten 0700-Unterordner nur für den bestehenden SSH-Benutzer. Keine
+produktiven Dateiberechtigungen ändern. Das prüft die Dateiwiederherstellung,
+noch keinen Modellneustart oder vollständige transiente Dienstrekonstruktion.
+
+p4-model-context-backup-restore-fixtures **10/10**, nach zusätzlicher Prüfung eines
+fehlgeschlagenen Archiv-fsync p4-model-context-preflight-durable-archive **11/11**.
+Echte Archivextraktion mit Metadaten in lokalen Fixtures; Veränderungen an Quelle,
+Wiederherstellung oder Dienstzustand verhindern Erfolg/Export. Wiederholung und
+Symlinks verweigert, vorhandene Sicherungen bleiben erhalten. Zusätzlich exakter
+Root-Loader syntaktisch geprüft, ohne SSH/sudo auszuführen. Öffentlicher Helfer-
+SHA256 9a54f3e4d4bb465e810967266b339d89d893f3d29c6bc3ae3ea7bb2dccedd3cc.
+
+Erforderlicher Betreiberlauf auf 440G5suse, ausschließlich Sicherungsartefakte:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-preflight.py --remote
+```
+
+Passwort nur im Terminal. JSON-Nachweis zurückgeben; danach geschützte externe
+Kopie im bestehenden 440G5suse-Sicherungsordner und dortige Wiederherstellungsprobe.
+Vor diesen Nachweisen keine der zusätzlichen produktiven Änderungen freigeben
+oder anwenden. Der bereits aktualisierte Adapter bleibt erhalten. Die zusätzliche
+Freigabe für Router, weitere Module, Modellneustart oder eine eng begrenzte
+privilegierte Kontextschnittstelle ist noch nicht erteilt und wird erst bei
+konkret geprüftem Kandidaten unmittelbar vor dem jeweiligen Eingriff eingeholt.
