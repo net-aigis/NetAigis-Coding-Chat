@@ -211,3 +211,20 @@ die eigene Sidebar und aktiviert Original-Cline 4.1.25 daneben. Keine produktive
 Installation oder Migration und kein Modellantworttest aus dieser netzwerkisolierten
 Prüfung abgeleitet. Artefakt-/Prüfpfade und verbleibender Acer-Routerblocker stehen
 im neuesten Abschnitt von phase4-reparatur.md; Gesamtauftrag weiterhin offen.
+
+Danach am unveränderten fertigen VSIX mit dem tatsächlich laufenden lokalen Modell
+über den bestehenden Coding-Agent sowohl sichtbare Chatantwort als auch tatsächliches
+Schreiben einer Testdatei aus der VS-Code-Oberfläche bestanden. Kein Fixture-Provider.
+Aktuelle Cline-Daten vor möglicher produktiver Übernahme zusätzlich im bestehenden
+geschützten Sicherungsbereich erfasst und tatsächlich wiederhergestellt; alte
+Installation gegen die bereits vorhandene Phase-2-Sicherung unverändert bestätigt.
+Alte Native-Zuordnung enthält aktuell keine Secrets; alle 54 bekannten/aufgezählten
+Schlüssel im echten alten Kontext geprüft. Aktueller verifizierter Transfer:
+15 Dateien, SHA256 2c7e775828f5e4210b6de7b8fd93eb6dc069f064d223647e278a435508f6375d.
+Sein echter Import, Rücknahme, Reimport und Neustart am Paket in der geschützten
+Profilkopie bestanden. Eine moderne kanonische Sitzung und drei Legacy-Einstellungs-
+dateien erhalten; keine vorhandenen Legacy-Gesprächsdateien in diesem aktuellen
+Quellbestand. Exporthelfer unterstützt nun auch den ursprünglichen absoluten
+Legacy-Pfad einer Profilkopie, damit Checkpoint-Verweise korrekt umgeschrieben werden.
+Produktive Installation/Migration und vollständige Gesamt-Abnahme weiterhin offen;
+der neue konkrete Freigabeumfang und Rückfallweg stehen im Phase-4-Bericht.

@@ -6,6 +6,8 @@ Don't add `.changeset/` files or other per-PR changelog entries; changesets aren
 
 Specific user authorization dated 2026-11-01 permits only the prepared Acer adapter replacement and stop/start of `netaigis-coding-agent.service` during the confirmed quiet window. This does not authorize installing the VS Code fork yet. Failed new-adapter checks require diagnosis and forward repair, never an automatic first-error restoration; the verified original is an emergency fallback only, and the new version still requires acceptance afterward. Preserve other services, configuration, model choice and endpoints. See the latest section of `memory-bank/phase4-reparatur.md` for the operator terminal command and actual access limitation.
 
+The user subsequently authorized and executed the bounded router step from `ee59a1f38`: only `/opt/ai-model-router/model_router.py`, `/etc/ai-model-router.json`, and stop/start of `ai-model-router.service`. Independent checks confirmed the candidate hashes and real normal/streamed Coding-Agent responses. This is not authorization for additional service/model changes or productive VS Code installation/migration. The current snapshot/restore and isolated real-data migration proofs are recorded in the latest Phase-4 report; preserve the existing Phase-2 backups.
+
 ## Cloud Agent Instructions
 
 ### Cline CLI

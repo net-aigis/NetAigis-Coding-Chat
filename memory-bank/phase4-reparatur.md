@@ -2767,3 +2767,151 @@ danach produktive VS-Code-Migration/Installation mit geprüfter Rückfallmöglic
 und der ausdrücklich verlangten gesonderten Freigabe. Dynamische Kontextvergrößerung,
 gemeinsame Android-Sitzung und die übrigen offenen Gesamtanforderungen bleiben offen;
 der erfolgreiche Paketbau ist kein Abschluss des Gesamtauftrags.
+
+### Freigegebener Router tatsächlich aktiv, echte Antworten aus der VSIX, 01.11.2026
+
+Betreiber hat den begrenzten Routereingriff ausdrücklich freigegeben und ausgeführt.
+Root-Beleg ok=true, action=apply; Journal
+/root/netaigis-recall-backups/phase2-20261030T165000Z/phase4-model-context-preflight/router-activation-5579820322b847bfb4d2fa24f214a9ff.jsonl.
+Router-PID 1913536, InvocationID cebb2bec109d4b03b6d50140a95a8f76, NRestarts=0.
+Quelle 948637effe8516d3196b64f332361ed946b245d408c2ca13cbc656f754aeb410
+und Konfiguration eea634e63e3534875123f9b9f1f32ea54351b125636ed91865857ed0670f04fe
+anschließend selbst über den bestehenden SSH-Zugang geprüft und bestätigt.
+Die vorbereitete Umstellung ist angewendet, nicht nur als Betreiberbehauptung
+übernommen. Coding-/Learning-/DeepSeek-PIDs und InvocationIDs entsprechen dem
+vorher belegten Stand und blieben auch während der Funktionsprüfung gleich.
+
+Echte Anfragen durch den produktiven Coding-Agent 11436/v1/chat/completions:
+normal HTTP 200, fünf Antwortzeichen, finish_reason=stop (18,886 s);
+Streaming HTTP 200, vier SSE-Datensätze, fünf Antwortzeichen, finish_reason=stop
+und tatsächliches [DONE] (1,804 s). Keine Rohantwort oder Geheimnisse protokolliert.
+Alle vier Health-Endpunkte HTTP 200. Router und Modell melden weiterhin tatsächlich
+32768 geladene Kontextkapazität; keine 1-Million-Abnahme und keine Behauptung,
+dass die offene dynamische Vergrößerung dadurch fertig sei. Erster Prüfwrapper
+verweigerte vor SSH einen bereits vorbereiteten Verzeichnisnamen; neuer eindeutiger
+Prüfbezeichner, kein wiederholter produktiver Eingriff. Nachweis
+tmp/phase4-checks-20261030T193507+0100/logs/p4-router-functional-live.json.
+
+Danach das unveränderte fertige VSIX mit eigener ID in einer weiteren abgeschirmten
+VS-Code-Instanz tatsächlich über die Oberfläche verwendet: Chat-Eingabe gefüllt,
+Senden gedrückt, Antwort NETAIGIS_READY sichtbar empfangen und Ende des Agent-Turns
+bestätigt, eigener Testprozess kontrolliert geschlossen. p4-vsix-real-coding-ui
+Exit 0, 62,16 s. Kein Fixture-Provider und kein direkt am UI vorbeigeschickter
+Ersatzrequest: die Paket-Runtime wählte openai-compatible und das am unveränderten
+Coding-Agent-Endpunkt aktuell gelistete Modell. Produktives Home ausgeblendet,
+nur private Testdaten beschreibbar. Das ist ein realer grundlegender Chatnachweis
+mit dem laufenden Modell, keine vollständige Android-/Recall-/Produktivabnahme.
+
+Gezielte Prüfung der zu übernehmenden eigenen Client-Konfiguration: dort stehen
+noch Qwen-Modell-IDs und 128000 Kontext. Der reale Chatnachweis nutzt dagegen die
+aktuelle Modell-ID aus dem bestehenden API-Katalog und die tatsächlich gemeldete
+Kapazität für diesen begrenzten Test. Diese alte Auswahl wird nicht still in den
+produktiven Originaldaten überschrieben. Für die spätere neue-ID-Konfiguration
+ist die bereits vom Benutzer gewählte laufende Modellinstallation zu berücksichtigen;
+keine neue Namens-/Modellentscheidung oder Quellcodebindung an eine Modellversion.
+
+#### Aktueller Rückfallstand vor einer möglichen lokalen Installation
+
+Keine Wiederholung von Phase 2. Die aktuelle Cline-Datenkopie ist wegen der späteren
+Installation zusätzlich erforderlich; die ursprüngliche installierte Erweiterung
+stimmt vollständig einschließlich Metadaten mit dem bereits gesicherten Phase-2-
+Manifest überein und wurde deshalb nicht erneut archiviert. Ihre alte tatsächliche
+Wiederherstellung bleibt die Rückfallreferenz. Nur aktuelle Cline-Daten, eigene
+Legacy-Ablage und vorhandene betroffene lokale Konfigurationsdateien aufgenommen:
+19 Dateien, zwei konsistente SQLite-Backup-API-Snapshots, Archiv und tatsächliche
+separate Wiederherstellung geprüft (p6-current-vscode-preflight, 8,03 s).
+
+Geschützter vorhandener Sicherungsbereich, neuer notwendiger Unterordner:
+/home/friseer/MyContainer/backups/cline-phase2-20261030T173159+0100/phase6-vscode-preflight-20261101.
+SHA256SUMS.preflight hat SHA256 d6d22b17d75c2000b91fac78cd2a1c619704e838f00523e15ed056bb8edac12e.
+Quellen unverändert, keine produktive Installation oder Migration. Originale
+SELinux-Labels im Manifest erhalten; unprivilegierte Restore-Probe kann sie nicht
+setzen. Das wird wie in Phase 2 ausdrücklich nicht als vollständige Label-
+Wiederherstellung ausgegeben. Wiederverwendeter Phase-2-Sicherungscode zuvor gegen
+seine bestehende Prüfsumme 98eb3a3f3eb9af28d56a9e27420df6586c1b0da0caad4cc1a3fd26631b6667ce geprüft.
+
+Gezielt im nativen VS-Code-Speicher nach alter Extension-ID gesucht: ein Memento,
+keine eigenen nativen Secret-Einträge; zwei Workspace-Datenbanken ohne alte eigene
+Mementos. Andere Projektdateien nicht untersucht. Aktuelle native Zustandswerte
+gegen Quelle und SQLite-Restore verglichen. Für den Export wurde ausschließlich
+die eigene Native-Zuordnung in ein isoliertes Profil übernommen; keine fremden
+Extension-Daten dort aktiviert. Alter tatsächlicher Extension-Kontext hat den
+aktuellen geschützten Transfer erstellt (p6-current-data-native-export, 11,16 s).
+Produktive Daten/Transfer bleiben vollständig außerhalb von Git. Aktuelle Daten-
+Import-/Rücknahme-/Neustartprüfung läuft in dieser geschützten Kopie weiter.
+
+Dabei konkreter Exporthelferbefund: für ein kopiertes Legacy-Profil fehlte die
+Zuordnung zum ursprünglichen absoluten Legacy-Pfad. Der generische Importer konnte
+originalFrom schon korrekt verarbeiten; der alte-ID-Helfer übergab es nicht.
+Option legacyOriginalFrom ergänzt und relative/leere Angaben vor jeder Ausgabe
+abgewiesen. Keine Änderung am Paket oder an der Import-/Secret-Grenze. Drei neue
+gezielte Tests bestanden. Der erste Bun-Kombilauf hatte den bekannten SDK-Mock
+statt des echten SQLite-Exports; im korrekten Vitest-Lauf 18/19 bestanden, nur
+der echte Git-Checkpoint-Fall durch spawnSync git EPERM verhindert. Ausschließlich
+diesen Fall nativ wiederholt: 1 bestanden, 15 andere übersprungen. Insgesamt die
+19 betroffenen Fälle belegt, nicht die fehlgeschlagenen Vorläufe als grün gezählt.
+
+#### Aktueller Datentransfer und echter Dateiwerkzeug-Nachweis abgeschlossen
+
+Die aktuelle Profilkopie wurde im tatsächlichen alten Extension-Kontext exportiert:
+15 Dateien, 54 bekannte/aufgezählte Secret-Schlüssel geprüft, tatsächlich null
+vorhandene native Secrets. Dies passt zum unabhängig gelesenen ursprünglichen
+Native-Store; kein leerer Ersatzexport für unlesbare Zugangsdaten. Transfer
+migration-probe/transfer/identity-transfer.json im geschützten obigen Sicherungsordner,
+SHA256 2c7e775828f5e4210b6de7b8fd93eb6dc069f064d223647e278a435508f6375d.
+Import, tatsächliche Rücknahme und Reimport im installierten eigenen Paket bestanden
+(10,75 s); danach echter normaler Neustart mit aktueller Datenkopie bestanden
+(11,89 s). Vorhandene moderne Sitzung mit unveränderter ID, ursprünglichem Auftrag,
+Provider/Modell, gespeicherten Prozesswerten und bytegleichem kanonischem Verlauf
+erhalten; Pfad liegt im neuen eigenen Speicher. Drei vorhandene Legacy-settings.json
+semantisch unverändert; in dieser ursprünglichen Legacy-Quelle liegen keine
+kanonischen Gesprächsdateien. Daher keine erfundene Wiederherstellung dort fehlender
+Gespräche behaupten. Ursprüngliche aktive Provider-Auswahl/Endpunkt erhalten.
+Gespeicherte alte Prozesswerte sind kein Nachweis heute laufender Prozesse; keine
+alte Aufgabe in dieser Prüfung gestartet oder als tatsächlich wiederaufgenommen
+ausgegeben. Nachweise und echte Daten ausschließlich in migration-probe außerhalb
+von Git. Die vollständige Extension-Typprüfung nach dem Exporthelferpatch bestand
+(69,0 s); Produktbundle selbst unverändert.
+
+Zusätzliche echte Modell-/Werkzeugprüfung am bereits installierten Test-VSIX:
+p4-vsix-real-model-file-tool Exit 0 (76,14 s). Eingabe durch die Oberfläche,
+laufendes Modell über den bestehenden Coding-Agent; Modell schrieb tatsächlich
+netaigis-tool-proof.txt ausschließlich im privaten Testworkspace. Exakter Inhalt
+auf Platte geprüft, SHA256 54dc04a6a661180cf8f6b0fde7092d6c0d79932e584b01be9b08a25645e72dfb;
+Abschlussantwort sichtbar und Turn beendet. Keine Fixture-Antwort und kein
+Dateischreiben durch den Testtreiber als Werkzeugerfolg ausgegeben. Produktive
+Profile ausgeblendet, sonstige Dateisystembereiche schreibgeschützt. Originaler
+Chatnachweis und dessen Skripte/Ergebnisse unverändert erhalten.
+
+#### Konkret vorbereiteter nächster produktiver Schritt, noch nicht freigegeben
+
+Auf die neueste Benutzerpriorität einer jetzt benutzbaren KI bezogene Grundversion:
+vorhandenes VSIX 0.1.0 mit oben genannter Paketprüfsumme ausschließlich als
+netaigis.netaigis-coding-chat zusätzlich installieren; alte Erweiterung nicht
+ersetzen/deinstallieren. Vorher aktuellen Quellstand erneut gegen die gerade
+geprüfte Sicherung vergleichen und bei Änderungen vor der Datenübernahme stoppen.
+Verifizierten aktuellen Transfer über die vorhandenen own-ID-Migrationskommandos
+in den neuen Namensraum übernehmen. Die alte Auswahl in den Originaldaten bleibt
+erhalten; nur die neue-ID-Auswahl auf das bereits gewählte, am bestehenden Coding-
+Endpunkt bestätigte Modell einstellen. Keine Modell-/Router-/Agent-Dienständerung,
+kein geänderter API-Endpunkt. Aktuell geladene 32k sind eine benannte offene
+Zwischenbegrenzung, keine dauerhafte Festlegung oder 1-Million-Abnahme.
+
+Installationsaufruf ist konkret /usr/bin/code --install-extension gefolgt vom
+oben geprüften absoluten VSIX-Pfad und --do-not-sync, ohne --force. Native Daten-
+übernahme ausschließlich im berechtigten neuen Extension-Kontext über preview/apply;
+keine direkten Änderungen an der produktiven VS-Code-SQLite-Datenbank. Danach
+normaler Neustart der neuen Runtime und echte Chat-/Dateiwerkzeugprüfung. Kein
+Beenden der produktiven ursprünglichen VS-Code-Instanz. Rückfall: neue Erweiterung
+deaktivieren, eigene neue Daten erhalten und unveränderte Originalextension mit
+ihrem ursprünglichen Speicher weiterverwenden; tatsächliche alte Wiederherstellung
+und aktueller SQLite-Restore sind separat vorhanden. Keine Rücknahme, die neue
+Benutzerarbeit löscht. Bei einem Fehler neue Version diagnostizieren und reparieren.
+
+Für diese produktive Installation und Migration ist weiterhin die ausdrücklich
+geforderte gezielte Benutzerfreigabe einzuholen. Die Routerfreigabe umfasst sie
+nicht. Die Grundversion ist keine vollständige Abnahme des Gesamtauftrags:
+dynamische Kontextvergrößerung, vollständige produktive Recall-/Learning-Abnahme,
+gemeinsame Android-Livesitzung und Watchdog-Dauerbetrieb bleiben offen. Ihre
+Fertigstellung wird durch eine etwaige freigegebene Zwischeninstallation nicht
+als erledigt markiert.
