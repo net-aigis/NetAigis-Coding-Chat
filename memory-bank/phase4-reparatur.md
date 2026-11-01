@@ -2214,6 +2214,11 @@ Learning-Agent, Recall, Modellrouter und Modell werden nicht gesteuert.
 
 ### Bedienbefehl für den geprüften Acer-Wartungsschritt
 
+Historischer Stand vom 31.10.2026. Durch die verbindliche Korrektur vom
+01.11.2026 ersetzt: jetzt den kurzen Aufruf im Abschnitt „Freigegebene
+Acer-Anwendung mit Vorrang der neuen Implementierung“ verwenden. Der alte
+Hashschutz verhindert eine versehentliche Ausführung dieses überholten Befehls.
+
 Im Benutzerterminal auf 440G5suse ausführen. Voreinstellung inspect ist lesend.
 Erst nach ausdrücklicher Freigabe und bestätigtem ruhendem Wartungsfenster action
 auf apply und maintenance_confirmed auf True setzen. Für einen freigegebenen
@@ -2279,3 +2284,66 @@ SHA256SUMS.acer-maintenance-810df407f-20261031,
 Listen-SHA256 c65fa141db40d143b3305dd5d3d097366f66315290f67739227713101919ed57.
 Keine produktive Änderung vorgenommen; die zwölf alten unversionierten
 Reparaturartefakte bleiben ungestaged erhalten.
+
+### Freigegebene Acer-Anwendung mit Vorrang der neuen Implementierung
+
+Verbindliche Nutzerfreigabe vom 01.11.2026 übernommen: Der produktive Schritt
+bleibt freigegeben, die KI auf Acer ruht. Ausschließlich Adapterdatei und Coding-
+Agent-Dienst dürfen im beschriebenen Umfang geändert/gesteuert werden. Keine
+erneute Freigabefrage für denselben Eingriff. Andere Dienste, Modellwahl,
+Konfigurationen und Endpunkte bleiben außerhalb dieses Änderungsumfangs.
+
+Korrektur der Fehlerstrategie: Ein Fehler führt zu konkreter Diagnose, gezielter
+Korrektur, erneuter Installation der neuen Version und tatsächlichem Test.
+Kein automatischer Rückfall beim ersten Fehler und kein Ende des Auftrags durch
+Wiederherstellung des Originals. Die bestehende Sicherung bleibt ausschließlich
+Notfallabsicherung; auch nach einem notwendigen Notfallrückfall bleibt die neue
+Version verpflichtend zu reparieren und abzunehmen.
+
+Der Wartungshelfer setzt diese Korrektur technisch um. Fehler behalten den
+installierten neuen Stand, liefern repair_required=true, tatsächlichen Quellhash,
+Dienstzustand und zugriffsgeschützten Versuchsnachweis. Fehlerdiagnosen aus dem
+Acer-Journal übertragen ausschließlich Exceptionklassen und relevante Dateinamen/
+Zeilen, keine vollständigen Meldungen, Inhalte oder Geheimnisse. Begrenzte Health-
+Beobachtung meldet HTTP-Status bzw. Fehlertyp. repair erlaubt nach konkreter
+Diagnose einen weiteren kontrollierten neuen Installationsversuch. Nur explizites
+rollback mit zusätzlicher Notfallbedingung darf das Original zurücknehmen.
+Jeder Versuch erhält eine eigene exklusive Journaldatei im bestehenden Root-
+Preflight-Ordner; vorhandene Versuche und Sicherungen werden nicht überschrieben.
+
+p4-acer-forward-repair-policy-red: drei neue Prüfungen reproduzierten die
+Unvereinbarkeit des alten Helfers mit der neuen Vorgabe (0/3). Nach Korrektur
+p4-acer-forward-repair-policy **26/26** bestanden. Enthalten sind Erhalt der neuen
+Version nach fehlerhafter Health-Prüfung oder Fehler nach Rename, nachfolgender
+Reparaturversuch und ausschließlich ausdrücklich bestätigte Notfallrücknahme.
+Der eigentliche Adapterkandidat bleibt bytegleich zum bereits geprüften Stand,
+Kombinations-SHA256 307497023baea81eabda77d96045c81fecc605a296748dc0ad163f7e01c4ffd9.
+Keine abgeschlossenen Phasen, Sicherungen oder echte Sleep-Messreihen wiederholt.
+
+Neuer kurzer Bedienaufruf sdk/scripts/netaigis-coding-agent-adapter-remote.py:
+prüft die drei öffentlichen Quellhashes, überträgt ausschließlich öffentliche
+Skripte im Speicher über den bestehenden SSH-Zugang und bindet sudo direkt an das
+Benutzerterminal. Keine Passwörter im Chat, in Argumenten oder Dateien.
+p4-acer-approved-terminal-launcher **7/7** bestanden: Hashabweichung, bytegetreuer
+Transport, Shell-Quoting, lesender Standard, apply/repair ohne Notfallflag und
+ausdrücklich getrennte Notfallrücknahme. Dies sind lokale Transport-/Fixturetests,
+kein behaupteter produktiver Installationsnachweis.
+
+Aktueller konkreter Zugriffsblocker: Die erneute lesende Prüfung über den bereits
+vorhandenen SSH-Zugang bestätigt weiterhin noninteractive_sudo=false und den
+unveränderten Originalhash cdf5d6768d8fffb9e3d1d0f4b08db9784a5ce5b432003f4cf16d4f3a970c8b81.
+Die Freigabe fehlt nicht. Die Root-Passworteingabe muss wie beim erfolgreichen
+Sicherungslauf im Benutzerterminal erfolgen. Dazu auf 440G5suse ausführen:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-coding-agent-adapter-remote.py apply
+```
+
+Passwort ausschließlich im Terminal eingeben. Die JSON-Ausgabe ohne Zugangsdaten
+zurückgeben; auch eine Fehlermeldung ist erforderlich, damit gezielt weiter
+repariert wird. Der Helfer stellt bei einem Fehler nicht automatisch das Original
+wieder her. Für einen nach Diagnose erforderlichen neuen Versuch ist repair
+vorgesehen; eine Notfallrücknahme erfordert rollback --emergency-confirmed.
+Nach tatsächlichem Anwendungsergebnis werden unabhängig Modell-/Recall-/Sitzungs-
+funktion geprüft und der ursprüngliche Gesamtauftrag fortgesetzt. Keine Abnahme
+allein aufgrund von Quellcode, Fixtures, Health oder einem VSIX-Build.

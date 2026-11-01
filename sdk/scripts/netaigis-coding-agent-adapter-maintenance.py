@@ -1,6 +1,8 @@
 """Pinned Acer adapter maintenance, read-only by default.
 
-Apply/rollback require separate productive approval and a confirmed quiet window.
+Apply/repair require productive approval and a confirmed quiet window.
+Failures retain the new version for diagnosis and repair. Old-version restore
+requires an explicit emergency condition; it is never an automatic first response.
 Private adapter bytes and backup artifacts stay on Acer. No model requests,
 configuration writes or control of Learning-Agent/model/Recall services.
 """
@@ -14,6 +16,7 @@ import re
 import stat
 import subprocess
 import time
+import urllib.error
 import urllib.request
 import uuid
 
@@ -21,12 +24,14 @@ SOURCE = Path("/opt/netaigis-coding-agent/ollama_adapter.py")
 BACKUP = Path("/root/netaigis-recall-backups/phase2-20261030T165000Z/phase4-ollama-adapter-preflight")
 BEFORE = "cdf5d6768d8fffb9e3d1d0f4b08db9784a5ce5b432003f4cf16d4f3a970c8b81"
 AFTER = "307497023baea81eabda77d96045c81fecc605a296748dc0ad163f7e01c4ffd9"
+PREVIOUS_CANDIDATES = ()  # Add only a previously verified hash for a later targeted correction.
 MANIFEST = "2e70f16496d30d3c2eac5308e59b366ee36ba8137ba47f90329c51bec9cbad83"
 ARCHIVE = "a6bbd6a964f89050b30bb0ece1071f844f6b9fc49ab2b5112ffc9ea11a640af3"
 ASSETS = {"finish": "ef0742af72db0418c70282a6227aff77f2db82ea5718e869cefdb5f6dc78cba2",
           "patch": "4607e260ddd664af584d8097cb4ba7e8f7214e0ac6b82760ab706d169b697be9"}
 UNIT = "netaigis-coding-agent.service"
-STATE_PROPERTIES = ("LoadState", "ActiveState", "SubState", "MainPID", "InvocationID")
+STATE_PROPERTIES = ("LoadState", "ActiveState", "SubState", "MainPID", "InvocationID",
+                    "Result", "ExecMainCode", "ExecMainStatus", "NRestarts")
 ISOLATION_PROPERTIES = ("RequiredBy", "BoundBy", "ConsistsOf", "PropagatesStopTo", "OnFailure",
                         "ExecStop", "ExecStopPost", "ExecStartPre", "ExecStartPost")
 HOOK_PROPERTIES = ISOLATION_PROPERTIES[5:]
@@ -83,7 +88,8 @@ def build_candidate(original, assets):
 
 
 def verify(source, backup, candidate, expected=None):
-    expected = expected or {"before": BEFORE, "after": AFTER, "manifest": MANIFEST, "archive": ARCHIVE}
+    expected = expected or {"before": BEFORE, "after": AFTER, "manifest": MANIFEST, "archive": ARCHIVE,
+                            "previous": PREVIOUS_CANDIDATES}
     if backup.is_symlink() or not backup.is_dir() or backup.stat().st_uid != os.geteuid() or backup.stat().st_mode & 0o077:
         raise Refused("backup_directory_not_protected")
     manifest_bytes = regular(backup / "manifest.json", True)
@@ -106,7 +112,7 @@ def verify(source, backup, candidate, expected=None):
         raise Refused("restore_directory_is_symlink")
     original = regular(original_path)
     current = regular(source)
-    if digest(original) != expected["before"] or digest(candidate) != expected["after"] or digest(current) not in (expected["before"], expected["after"]):
+    if digest(original) != expected["before"] or digest(candidate) != expected["after"] or digest(current) not in (expected["before"], expected["after"], *expected.get("previous", ())):
         raise Refused("source_candidate_or_restored_bytes_changed")
     if source.parent.is_symlink() or source.parent.stat().st_uid != os.geteuid() or source.parent.stat().st_mode & 0o022:
         raise Refused("source_parent_is_not_owned_and_protected")
@@ -241,48 +247,77 @@ class Controller:
                 return None
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
         deadline = time.monotonic() + 10
+        self.last_health_observation = {}
         while time.monotonic() < deadline:
             try:
                 request = urllib.request.Request("http://127.0.0.1:11436/health", headers={"Connection": "close"})
                 with opener.open(request, timeout=2) as response:
                     body = json.loads(response.read(65536))
+                    self.last_health_observation = {"http_status": response.status,
+                                                    "status_ok": isinstance(body, dict) and body.get("status") == "ok"}
                     if response.status == 200 and isinstance(body, dict) and body.get("status") == "ok":
                         state = self.state()
                         if state.get("ActiveState") == "active" and int(state.get("MainPID", "0")) > 0:
                             return state
-            except Exception:
-                pass
+            except Exception as error:
+                self.last_health_observation = {"error_type": type(error).__name__}
+                if isinstance(error, urllib.error.HTTPError):
+                    self.last_health_observation["http_status"] = error.code
             time.sleep(0.2)
         raise Refused("coding_service_health_not_confirmed")
 
     def configuration(self):
         return {path: digest(Path(path).read_bytes()) for path in CONFIG}
 
+    def diagnostics(self, since):
+        """Only error classes and relevant source locations leave the Acer journal."""
+        result = subprocess.run(["journalctl", "--no-pager", "--unit=" + UNIT, "--since=@" + str(since),
+                                 "--lines=100", "--output=json"],
+                                capture_output=True, timeout=10, check=True, text=True)
+        exceptions, frames = [], []
+        for line in result.stdout.splitlines():
+            message = json.loads(line).get("MESSAGE", "")
+            if not isinstance(message, str):
+                continue
+            exceptions.extend(re.findall(r"\b([A-Za-z_][A-Za-z0-9_.]*(?:Error|Exception)):", message))
+            for filename, number in re.findall(r'File "([^"]+)", line ([0-9]+)', message):
+                if Path(filename).name in ("app.py", "ollama_adapter.py"):
+                    frames.append({"file": Path(filename).name, "line": int(number)})
+        return {"exception_classes": sorted(set(exceptions)), "source_locations": frames,
+                "last_health": getattr(self, "last_health_observation", {}), "raw_journal_output": False}
 
-def transact(plan, controller, action, maintenance_confirmed=False):
-    if not maintenance_confirmed or action not in ("apply", "rollback"):
+
+def transact(plan, controller, action, maintenance_confirmed=False, emergency_confirmed=False):
+    if not maintenance_confirmed or action not in ("apply", "repair", "rollback"):
         raise Refused("explicit_quiet_maintenance_confirmation_required")
+    if action == "rollback" and not emergency_confirmed:
+        raise Refused("explicit_emergency_condition_required_for_original_restore")
     plan = verify(plan["source"], plan["backup"], plan["candidate"], plan["expected"])
     current_hash = digest(regular(plan["source"]))
-    expected = plan["expected"]["before" if action == "apply" else "after"]
-    if current_hash != expected:
+    allowed = {plan["expected"]["before"]} if action == "apply" else {
+        plan["expected"]["before"], plan["expected"]["after"], *plan["expected"].get("previous", ())}
+    if current_hash not in allowed or (action == "rollback" and current_hash == plan["expected"]["before"]):
         raise Refused("source_does_not_match_requested_action")
+    expected = current_hash
     if action == "apply":
         controller.healthy()
     controller.quiet(require_running=action == "apply")
     configuration = controller.configuration()
-    journal = plan["backup"] / ("application.jsonl" if action == "apply" else "rollback.jsonl")
+    since = int(time.time())
+    prefix = "rollback" if action == "rollback" else "application"
+    journal = plan["backup"] / f"{prefix}-{time.time_ns()}-{uuid.uuid4().hex}.jsonl"
     with journal.open("x") as record:
         os.fchmod(record.fileno(), 0o600)
         def event(stage):
-            record.write(json.dumps({"stage": stage, "source_sha256": digest(regular(plan["source"]))}) + "\n")
+            record.write(json.dumps({"stage": stage, "time_ns": time.time_ns(),
+                                     "source_sha256": digest(regular(plan["source"]))}) + "\n")
             record.flush()
             os.fsync(record.fileno())
         event("validated")
         try:
             controller.stop()
             event("service_stopped")
-            content = plan["candidate"] if action == "apply" else plan["original"]
+            content = plan["original"] if action == "rollback" else plan["candidate"]
             replace_verified(plan, content, expected, restore_time=action == "rollback")
             event("source_installed")
             if controller.configuration() != configuration:
@@ -296,27 +331,29 @@ def transact(plan, controller, action, maintenance_confirmed=False):
             return {"ok": True, "action": action, "source_sha256": digest(content), "coding_service": state,
                     "configuration_bytes_unchanged": True, "model_request": False, "journal": str(journal)}
         except Exception as failure:
+            report = {"ok": False, "action": action, "repair_required": True, "automatic_restore": False,
+                      "failure": str(failure) if isinstance(failure, Refused) else type(failure).__name__,
+                      "journal": str(journal)}
             try:
                 current = digest(regular(plan["source"]))
-                if current == plan["expected"]["after"]:
-                    controller.stop()
-                    replace_verified(plan, plan["original"], plan["expected"]["after"], restore_time=True)
-                elif current != plan["expected"]["before"]:
-                    raise Refused("rollback_source_is_not_original")
-                controller.start()
-                controller.healthy()
-                event("original_restored_and_healthy")
-                return {"ok": False, "action": action, "original_restored_and_healthy": True,
-                        "failure": str(failure) if isinstance(failure, Refused) else type(failure).__name__}
+                report["source_sha256"] = current
+                report["new_version_installed"] = current == plan["expected"]["after"]
+                event("repair_required_without_automatic_restore")
             except Exception:
-                return {"ok": False, "action": action, "original_restored_and_healthy": False,
-                        "failure": "manual_recovery_required_no_further_retry"}
+                report["source_state"] = "unknown"
+            try:
+                report["coding_service"] = controller.state()
+                report["diagnostics"] = controller.diagnostics(since)
+            except Exception as observation_error:
+                report["diagnostics_error_type"] = type(observation_error).__name__
+            return report
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("inspect", "apply", "rollback"), nargs="?", default="inspect")
+    parser.add_argument("action", choices=("inspect", "apply", "repair", "rollback"), nargs="?", default="inspect")
     parser.add_argument("--maintenance-confirmed", action="store_true")
+    parser.add_argument("--emergency-confirmed", action="store_true")
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise Refused("root_required_for_existing_protected_backup")
@@ -332,7 +369,7 @@ def main():
         return {"ok": True, "action": "inspect", "source_sha256": digest(regular(SOURCE)),
                 "candidate_sha256": digest(candidate), "root_backup_verified": True,
                 "source_modified": False, "service_modified": False, "model_request": False}
-    return transact(plan, Controller(), args.action, args.maintenance_confirmed)
+    return transact(plan, Controller(), args.action, args.maintenance_confirmed, args.emergency_confirmed)
 
 
 if __name__ == "__main__":

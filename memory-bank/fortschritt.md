@@ -1,6 +1,6 @@
 # 📈 FORTSCHRITTSVERFOLGUNG
 
-## Aktive Fortsetzung am 31.10.2026
+## Aktive Fortsetzung am 01.11.2026
 
 Die älteren Abschnitte unten bleiben als zeitlicher Bestand erhalten.
 Phase 1–3 und die geprüften Sicherungen werden nicht neu begonnen. Phase 4
@@ -17,10 +17,14 @@ vorbereitet und noch nicht produktiv angewendet. Der Betreiber hat die Acer-
 Root-Sicherung samt tatsächlicher Wiederherstellung ausgeführt; der gemeldete
 Manifesthash ist lokal exakt rekonstruiert. Der vorhandene unprivilegierte SSH-
 Zugang hat weiterhin kein sudo-Recht, der Betreiber-Terminalweg ist nachgewiesen.
-Der konkrete Anwendungsschritt ist mit 23 lokalen Tests und lesenden Acer-
-Vertragsprüfungen vorbereitet. Modulwechsel und gezielter Stop/Start ausschließlich
-des Coding-Agenten warten auf ausdrückliche Freigabe und ein bestätigtes ruhendes
-Wartungsfenster. Vorher keine produktive Anwendung oder Dienststeuerung.
+Der konkrete Acer-Schritt ist seit 01.11.2026 ausdrücklich freigegeben, die KI
+auf Acer ruht. Die neue Fehlerstrategie verlangt gezielte Reparatur der neuen
+Version und erneute tatsächliche Prüfung; kein automatischer Erstfehler-Rückfall.
+26 lokale Wartungs-/Reparaturtests und 7 Transporttests bestanden. Für die
+tatsächliche Anwendung fehlt ausschließlich die interaktive Root-Eingabe über
+den bereits erprobten Betreiber-Terminalweg; sudo -n ist weiterhin nicht verfügbar.
+Der kurze apply-Aufruf steht im aktuellen Abschnitt des Phase-4-Berichts.
+Die produktive Adapterdatei ist bislang noch unverändert; Abnahme steht aus.
 
 Offen bleiben technische Klärung unbekannter alter Prozesse, vollständige
 produktive Daten-/Secret-/Checkpoint-Migration, reale gemeinsame VS-Code-/Android-

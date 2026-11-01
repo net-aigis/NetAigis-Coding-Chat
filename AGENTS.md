@@ -4,6 +4,8 @@ This checkout is the user's independently maintained fork at `https://git.wittme
 
 Don't add `.changeset/` files or other per-PR changelog entries; changesets aren't used here. Release notes are written into the relevant `CHANGELOG.md` at release time.
 
+Specific user authorization dated 2026-11-01 permits only the prepared Acer adapter replacement and stop/start of `netaigis-coding-agent.service` during the confirmed quiet window. This does not authorize installing the VS Code fork yet. Failed new-adapter checks require diagnosis and forward repair, never an automatic first-error restoration; the verified original is an emergency fallback only, and the new version still requires acceptance afterward. Preserve other services, configuration, model choice and endpoints. See the latest section of `memory-bank/phase4-reparatur.md` for the operator terminal command and actual access limitation.
+
 ## Cloud Agent Instructions
 
 ### Cline CLI

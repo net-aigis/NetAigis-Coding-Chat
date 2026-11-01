@@ -50,6 +50,12 @@ class FakeController:
     def start(self):
         self.calls.append("start")
 
+    def state(self):
+        return {"ActiveState": "failed" if self.fail_candidate else "active", "MainPID": "42"}
+
+    def diagnostics(self, _since):
+        return {"exception_classes": [], "raw_journal_output": False}
+
 
 class Maintenance(unittest.TestCase):
     def setUp(self):
@@ -90,6 +96,32 @@ class Maintenance(unittest.TestCase):
     def apply(self):
         return repair.transact(self.plan(), self.controller, "apply", True)
 
+    def test_new_policy_keeps_failed_new_candidate_for_targeted_repair_without_automatic_restore(self):
+        self.controller.fail_candidate = True
+        result = self.apply()
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["repair_required"])
+        self.assertEqual(result["failure"], "fixture_candidate_unhealthy")
+        self.assertEqual(self.source.read_bytes(), self.candidate)
+        self.assertEqual(self.controller.calls.count("stop"), 1)
+        self.assertEqual(self.controller.calls.count("start"), 1)
+
+    def test_new_policy_allows_an_explicit_new_version_repair_attempt_after_a_failed_health_check(self):
+        self.controller.fail_candidate = True
+        self.assertFalse(self.apply()["ok"])
+        self.controller.fail_candidate = False
+        result = repair.transact(self.plan(), self.controller, "repair", True)
+        self.assertTrue(result["ok"])
+        self.assertEqual(self.source.read_bytes(), self.candidate)
+        self.assertEqual(self.controller.calls.count("stop"), 2)
+        self.assertEqual(self.controller.calls.count("start"), 2)
+
+    def test_new_policy_requires_an_explicit_emergency_condition_for_old_version_restore(self):
+        self.assertTrue(self.apply()["ok"])
+        with self.assertRaisesRegex(repair.Refused, "emergency"):
+            repair.transact(self.plan(), self.controller, "rollback", True)
+        self.assertEqual(self.source.read_bytes(), self.candidate)
+
     def test_verification_is_read_only_and_retains_exact_restore_metadata(self):
         before = repair.metadata(self.source)
         listing = sorted(str(p.relative_to(self.backup)) for p in self.backup.rglob("*"))
@@ -108,12 +140,12 @@ class Maintenance(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(self.source.stat().st_mode), before["mode"])
         self.assertEqual(self.controller.calls.count("stop"), 1)
         self.assertEqual(self.controller.calls.count("start"), 1)
-        result = repair.transact(self.plan(), self.controller, "rollback", True)
+        result = repair.transact(self.plan(), self.controller, "rollback", True, emergency_confirmed=True)
         self.assertTrue(result["ok"])
         self.assertEqual(self.source.read_bytes(), self.original)
         self.assertEqual(repair.metadata(self.source), before)
         self.assertEqual(backups, {name: (self.backup / name).read_bytes() for name in backups})
-        self.assertEqual(stat.S_IMODE((self.backup / "application.jsonl").stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(next(self.backup.glob("application-*.jsonl")).stat().st_mode), 0o600)
 
     def test_explicit_maintenance_confirmation_is_required_before_any_service_action(self):
         with self.assertRaisesRegex(repair.Refused, "confirmation_required"):
@@ -135,18 +167,20 @@ class Maintenance(unittest.TestCase):
         self.assertEqual(self.controller.calls, ["health"])
         self.assertFalse((self.backup / "application.jsonl").exists())
 
-    def test_failed_candidate_health_restores_actual_original_file_and_metadata(self):
+    def test_failed_candidate_health_preserves_new_bytes_and_requires_targeted_repair(self):
         before = repair.metadata(self.source)
         self.controller.fail_candidate = True
         result = self.apply()
         self.assertFalse(result["ok"])
-        self.assertTrue(result["original_restored_and_healthy"])
-        self.assertEqual(self.source.read_bytes(), self.original)
-        self.assertEqual(repair.metadata(self.source), before)
-        self.assertEqual(self.controller.calls.count("stop"), 2)
-        self.assertEqual(self.controller.calls.count("start"), 2)
+        self.assertTrue(result["repair_required"])
+        self.assertFalse(result["automatic_restore"])
+        self.assertEqual(self.source.read_bytes(), self.candidate)
+        for key in ("uid", "gid", "mode", "xattrs"):
+            self.assertEqual(repair.metadata(self.source)[key], before[key])
+        self.assertEqual(self.controller.calls.count("stop"), 1)
+        self.assertEqual(self.controller.calls.count("start"), 1)
 
-    def test_post_rename_failure_also_rolls_back_the_replaced_file(self):
+    def test_post_rename_failure_retains_replaced_file_and_records_the_exact_failure(self):
         fsync = os.fsync
         failures = []
         def fail_directory_once(descriptor):
@@ -157,14 +191,15 @@ class Maintenance(unittest.TestCase):
         with mock.patch.object(repair.os, "fsync", fail_directory_once):
             result = self.apply()
         self.assertFalse(result["ok"])
-        self.assertTrue(result["original_restored_and_healthy"])
-        self.assertEqual(self.source.read_bytes(), self.original)
+        self.assertTrue(result["repair_required"])
+        self.assertEqual(result["failure"], "OSError")
+        self.assertEqual(self.source.read_bytes(), self.candidate)
 
     def test_concurrent_unknown_source_is_retained_without_blind_rollback_or_start(self):
         self.controller.on_stop = lambda: self.source.write_bytes(b"# Concurrent user work\n")
         result = self.apply()
         self.assertFalse(result["ok"])
-        self.assertFalse(result["original_restored_and_healthy"])
+        self.assertFalse(result["automatic_restore"])
         self.assertEqual(self.source.read_bytes(), b"# Concurrent user work\n")
         self.assertNotIn("start", self.controller.calls)
 
@@ -212,13 +247,13 @@ class Maintenance(unittest.TestCase):
             self.skipTest("Fixture filesystem does not support user extended attributes")
         self.assertTrue(self.apply()["ok"])
         self.assertEqual(os.getxattr(self.source, "user.netaigis-maintenance-fixture"), b"retained")
-        self.assertTrue(repair.transact(self.plan(), self.controller, "rollback", True)["ok"])
+        self.assertTrue(repair.transact(self.plan(), self.controller, "rollback", True, emergency_confirmed=True)["ok"])
         self.assertEqual(os.getxattr(self.source, "user.netaigis-maintenance-fixture"), b"retained")
 
     def test_explicit_rollback_can_recover_an_unhealthy_candidate(self):
         self.assertTrue(self.apply()["ok"])
         self.controller.fail_candidate = True
-        self.assertTrue(repair.transact(self.plan(), self.controller, "rollback", True)["ok"])
+        self.assertTrue(repair.transact(self.plan(), self.controller, "rollback", True, emergency_confirmed=True)["ok"])
         self.assertEqual(self.source.read_bytes(), self.original)
 
     def test_backup_is_rechecked_before_stopping_not_only_when_plan_was_read(self):
