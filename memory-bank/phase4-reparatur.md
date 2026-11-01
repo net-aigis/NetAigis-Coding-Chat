@@ -3677,3 +3677,70 @@ PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/sc
 Passwort nur im bestehenden Root-Terminalweg. Keine Freigabe oder Ausführung
 für diesen neuen Dienst bislang vorausgesetzt. Nach Anwendung echte Journald-
 Beobachtung, periodischen Lauf und unveränderte vier KI-Dienste prüfen.
+
+### Gemeinsame Runtime: fehlenden VS-Code-Einrichtungsweg und Cachegrenzen repariert
+
+Auf 35b6ce877 fortgesetzt. Belegter Integrationsmangel: saveSharedSessionHubConnection
+hatte außerhalb seiner Tests keinen Aufrufer. Der vorhandene Remote-Adapter war
+somit nicht über die VS-Code-Oberfläche einrichtbar. Eigener registrierter Befehl
+netaigis-coding-chat.runtime.configure führt jetzt zur bestehenden Verbindung,
+ohne zweiten Hub, neue Datenablage oder Modell-/Endpunktänderung. Persönlicher
+Runtime-Token ausschließlich über Passwortfeld; keine Credentials in Command-
+Argumenten/URLs/Protokollen. Echte Registrierung muss eine Benutzeridentität
+bestätigen; ein Admin-/Beobachtertoken genügt nicht. Kein Writer-Claim bei Anmeldung.
+Plaintext ws nur für expliziten Loopback, sonst zertifikatsgeprüftes wss.
+
+Der Wechsel ist vor dem ersten Sitzungs-Host möglich; aktive/auch bereits benutzte
+Hosts sowie ausstehende Starts/Stops verhindern ihn. Weder Abbruch noch dispose
+einer aktiven Sitzung dienen als Einrichtungsabkürzung. Neue Starts und historische
+Aufgabenauswahl während des Wechsels gesperrt; die bisherige synchron angelegte
+Auswahlgeneration bleibt erhalten. Ein ungenutzter reiner Lesehost und dessen
+Metadatencache werden unter Ausschluss konkurrierender Leseoperationen verworfen.
+Kein Wechsel bei noch laufender Erstellung/Abfrage dieses Hosts. Keine Session
+kopiert oder neu erstellt. Eine angezeigte Aufgabe bleibt bestehen und blockiert
+die Umstellung; dies ist keine behauptete Live-Migration laufender Prozesse.
+
+Auswahl pro StateManager/Fenster gehalten: eine anderweitig aktualisierte
+Konfiguration lenkt vorhandene Verlaufs-/Recall-Abfragen nicht in eine andere
+Runtime um. Erst ein eigener bestätigter Wechsel aktualisiert diese Auswahl.
+Gescheiterte Persistenz setzt den vorherigen Secret-Cache zurück und schreibt ihn
+erneut; schlägt auch dies fehl, bleibt der Datenträgerzustand ausdrücklich
+ungeklärt und weitere Verbindungsabfragen scheitern. Kein falscher Erfolgsbeleg.
+
+Tatsächliche Prüfungen im bestehenden Phase-4-Prüfverzeichnis:
+- p4-shared-runtime-setup-red: 48 bestanden, 11 neue Fehler reproduziert.
+- p4-shared-runtime-setup-green: 93 bestanden, drei alte Fixtures verwenden nun
+  unzulässiges nichtlokales ws. Ausschließlich diese Fixture-Endpunkte auf wss
+  geändert; Sicherheitsprüfung nicht abgeschwächt.
+- p4-shared-runtime-cache-and-setup: 167/167 bestanden, einschließlich bestehender
+  Lifecycle-, History-, Taskauswahl-, Recall- und Hostadapterprüfungen.
+- p4-shared-runtime-window-selection: 28/28 nach zusätzlicher Fensterbindung,
+  Fehlerzustand nach misslungener Rückschreibung und UI-/Abbruchprüfungen.
+- p4-shared-runtime-personal-transport: Socketlisten durch Sandbox mit EPERM
+  abgewiesen; kein Quellcodefehler daraus behauptet. Nur diese Prüfung nativ
+  wiederholt: p4-shared-runtime-personal-transport-native 1/1, tatsächlicher
+  lokaler WebSocket-Server, Friseer und jimmi getrennt bestätigt, Admin-only und
+  falscher Token abgewiesen. Keine Inferenz/Sessionausführung oder produktiven
+  Daten; Runtime-Methoden als Fixtures, also keine produktive Übergabeabnahme.
+- p4-shared-runtime-setup-types: ein Typfehler ausschließlich im neuen Testhelper;
+  Signatur berichtigt. p4-shared-runtime-setup-types-corrected Exit 0.
+- p4-shared-runtime-setup-lint Exit 0 vor abschließender Fensterbindung. Native
+  Command-Implementierung in hosts/vscode abgelegt, keine Lintausnahme erweitert.
+
+Zusätzliche schon erfolgte lesende Acer-Recall-Prüfung:
+p4-current-recall-actor-readonly bestätigt HTTP 200 mit beiden vorhandenen
+persönlichen Recall-Zugängen am unveränderten API-Endpunkt für den bekannten
+Projektbereich total-recall-production-test. Je ein dortiger Verlauf sichtbar.
+Ohne project_id jeweils erwartetes HTTP 422. Keine aktuellen Datenbankinhalte
+über andere Projektbereiche behauptet, keine Archivierung geschrieben und keine
+Recall-Zugänge als Hub-Zugänge wiederverwendet. Produktiver Projektbereich,
+vollständige laufende Archivierung und gemeinsame Runtime weiterhin offen.
+
+Neue Einrichtung ist Quellcode im Reparaturbranch; noch nicht über die laufende
+produktive Installation ausgerollt. Diese bleibt mit dem zuletzt abgenommenen
+Chat/Edit/Read/Commands-Paket nutzbar. Kein produktiver Hub gestartet, keine
+LAN-Freigabe oder Zertifikate angelegt. Getrennte Watchdog-Freigabe/Root-Ausführung
+weiter ausstehend. Nächste Arbeit: Schreibübergabe im VS-Code-Client explizit
+bedienbar machen, vorhandenen Hub mit denselben kanonischen Daten kontrolliert
+bereitstellen, Recall und physisches Android tatsächlich abnehmen. Alte unbekannte
+Prozesszustände bleiben gesperrt; keine alten Exitcodes nachträglich erfunden.

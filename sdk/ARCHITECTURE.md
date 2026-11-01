@@ -1809,3 +1809,17 @@ and credentials, including when resuming canonical saved history. Client-supplie
 resume credentials/catalog snapshots remain rejected. The last observed loaded
 capacity stays distinct from that ceiling; failed or unsupported observations
 retain ordinary provider behavior and never imply an allocated maximum.
+
+VS Code selects the existing authenticated Hub through its own
+`netaigis-coding-chat.runtime.configure` command. The password input is distinct
+from model/Recall credentials; registration must confirm a personal actor before
+the connection is persisted in the existing protected secret store. Only TLS or
+explicit loopback WebSockets are accepted. Selection does not start a session,
+grant a writer lease, discover another endpoint or spawn a fallback runtime.
+The owning connection is held per window, so an external settings refresh cannot
+redirect its history/Recall reads. The explicit selection is allowed only before
+creation of a session host, without pending starts, stops or history selections.
+An unused read-only history host and its metadata cache are released under a
+history-read exclusion guard; active hosts and in-flight reads are never stopped.
+Failed persistence restores the previous selection; an unverified disk rollback
+blocks subsequent connection reads instead of reporting a usable configuration.

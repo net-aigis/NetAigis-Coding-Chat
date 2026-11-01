@@ -16,6 +16,7 @@ import type { ActiveSession } from "./cline-session-factory"
 import type { SdkForegroundCommandCoordinator } from "./sdk-foreground-command-coordinator"
 import { buildToolPolicies } from "./sdk-tool-policies"
 import type { SdkSessionHost } from "./session-host"
+import { SharedRuntimeConfigurationError } from "./shared-session-hub"
 import { VscodeSessionHost } from "./vscode-session-host"
 
 type RequestToolApprovalHandler = NonNullable<Parameters<typeof VscodeSessionHost.create>[0]["requestToolApproval"]>
@@ -89,6 +90,8 @@ export class SdkSessionLifecycle {
 	 * of mistaking "no active session" for "nothing to rebuild".
 	 */
 	private readonly pendingStarts = new Set<Promise<void>>()
+	private configuringRuntime = false
+	private pendingHistorySelections = 0
 	/**
 	 * Settles with each session's latest turn send. Core adds the prompt to the
 	 * conversation only when its agent loop picks the turn up, so a turn
@@ -104,6 +107,7 @@ export class SdkSessionLifecycle {
 	 * session is active and its first turn is sent, as one tracked unit.
 	 */
 	async trackSessionStart<T>(operation: () => Promise<T>): Promise<T> {
+		this.assertRuntimeSelectionIdle()
 		const run = operation()
 		const settled = run.then(
 			() => undefined,
@@ -114,6 +118,48 @@ export class SdkSessionLifecycle {
 			return await run
 		} finally {
 			this.pendingStarts.delete(settled)
+		}
+	}
+
+	/** Select transport only before any host is created. Never stop an existing task to configure it. */
+	async configureBeforeRuntimeCreation<T>(operation: () => Promise<T>): Promise<T> {
+		this.assertRuntimeSelectionIdle()
+		if (
+			this.activeSession ||
+			this.sharedHost ||
+			this.sharedHostPromise ||
+			this.pendingStarts.size ||
+			this.pendingStops.size ||
+			this.pendingHistorySelections
+		) {
+			throw new SharedRuntimeConfigurationError(
+				"Die Runtime wurde bereits verwendet. Erst nach bestätigtem Aufgabenende das Fenster neu laden und vor dem nächsten Sitzungsstart verbinden.",
+			)
+		}
+		this.configuringRuntime = true
+		try {
+			return await operation()
+		} finally {
+			this.configuringRuntime = false
+		}
+	}
+
+	/** History selection also fixes the session ID; it must not cross a transport change. */
+	async trackHistorySelection<T>(operation: () => Promise<T>): Promise<T> {
+		this.assertRuntimeSelectionIdle()
+		this.pendingHistorySelections += 1
+		try {
+			return await operation()
+		} finally {
+			this.pendingHistorySelections -= 1
+		}
+	}
+
+	private assertRuntimeSelectionIdle(): void {
+		if (this.configuringRuntime) {
+			throw new SharedRuntimeConfigurationError(
+				"Während des Verbindungswechsels kann keine Sitzung gestartet oder angehängt werden.",
+			)
 		}
 	}
 
@@ -226,6 +272,7 @@ export class SdkSessionLifecycle {
 		/** Rechecked at every suspension point so a stale start cannot replace its successor. */
 		shouldContinue: () => boolean = () => true,
 	): Promise<{ startResult: StartSessionResult; sdkHost: SdkSessionHost }> {
+		this.assertRuntimeSelectionIdle()
 		if (!shouldContinue()) {
 			throw new SessionStartSupersededError()
 		}
@@ -292,6 +339,7 @@ export class SdkSessionLifecycle {
 		isRunning: boolean
 		shouldContinue?: () => boolean
 	}): Promise<ActiveSession> {
+		this.assertRuntimeSelectionIdle()
 		if (input.shouldContinue?.() === false) {
 			throw new SessionStartSupersededError()
 		}

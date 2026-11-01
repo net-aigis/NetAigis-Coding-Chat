@@ -14,6 +14,8 @@ Continuation 2026-11-01: `be11bad51` fixes concurrent approval intents; `a460bd1
 
 ## Cloud Agent Instructions
 
+Shared-runtime continuation: the own `runtime.configure` command now reaches the existing protected Hub connection. It verifies server-confirmed personal actor authentication, refuses non-loopback plaintext, and never spawns a fallback or grants writer access. Session lifecycle and read-only history cache are fenced during explicit selection; per-window connection binding prevents a settings refresh redirecting ongoing history/Recall reads. Targeted checks: 167/167, then 28/28 window/UI tests; real loopback registration 1/1; corrected VS Code typecheck Exit 0. This source is not yet installed and no productive Hub/LAN listener was started. Preserve the currently working installed VSIX. Explicit VS Code writer handover, productive shared Runtime/Recall and physical Android remain open. The separate Watchdog activation question is pending; do not infer its new-service approval from prior model/extension grants.
+
 ### Cline CLI
 - Run from source: `bun run cli` (interactive: `bun run cli -i`; one-shot: append a prompt). This resolves to `apps/cli` and **auto-spawns the `@cline/cline-hub` daemon** — you do not start the hub separately.
 - Inspect local health with `bun run cli doctor`; `bun run cli version` prints the version.

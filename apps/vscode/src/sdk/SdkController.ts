@@ -111,6 +111,12 @@ import {
 	type SdkUserMessage,
 } from "./sdk-user-message-mapping"
 import { readCurrentMessages } from "./session-host"
+import {
+	SharedRuntimeConfigurationError,
+	type SharedSessionHubConnection,
+	saveSharedSessionHubConnection,
+	verifySharedSessionHubActor,
+} from "./shared-session-hub"
 import { buildDisabledWorkflowNames, expandSlashCommands } from "./slash-command-expansion"
 import { StatePostDebouncer } from "./state-post-debouncer"
 import { createTaskProxy, type TaskProxy } from "./task-proxy"
@@ -2205,13 +2211,36 @@ export class Controller {
 	 * replace it.
 	 */
 	async showTaskWithId(taskId: string): Promise<TaskResponse> {
-		const historyItem = this.cloud.isCloudSessionId(taskId)
-			? await this.cloud.openCloudTask(taskId)
-			: await this.taskControl.showTaskWithId(taskId)
-		if (!historyItem) {
-			throw new Error(`Task not found in history: ${taskId}`)
-		}
-		return historyItemToTaskResponse(historyItem)
+		return this.sessions.trackHistorySelection(async () => {
+			const historyItem = this.cloud.isCloudSessionId(taskId)
+				? await this.cloud.openCloudTask(taskId)
+				: await this.taskControl.showTaskWithId(taskId)
+			if (!historyItem) {
+				throw new Error(`Task not found in history: ${taskId}`)
+			}
+			return historyItemToTaskResponse(historyItem)
+		})
+	}
+
+	async configureSharedRuntime(connection: SharedSessionHubConnection): Promise<string> {
+		return this.sessions.configureBeforeRuntimeCreation(() =>
+			this.taskHistory.configureRuntime(async () => {
+				if (this.task) {
+					throw new SharedRuntimeConfigurationError(
+						"Die angezeigte Aufgabe bleibt erhalten. Vor einem Runtime-Wechsel die Aufgabenansicht schließen; eine laufende Sitzung wird nicht automatisch verschoben.",
+					)
+				}
+				const actor = await verifySharedSessionHubActor(connection)
+				// A history selection can change while authentication is in flight.
+				if (this.task) {
+					throw new SharedRuntimeConfigurationError(
+						"Die Aufgabenansicht hat sich geändert; die Runtime-Auswahl wurde nicht gespeichert.",
+					)
+				}
+				await saveSharedSessionHubConnection(connection)
+				return actor
+			}),
+		)
 	}
 
 	// ---- Mode switching ----

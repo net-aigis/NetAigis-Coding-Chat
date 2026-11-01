@@ -40,6 +40,89 @@ describe("SdkSessionLifecycle", () => {
 		expect(lifecycle.getActiveSession()?.sessionId).toBe("session-123")
 		expect(lifecycle.getActiveSession()?.isRunning).toBe(true)
 	})
+	it("permits initial runtime selection but refuses tracked starts and overlapping selection", async () => {
+		const lifecycle = makeLifecycle()
+		let release!: () => void
+		const configure = lifecycle.configureBeforeRuntimeCreation(
+			() =>
+				new Promise<void>((resolve) => {
+					release = resolve
+				}),
+		)
+		const operation = vi.fn(async () => {})
+		await expect(lifecycle.trackSessionStart(operation)).rejects.toThrow("Verbindungswechsel")
+		await expect(lifecycle.configureBeforeRuntimeCreation(operation)).rejects.toThrow()
+		const host = makeSdkHost({ startResult: { sessionId: "not-started" } })
+		await expect(lifecycle.startNewSession({} as StartInput, host as never)).rejects.toThrow()
+		await expect(
+			lifecycle.attachExistingSession({ sdkHost: host as never, sessionId: "not-attached", isRunning: true }),
+		).rejects.toThrow()
+		expect(operation).not.toHaveBeenCalled()
+		expect(host.start).not.toHaveBeenCalled()
+		release()
+		await configure
+		await lifecycle.trackSessionStart(operation)
+		expect(operation).toHaveBeenCalledOnce()
+	})
+	it("never disposes an existing host, including an idle previously stopped session, during selection", async () => {
+		const lifecycle = makeLifecycle()
+		const host = makeSdkHost({ startResult: { sessionId: "existing-task" } })
+		mockCreateSessionHost.mockResolvedValueOnce(host)
+		await lifecycle.startNewSession({} as StartInput)
+		const operation = vi.fn(async () => {})
+		await expect(lifecycle.configureBeforeRuntimeCreation(operation)).rejects.toThrow()
+		expect(host.stop).not.toHaveBeenCalled()
+		await lifecycle.endActiveSession("fixture explicit user stop", { awaitStop: true })
+		await expect(lifecycle.configureBeforeRuntimeCreation(operation)).rejects.toThrow()
+		expect(operation).not.toHaveBeenCalled()
+		expect(host.dispose).not.toHaveBeenCalled()
+	})
+	it("does not change transport while a tracked start has no active session yet", async () => {
+		const lifecycle = makeLifecycle()
+		let release!: () => void
+		const start = lifecycle.trackSessionStart(
+			() =>
+				new Promise<void>((resolve) => {
+					release = resolve
+				}),
+		)
+		const operation = vi.fn(async () => {})
+		await expect(lifecycle.configureBeforeRuntimeCreation(operation)).rejects.toThrow()
+		expect(operation).not.toHaveBeenCalled()
+		release()
+		await start
+		await lifecycle.configureBeforeRuntimeCreation(operation)
+		expect(operation).toHaveBeenCalledOnce()
+	})
+	it("releases the selection guard after authentication or storage fails", async () => {
+		const lifecycle = makeLifecycle()
+		await expect(
+			lifecycle.configureBeforeRuntimeCreation(async () => {
+				throw new Error("fixture failed")
+			}),
+		).rejects.toThrow("fixture failed")
+		await expect(lifecycle.configureBeforeRuntimeCreation(async () => "ready")).resolves.toBe("ready")
+	})
+	it("preserves a pending history selection and refuses a new one during runtime selection", async () => {
+		const lifecycle = makeLifecycle()
+		let release!: () => void
+		const selected = lifecycle.trackHistorySelection(
+			() =>
+				new Promise<void>((resolve) => {
+					release = resolve
+				}),
+		)
+		const configure = vi.fn(async () => {})
+		await expect(lifecycle.configureBeforeRuntimeCreation(configure)).rejects.toThrow()
+		expect(configure).not.toHaveBeenCalled()
+		release()
+		await selected
+		await lifecycle.configureBeforeRuntimeCreation(async () => {
+			const open = vi.fn(async () => {})
+			await expect(lifecycle.trackHistorySelection(open)).rejects.toThrow()
+			expect(open).not.toHaveBeenCalled()
+		})
+	})
 
 	it("does not start a host when the caller is superseded", async () => {
 		const sdkHost = makeSdkHost({ startResult: { sessionId: "session-stale" } })

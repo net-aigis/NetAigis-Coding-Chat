@@ -19,6 +19,7 @@ import {
 import type { MessageIdMinter } from "./message-id-minter"
 import { sdkMessagesToClineMessages } from "./message-translator"
 import type { SdkSessionLifecycle } from "./sdk-session-lifecycle"
+import { SharedRuntimeConfigurationError } from "./shared-session-hub"
 import type { VscodeSessionHost } from "./vscode-session-host"
 
 export interface TaskUsage {
@@ -238,10 +239,47 @@ export class SdkTaskHistory {
 		createdAt: number
 	}
 	private disposed = false
+	private configuringRuntime = false
 	private readonly cachedHistoryHostIdleMs = 30_000
 	private readonly metadataHistoryCacheTtlMs = 10_000
 
 	constructor(private readonly options: SdkTaskHistoryOptions) {}
+
+	/** Release only an unused read-only host. No active or in-flight history operation is interrupted. */
+	async configureRuntime<T>(operation: () => Promise<T>): Promise<T> {
+		if (
+			this.disposed ||
+			this.configuringRuntime ||
+			this.getActiveHistoryHost() ||
+			this.cachedHistoryHostPromise ||
+			this.cachedHistoryHostRefCount
+		) {
+			throw new SharedRuntimeConfigurationError(
+				"Der Sitzungsverlauf wird gerade verwendet; die Runtime-Auswahl bleibt unverändert.",
+			)
+		}
+		this.configuringRuntime = true
+		try {
+			if (this.cachedHistoryHostIdleTimer) {
+				clearTimeout(this.cachedHistoryHostIdleTimer)
+				this.cachedHistoryHostIdleTimer = undefined
+			}
+			await this.cachedHistoryHost?.dispose("taskHistory:runtimeSelection")
+			this.cachedHistoryHost = undefined
+			this.invalidateMetadataHistoryCache()
+			return await operation()
+		} finally {
+			this.configuringRuntime = false
+		}
+	}
+
+	private assertHistoryRuntimeIdle(): void {
+		if (this.configuringRuntime) {
+			throw new SharedRuntimeConfigurationError(
+				"Der Sitzungsverlauf ist während des Verbindungswechsels vorübergehend gesperrt.",
+			)
+		}
+	}
 
 	private getLegacyDataDirs(): (string | undefined)[] {
 		const dirs: (string | undefined)[] = [undefined]
@@ -412,14 +450,15 @@ export class SdkTaskHistory {
 	}
 
 	private async withHistoryHost<T>(fn: (host: VscodeSessionHost) => Promise<T>): Promise<T> {
+		this.assertHistoryRuntimeIdle()
 		const activeHistoryHost = this.getActiveHistoryHost()
 		if (activeHistoryHost) {
 			return fn(activeHistoryHost)
 		}
 
-		const historyHost = await this.getCachedHistoryHost()
 		this.cachedHistoryHostRefCount += 1
 		try {
+			const historyHost = await this.getCachedHistoryHost()
 			return await fn(historyHost)
 		} finally {
 			this.cachedHistoryHostRefCount = Math.max(0, this.cachedHistoryHostRefCount - 1)
@@ -428,6 +467,7 @@ export class SdkTaskHistory {
 	}
 
 	async listHistory(options: SdkTaskHistoryListOptions = {}): Promise<SessionHistoryRecord[]> {
+		this.assertHistoryRuntimeIdle()
 		const offset = Math.max(0, Math.floor(options.offset ?? 0))
 		const limit = Math.max(0, Math.floor(options.limit ?? 10_000))
 		const hostLimit = offset + limit

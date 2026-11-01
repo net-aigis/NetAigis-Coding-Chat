@@ -51,7 +51,9 @@ function makeTelemetry(): ITelemetryService {
 
 describe("VscodeSessionHost telemetry wiring", () => {
 	it("retains the existing local terminal integration when no shared runtime is selected", async () => {
-		const getTerminalManager = vi.fn(() => { throw new Error("factory is lazy") })
+		const getTerminalManager = vi.fn(() => {
+			throw new Error("factory is lazy")
+		})
 		const host = await VscodeSessionHost.create({ mcpHub: {} as never, getTerminalManager })
 		await host.start(gitStartInput)
 		expect(mockCreateVscodeExtraTools.mock.calls[0][1]).toMatchObject({ getTerminalManager })
@@ -60,7 +62,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 		await host.dispose()
 	})
 	it("keeps shared command processes owned by the hub rather than exporting a VS Code terminal callback", async () => {
-		const sharedSessionHub = { endpoint: "ws://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
+		const sharedSessionHub = { endpoint: "wss://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
 		const getTerminalManager = vi.fn(() => {
 			throw new Error("shared command must not acquire a client terminal")
 		})
@@ -95,7 +97,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	})
 
 	it("uses the explicitly supplied shared runtime and preserves the session and provider configuration", async () => {
-		const sharedSessionHub = { endpoint: "ws://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
+		const sharedSessionHub = { endpoint: "wss://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
 		const requestToolApproval = vi.fn(async () => ({ approved: false }))
 		const host = await VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub, requestToolApproval })
 		await host.start(gitStartInput)
@@ -116,7 +118,7 @@ describe("VscodeSessionHost telemetry wiring", () => {
 	})
 
 	it("does not fall back to another runtime when the selected shared runtime fails", async () => {
-		const sharedSessionHub = { endpoint: "ws://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
+		const sharedSessionHub = { endpoint: "wss://hub-fixture.invalid/hub", authToken: "fixture-hub-token" }
 		mockClineCoreCreate.mockRejectedValueOnce(new Error("fixture runtime unavailable"))
 		await expect(VscodeSessionHost.create({ mcpHub: {} as never, sharedSessionHub })).rejects.toThrow(
 			"fixture runtime unavailable",

@@ -9,6 +9,7 @@ const prefix = name === "claude-dev" ? "cline" : name
  * This fork uses its approved package name as command namespace; upstream IDs are not registered.
  */
 const ClineCommands = {
+	ConfigureSharedRuntime: `${prefix}.runtime.configure`,
 	PlusButton: prefix + ".plusButtonClicked",
 	McpButton: prefix + ".mcpButtonClicked",
 	MarketplaceButton: prefix + ".marketplaceButtonClicked",

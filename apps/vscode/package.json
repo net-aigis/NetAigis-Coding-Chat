@@ -133,6 +133,10 @@
 		},
 		"commands": [
 			{
+				"command": "netaigis-coding-chat.runtime.configure",
+				"title": "NetAigis Coding Chat: Gemeinsame Runtime verbinden"
+			},
+			{
 				"command": "netaigis-coding-chat.recall.listSessions",
 				"title": "TOTAL RECALL: Sitzungsverlauf \u00f6ffnen"
 			},
