@@ -319,6 +319,36 @@ class Maintenance(unittest.TestCase):
             with self.assertRaises(OSError):
                 controller.quiet()
 
+    def test_error_diagnostics_do_not_export_private_journal_messages_or_credentials(self):
+        controller = repair.Controller()
+        controller.last_health_observation = {"http_status": 503}
+        credential = "fixture-credential-never-export"
+        rows = [
+            {"MESSAGE": 'File "/opt/netaigis-coding-agent/ollama_adapter.py", line 123'},
+            {"MESSAGE": 'ValueError: Authorization: Bearer ' + credential},
+            {"MESSAGE": 'File "/private/' + credential + '/configuration.py", line 8'},
+            {"MESSAGE": None},
+        ]
+        with mock.patch.object(repair.subprocess, "run", return_value=SimpleNamespace(stdout="\n".join(json.dumps(row) for row in rows))) as command:
+            result = controller.diagnostics(1700000000)
+        encoded = json.dumps(result)
+        self.assertNotIn(credential, encoded)
+        self.assertNotIn("Authorization", encoded)
+        self.assertEqual(result["exception_classes"], ["ValueError"])
+        self.assertEqual(result["source_locations"], [{"file": "ollama_adapter.py", "line": 123}])
+        self.assertFalse(result["raw_journal_output"])
+        self.assertIn("--unit=netaigis-coding-agent.service", command.call_args.args[0])
+
+    def test_forward_repair_admits_only_a_pinned_previous_candidate_for_a_corrected_new_version(self):
+        self.assertTrue(self.apply()["ok"])
+        previous = self.expected["after"]
+        self.candidate = b"version = 'corrected-new-fixture'\n"
+        self.controller.candidate = self.candidate
+        self.expected = {**self.expected, "previous": (previous,), "after": repair.digest(self.candidate)}
+        self.assertTrue(repair.transact(self.plan(), self.controller, "repair", True)["ok"])
+        self.assertEqual(self.source.read_bytes(), self.candidate)
+        self.assertEqual((self.backup / "restore-probe" / self.source.name).read_bytes(), self.original)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

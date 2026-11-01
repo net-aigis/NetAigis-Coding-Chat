@@ -2347,3 +2347,21 @@ vorgesehen; eine Notfallrücknahme erfordert rollback --emergency-confirmed.
 Nach tatsächlichem Anwendungsergebnis werden unabhängig Modell-/Recall-/Sitzungs-
 funktion geprüft und der ursprüngliche Gesamtauftrag fortgesetzt. Keine Abnahme
 allein aufgrund von Quellcode, Fixtures, Health oder einem VSIX-Build.
+
+Aktueller autorisierter Wartungs-/Terminalstand: f15813706. Zusätzliche gezielte
+Prüfung p4-acer-repair-diagnostics-contract **2/2** bestanden: Exceptionklasse und
+relevante Quellzeile ohne private Journalmeldungen/Zugangsdaten; eine neue gezielte
+Korrektur darf nur einen ausdrücklich festgelegten früheren Kandidaten ablösen.
+Der bereits angefragte Root-Terminalaufruf bleibt dabei bytegleich; keine Änderung
+am bereitgestellten Anwendungsskript während dieser Zusatzprüfung.
+
+Die erneute produktive Freigabe fehlt nicht. Angefragt ist ausschließlich die
+erforderliche interaktive Betreiber-Ausführung; ausstehende Root-Eingabe wird
+nicht durch Passwortsuche, Berechtigungsänderungen oder wiederholte sudo-Versuche
+ersetzt. Neun neue Log-/Metadatennachweise im vorhandenen privaten Prüfverzeichnis
+gesichert und nachgelesen: SHA256SUMS.acer-forward-repair-f15813706-20261101,
+Listen-SHA256 2123f81ede3640c6e6cdf8ef4cbddd87399b2d14788660009cd5fccddf51e9fa.
+Bis zu einem tatsächlichen Anwendungsergebnis bleibt der Acer-Adapter unverändert
+und keine produktive Installation oder Abnahme wird behauptet. Nach Eingang der
+Ausgabe konkrete Fehler reparieren bzw. den tatsächlich installierten neuen Stand
+prüfen und am Gesamtauftrag weiterarbeiten.
