@@ -118,6 +118,19 @@ class ModelProfiles(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unit changed"):
             profile.promote_unit(source + b"\n", sha, "active-fixture", "fixtureuser", "/usr/local/libexec/fixture-context.py", "fixture-context")
 
+    def test_foreground_launcher_preserves_the_actual_virtualenv_instead_of_assuming_system_python(self):
+        source = b"[Service]\nExecStart=\nExecStart=/sbin/runuser -u fixtureuser -- /existing/venv/bin/python3 -u /existing/server.py --engine strata --config /existing/runtime.json --host 127.0.0.1 --port 11442\n"
+        command = profile.foreground_argv(source, "/existing/runtime.json", "fixtureuser")
+        self.assertEqual(command, ["/existing/venv/bin/python3", "-u", "/existing/server.py", "--engine", "strata",
+                                   "--config", "{runtime_config}", "--host", "127.0.0.1", "--port", "11442", "--shutdown-timeout", "180"])
+        self.assertNotIn("runuser", " ".join(command))
+
+    def test_unknown_or_different_user_launchers_are_not_reconstructed_by_guessing(self):
+        for command in ["/sbin/runuser -u other -- /existing/python --engine strata --config /existing/runtime.json",
+                        "/usr/bin/bash -lc '$START_MODEL'", "/existing/python --engine mock --config /existing/runtime.json"]:
+            with self.subTest(command=command), self.assertRaises(ValueError):
+                profile.foreground_argv(("[Service]\nExecStart=" + command + "\n").encode(), "/existing/runtime.json", "fixtureuser")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

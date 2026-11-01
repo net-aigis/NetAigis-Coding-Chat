@@ -7,6 +7,7 @@ import copy
 import hashlib
 import json
 import re
+import shlex
 from urllib.parse import urlsplit
 
 
@@ -87,6 +88,31 @@ def selected_profile(config, role):
     if profile["user"] == "root":
         raise ValueError("Automatic process control requires an unprivileged model process")
     return profile
+
+
+def foreground_argv(unit_source, runtime_path, user):
+    """Preserve the actual virtualenv/flags; remove only an exact same-user wrapper."""
+    commands = [line.split("=", 1)[1].strip() for line in unit_source.decode().splitlines()
+                if line.startswith("ExecStart=") and line.split("=", 1)[1].strip()]
+    if len(commands) != 1 or "$" in commands[0] or "%" in commands[0] or "\\" in commands[0]:
+        raise ValueError("Explicit single foreground model command required")
+    command = shlex.split(commands[0])
+    if command[0] in ("/sbin/runuser", "/usr/sbin/runuser"):
+        if command[1:4] != ["-u", user, "--"]:
+            raise ValueError("Existing model user differs from selected profile")
+        command = command[4:]
+    if not command or not command[0].startswith("/") or command.count("--config") != 1 or command.count(runtime_path) != 1:
+        raise ValueError("Explicit existing runtime launcher required")
+    index = command.index("--config") + 1
+    if index >= len(command) or command[index] != runtime_path or command.count("--engine") != 1:
+        raise ValueError("Existing runtime profile argument differs")
+    engine = command.index("--engine") + 1
+    if engine >= len(command) or command[engine] != "strata":
+        raise ValueError("Existing real model engine required")
+    command[index] = "{runtime_config}"
+    if "--shutdown-timeout" not in command:
+        command.extend(["--shutdown-timeout", "180"])
+    return command
 
 
 def promote_unit(source, expected_sha256, profile_id, user, installed_helper, runtime_directory):
