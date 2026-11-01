@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=oneshot
 DynamicUser=yes
-ExecStart=/usr/bin/python3 /usr/local/libexec/netaigis-watchdog.py --once
-TimeoutStartSec=40s
+ExecStart=/usr/bin/python3 /usr/local/libexec/netaigis-watchdog.py --once --target netaigis-coding-agent.service=http://127.0.0.1:11436/health --target ai-agent.service=http://127.0.0.1:11435/health --target ai-model-router.service=http://127.0.0.1:11441/health --target ai-deepseek.service=http://127.0.0.1:11442/health
+TimeoutStartSec=90s
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict

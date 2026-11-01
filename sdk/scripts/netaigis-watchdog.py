@@ -53,11 +53,26 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def read_health(url, timeout):
-    # Existing Acer endpoints only; do not forward credentials or use ambient proxies.
+def validate_health_url(url):
     parsed = urlsplit(url)
     if parsed.scheme != "http" or parsed.hostname not in ("127.0.0.1", "::1", "localhost") or parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("health_endpoint_must_be_explicit_loopback")
+
+
+def parse_target(value):
+    unit, separator, url = value.partition("=")
+    try:
+        if not separator or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.@:-]*\.service", unit):
+            raise ValueError("invalid_unit")
+        validate_health_url(url)
+    except ValueError:
+        raise argparse.ArgumentTypeError("target must be a service and credential-free loopback health URL") from None
+    return unit, url
+
+
+def read_health(url, timeout):
+    # Existing Acer endpoints only; do not forward credentials or use ambient proxies.
+    validate_health_url(url)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
     started = time.monotonic()
     try:
@@ -115,13 +130,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true", help="one bounded observation; scheduling belongs to systemd")
     parser.add_argument("--timeout", type=float, default=3)
+    parser.add_argument("--target", action="append", type=parse_target,
+                        help="explicit UNIT=http://127.0.0.1:PORT/health; repeat for each existing service")
     options = parser.parse_args()
     if not 0 < options.timeout <= 5:
         parser.error("timeout must be between 0 and 5 seconds")
-    observations = [
-        check_target("netaigis-coding-agent.service", "http://127.0.0.1:11436/health", options.timeout),
-        check_target("ai-agent.service", "http://127.0.0.1:11435/health", options.timeout),
+    targets = options.target or [
+        ("netaigis-coding-agent.service", "http://127.0.0.1:11436/health"),
+        ("ai-agent.service", "http://127.0.0.1:11435/health"),
     ]
+    if len(targets) > 8 or len({unit for unit, _url in targets}) != len(targets):
+        parser.error("use one to eight distinct existing service targets")
+    observations = [check_target(unit, url, options.timeout) for unit, url in targets]
     print(json.dumps({"version": 1, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                       "component": "netaigis-watchdog", "observations": observations}, separators=(",", ":")))
     return 0 if all(item["state"] == "healthy" for item in observations) else 1

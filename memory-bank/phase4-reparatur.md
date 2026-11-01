@@ -3540,3 +3540,105 @@ um 17:22:41 und die spätere Entfernung von der Platte um 17:30:03; Initiator un
 Ursache verschwundener Daten weiterhin ungeklärt. Keine Benutzerentscheidung
 hieraus erfinden. Die bereits freigegebene eigene Wiederinstallation mit
 abgesicherter Datenübernahme wird vorbereitet; der Gesamtauftrag läuft weiter.
+
+### Eigene produktive Wiederinstallation mit aktuellem Datenstand erfolgreich
+
+Fortsetzung auf fbb00b07b; die bereits erteilte produktive Freigabe beibehalten.
+Vor Eingriff den alten geprüften Transfer mit dem aktuellen expliziten Cline-
+Quellbestand verglichen. Fünf Textdateien und die Session-Datenbank waren inzwischen
+geändert; ein eigenes Workspace-State-Dokument hinzugekommen. Deshalb keine
+Übernahme des veralteten Transferstands. Neue inkrementelle Sicherung ausschließlich
+unter dem vorhandenen geschützten Rolloutordner:
+/home/friseer/MyContainer/backups/cline-phase2-20261030T173159+0100/phase6-vscode-preflight-20261101/productive-rollout/context-tool-repair-20261101.
+
+Zehn neue/aktuell betroffene Dateien erfasst: sieben Cline-Quelldateien inklusive
+SQLite-Backup-API-Snapshot, aktuelle native VS-Code-SQLite und zwei Registrydateien.
+Sechs unveränderte Home-Dateien und die drei früher gesicherten Legacy-Settings
+wiederverwendet. Native Secrets des alten Kontextes weiterhin null und dessen
+Memento nachweislich unverändert; ursprünglichen echten Native-Export unverändert
+weiterverwendet, keinen Zugriff der neuen ID auf fremde Secrets vorausgesetzt.
+
+Die erste Abschlussprüfung stoppte wegen neu hinzugekommener echter SQLite-WAL/
+SHM-Begleitdateien. Diese gehören zur Backup-API-Koordination, nicht zu neuen
+Benutzerdateien. Nur die Behandlung nachgewiesener SQLite-Sidecars korrigiert,
+dieselbe bereits erstellte Sicherung ohne zweite Aufnahme zu Ende geprüft.
+Aktuelle Session-Datenbank und Snapshot zusätzlich logisch gleich, Integrität ok.
+Tatsächlicher Restore aller zehn Archivdateien im selben geschützten Unterordner,
+Bytes sowie ursprüngliche UID/GID/Modus/mtime/xattrs bestätigt. Originaldateien
+und ihre produktiven Berechtigungen nicht geändert. Neue Sidecars werden nicht
+als veränderte Datenbankinhalte ausgegeben und nicht unkontrolliert gelöscht.
+
+Neuer Transfer 16 Dateien, SHA256
+cfd28898f4f18b28c88ad0d1b1257d05b7e28271fc4ae0e7b3de4531ebf3b5ea;
+SHA256SUMS.preflight im neuen Rollout-Unterordner:
+850f66fe0de93d38b6cea8c18c568461208438d1e15b0665183c94a76a4e1afa.
+Alle Einträge gelesen und geprüft. Vorhandene ältere Transfers/Sicherungen erhalten.
+
+Eigenes geprüftes VSIX SHA256 6777bc58774d87b847666782b247092a82f448ff4d855db8232858aa51b957bd
+über die vorhandene Code-CLI installiert, ID netaigis.netaigis-coding-chat/0.1.0.
+Nur diese Erweiterungs-ID hinzugekommen, keine andere entfernt. Strenger vollständiger
+Registervergleich schlug an: VS Code ergänzte bei openai.chatgpt eine UUID und
+normalisierte redundant serialisierte URI-Felder. ID, bestehende Version und Pfad
+sowie vorhandenes Paketmanifest (vor Installationsbeginn datiert) gleich geblieben.
+Der Migrationsschritt wurde zu früh vor Auswertung dieser Warnung gestartet;
+dieser Ablaufmangel und der ursprüngliche Warnbeleg bleiben ausdrücklich erhalten.
+Separate installation-registry-verification.json grenzt die Metadatenabweichung ein.
+Ein Vorher/Nachher-Vergleich sämtlicher Codex-Paketbytes lag nicht vor und wird
+nicht behauptet. Keine Wiederherstellung des gesamten Registers über neuere Arbeit.
+
+Echte Migration im neuen eigenen Extension-Kontext bestätigt: 16 Dateien,
+keine nativen Secrets, kanonische Originalnachrichten semantisch identisch,
+aktuelle Einstellungen erhalten. Keine nachträgliche Modell-/Endpunkt-Umschreibung
+oder erneute Begrenzung auf 32k/1024. Der aktuelle Quellbestand enthielt bereits
+den gewählten DeepSeek und keinen temporären Max-Output-Cap. Alte Runtime-Marker,
+Checkpoints, Urheberschaft und Originalhistorie erhalten. Migrationsergebnis im
+geschützten migration-result.json; ältere Quellpfade unangetastet.
+
+Produktive echte Funktionsprüfung über das installierte API (kein Fixture):
+- Chat 1793564358703_ge39i: DeepSeek antwortet am unveränderten Coding-Agent-Zugang.
+- Dateitest 1793564416953_k9oq5: neue eigene Testdatei tatsächlich erstellt und
+  read_files tatsächlich ausgeführt, Inhalt exakt geprüft. Erster 100-Sekunden-
+  Prüfdeadline lief ab, während der Modellturn noch lief; ursprüngliches negatives
+  productive-functional.json bleibt unverändert. Später idle und geforderte
+  Abschlussantwort bestätigt, ohne diesen Turn oder Edit erneut auszuführen.
+- Erst danach ausschließlich das eigene inzwischen ruhende Entwicklungsfenster
+  anhand desselben exakten Entwicklungspfads neu geladen. Das gezielte Wieder-
+  verwendungsverhalten ist in der tatsächlich installierten VS-Code-mainImpl.js
+  belegt; keine andere Benutzerinstanz beendet. Übrig gebliebenen Commands-Test
+  1793564775638_yhbfy ausgeführt: tatsächliches run_commands, success=true,
+  completed und bestätigter Exitcode 0; abschließende echte Modellantwort vorhanden.
+
+productive-functional-continuation.json: ok=true, produktiv, fixtureProvider=false.
+Dateiprüf-SHA256 85d2229ef41818128e31b41a0d31da44a557e8019b11e543fed6f573feae84d2.
+Danach normales Fenster ohne Entwicklungstreiber geöffnet (normal-window.json,
+CLI Exit 0). Originaltranskript unter ~/.cline weiterhin SHA256-identisch zum
+aktuellen Transfer. Native fünf Werkzeugklassen im isolierten Paket separat
+vollständig geprüft; produktives Web-Fetch/MCP mit bestehenden Zugängen und die
+übrige Gesamtabnahme bleiben zusätzliche offene Nachweise.
+
+### Externer Watchdog: vier explizite Ziele vorbereitet, noch nicht installiert
+
+Vorhandenen separaten Beobachter um wiederholbares --target UNIT=LOOPBACK-HEALTH
+ergänzt. Kein Modellname in der Probe-Logik, keine Cline-/Agent-Importe, keine
+Steueraktionen oder Inferenz. Service-Vorlage nennt die vier aktuell belegten
+Coding-/Learning-/Router-/Modell-Units; spätere Zielkonfiguration kann unabhängig
+vom Cline-Client angepasst werden. Ungültige/mehrfache Ziele vor Abfragen abweisen;
+maximal acht Ziele und dazu passendes begrenztes systemd-Zeitbudget.
+
+p4-watchdog-configurable-targets-red: gültige vier Ziele bisher unbekannte CLI-
+Option, reproduziert. p4-watchdog-four-targets-green 9/9 bestanden einschließlich
+bisheriger realer HTTP-/PID- und Fehlerfälle. Lokale Unit-Verifikation scheiterte
+zunächst an gesperrten Sandbox-Socket-Optionen; nur die statische Prüfung nativ
+wiederholt, p4-watchdog-unit-verification-native Exit 0. Keine Unit geladen/gestartet.
+p4-watchdog-current-four-targets tatsächliche ausschließlich lesende Acer-Prüfung:
+alle vier Beobachtungen healthy; keine Dateien/Services geändert. Genau die drei
+vorgesehenen Installationsdateien fehlen, beide Watchdog-Units not-found.
+Root-Installation und Aktivierung des getrennten Timers sind noch offen und
+benötigen vor diesem zusätzlichen produktiven Eingriff eine gezielte Freigabe.
+Bestehende Acer-Freigaben erlauben keinen stillschweigenden neuen Dienst.
+
+Gesamtauftrag weiterhin aktiv. Belegter Fortschritt ist eine jetzt tatsächlich
+nutzbare eigene Installation mit echtem Chat/Edit/Read/Commands und dynamischer
+Backend-Grenze; vollständige alte Sitzungswiederaufnahme bei unbekannten Prozessen,
+durchgehende Recall-/Learning-Abnahme, gemeinsame authentifizierte Friseer/jimmi-
+Runtime mit Android und unabhängiger Watchdog-Dauerbetrieb bleiben offen.

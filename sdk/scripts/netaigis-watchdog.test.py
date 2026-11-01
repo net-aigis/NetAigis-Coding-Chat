@@ -1,5 +1,7 @@
 """Independent watchdog contracts; local HTTP server, no productive services."""
 import importlib.util
+import contextlib
+import io
 import json
 import os
 import threading
@@ -116,6 +118,29 @@ class WatchdogTests(unittest.TestCase):
             self.assertNotIn("shell", run.call_args.kwargs)
         with self.assertRaises(ValueError):
             watchdog.read_unit("--invalid.service", 1)
+
+    def test_explicit_targets_cover_router_and_interchangeable_runtime_without_model_name_rules(self):
+        targets=[('coding-fixture.service',self.base+'/health'),('learning-fixture.service',self.base+'/health'),
+                 ('router-fixture.service',self.base+'/health'),('arbitrary-runtime.service',self.base+'/health')]
+        argv=['watchdog','--once']
+        for unit,url in targets:argv.extend(['--target',unit+'='+url])
+        output=io.StringIO()
+        with patch.object(__import__('sys'),'argv',argv), \
+             patch.object(watchdog,'check_target',return_value={'state':'healthy'}) as check, \
+             contextlib.redirect_stdout(output):
+            self.assertEqual(watchdog.main(),0)
+        self.assertEqual([call.args[:2] for call in check.call_args_list],targets)
+        self.assertEqual(len(json.loads(output.getvalue())['observations']),4)
+
+    def test_invalid_or_duplicate_targets_fail_before_any_observation(self):
+        for targets in [['invalid=http://127.0.0.1/health'],['fixture.service=http://external-fixture.invalid/health'],
+                        ['fixture.service=http://token@127.0.0.1/health'],['fixture.service='+self.base+'/health']*2]:
+            argv=['watchdog','--once']
+            for target in targets:argv.extend(['--target',target])
+            with self.subTest(targets=targets), patch.object(__import__('sys'),'argv',argv), \
+                 patch.object(watchdog,'check_target') as check, contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):watchdog.main()
+                check.assert_not_called()
 
 
 if __name__ == "__main__":
