@@ -3232,3 +3232,83 @@ unverändert. Alle ursprünglichen Sitzungen und Sicherungen erhalten.
 Neue öffentliche Nachweise einschließlich Fehlversuchen versiegelt: 99 Dateien,
 tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.context-and-approval-20261101,
 SHA256 31a58f9b8ce3a4a4d47f1ec76e18f567c5b0f6ad1f02f127c26b3ce60d395036. Alle Einträge nach dem Schreiben erneut gelesen.
+
+
+### Konkreter zusätzlicher Acer-Schritt vorbereitet, noch nicht produktiv freigegeben
+
+Die Kontextanwendung aus den verifizierten privaten Quellen deterministisch erzeugt:
+- /opt/ai-model-router/model_router.py
+- /etc/ai-model-router.json
+- /opt/netaigis-coding-agent/context_session.py
+- neu: /opt/ai-model-router/netaigis-model-context.py und netaigis-model-profile.py
+- neu: /etc/systemd/system/ai-deepseek.service als persistente Definition des
+  vorhandenen Dienstnamens, mit vorhandenem Modellserver-Benutzer friseer
+- neu: /etc/systemd/system/netaigis-coding-agent.service.d/context-allocation.conf
+
+Private konkrete Kandidaten ausschließlich unter dem vorhandenen geschützten
+Sicherungsunterordner phase4-dynamic-context-delta/candidate-plan. Kandidaten-
+Manifest mit sieben SHA256 vorhanden. Unit per systemd-analyze verify --man=no
+geprüft, Exit 0; kein Modell- oder Diensteingriff. Modellname, bestehende URLs,
+Strata-Virtualenv, ursprüngliche Runtime-JSON, Gewichte, Embedding-Route und
+Router-Sitzungsablage erhalten. Backend-/Learning-Identitäten nicht umbenannt.
+Root-Code wird beim späteren Aufruf aus gepinnten öffentlichen Assets übertragen;
+private Quellen bleiben in ihren bestehenden Acer-Sicherungen.
+
+netaigis-model-context-candidate.py: sechs reine Kompositionstests bestanden;
+zusätzlich aus den tatsächlichen lokalen Restore-Dateien ohne Änderungen an
+Originalquellen aufgebaut. Nachweis p4-actual-context-deployment-preparation.json.
+Kandidaten entsprechen genau den im Aktivierungshelfer gepinnten sieben Digests.
+
+netaigis-model-context-activate.py führt erst nach zusätzlicher Freigabe und
+bestätigtem ruhigem Wartungsfenster den bestehenden Root-Terminalweg aus.
+Vor Änderung: alte und zusätzliche Backup-/Restore-Hashes, aktueller Quellstand,
+Original-Runtime und Unit, vorhandene Zielpfade, Dateiattribute und Schutz anderer
+Dienste prüfen. Neue Definition und vollständige Eingaben werden vor dem Stop des
+transienten Modells bereitgestellt. Drei betroffene Dienste: ausschließlich
+netaigis-coding-agent.service, ai-model-router.service und ai-deepseek.service.
+Nach Stop wird auch die leere Kernel-cgroup bestätigt; MainPID=0 alleine genügt
+nicht. Die Learning-Unit ai-agent.service bleibt aktiv und wird vor/nach verglichen.
+Modelle, Ports, Secrets und bereits vorhandene Konfigurationsberechtigungen bleiben
+erhalten. daemon-reload ohne Neustart anderer Dienste ist für die persistente
+Definition erforderlich. Erster tatsächlicher Kontextzuwachs 32768 auf mindestens
+65536 wird bei angehaltenen Anfrage-Gateways über die neue Schnittstelle und eine
+unabhängige Backend-Health-/Modellabfrage bestätigt; erst danach Gateways starten.
+Das beinhaltet noch keinen langen Inferenzlauf oder Million-Token-Nachweis.
+
+Prüfungen am Ablauf ausschließlich in isolierten lokalen Fixtures mit echten
+Dateischreib-/Veröffentlichungsvorgängen und simuliertem systemd/Modell:
+p4-context-activation-transaction 12/12,
+p4-context-activation-publish-and-process-gates 16/16,
+p4-context-activation-final 17/17. Belegt sind Freigabegrenzen, kein Stop vor
+persistenter Definition, kein Inferenz-Gateway vor bestätigter Vergrößerung,
+kein Überschreiben fremder neuer Ziele, keine sichtbaren partiellen neuen Dateien,
+kein falscher Erfolg bei abweichender unabhängiger Kapazität, kein Modellstop mit
+unbekannter Prozessgruppe oder weiter bevölkerter cgroup. Eine Kernel-cgroup-
+Entfernung ist keine erfundene Exitcode-Beobachtung. Tatsächliche Acer-cgroup
+/system.slice/ai-deepseek.service nochmals lesend bestätigt, Dienst weiter active
+und transient; keine produktive Ablaufprüfung behauptet.
+
+Bei Fehler neue Implementierung behalten und ihre Verfügbarkeit gezielt reparieren.
+Keine automatische Rücknahme zum ersten Fehler. Eine separat ausdrücklich
+bestätigte Notfallfunktion kann die drei ursprünglichen Dateien sowie die alte
+Unit-Definition aus den geprüften Restore-Quellen wieder bereitstellen; neue
+Artefakte bleiben erhalten und die Reparatur der neuen Version bleibt offen.
+Datei-Restore ist tatsächlich geprüft, Notfallablauf hier als Fixture geprüft;
+produktiver Dienst-Wiederaufbau wurde noch nicht ausgeführt und wird nicht als
+bereits bestanden dargestellt.
+
+Nach erforderlicher gesonderter Acer-Freigabe (noch offen) ist der konkrete Aufruf:
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-activate.py apply --remote --maintenance-confirmed --external-copy-verified
+Passwort ausschließlich im bestehenden Terminal. Während Initialisierung und
+Kontextzuwachs kommen begrenzte echte Bereitschaftsprüfungen und Fortschrittsbelege;
+keine wiederholten sleep-Kommandos und keine als Abschluss ausgegebenen Timer.
+Der Aufruf darf nicht vor der gesonderten Freigabe gestartet werden.
+
+Unverändert offen: tatsächliche Acer-Kontext-/Inferenzabnahme bis zur angeforderten
+Obergrenze, sichere alte Aufgabenwiederaufnahme, durchgehende produktive Recall- und
+Learning-Abnahme, gemeinsame authentifizierte Runtime Friseer/jimmi mit Android-
+Browserabnahme, externer Watchdog-Dauerbetrieb, aktueller produktiver VS-Code-
+Profilstand und abschließender eigener Rollout. Keine Phase als fertig markiert.
+
+Neue Ablauf-Nachweise versiegelt: 9 Dateien, tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.context-activation-20261101,
+SHA256 0ad1ec7aa7f9d64ce67ddc39ba86367441d6d3733c7d062cf11d90a624efa323. Erneut vollständig geprüft.
