@@ -19,6 +19,11 @@ import subprocess
 PARENT = Path("/root/netaigis-recall-backups/phase2-20261030T165000Z")
 EXPORT = Path("/home/friseer/recall-phase2-export-20261030T165000Z")
 NAME = "phase4-model-context-preflight"
+DELTA_NAME = "phase4-dynamic-context-delta"
+DELTA_FILES = {
+    "/opt/ai-model-router/model_router.py": "948637effe8516d3196b64f332361ed946b245d408c2ca13cbc656f754aeb410",
+    "/etc/ai-model-router.json": "eea634e63e3534875123f9b9f1f32ea54351b125636ed91865857ed0670f04fe",
+}
 FILES = {
     "/opt/ai-model-router/model_router.py": "20a5c578fcbeb00afa3b2a92d930582c238e738526c8ffc20b098f67a2410e0c",
     "/etc/ai-model-router.json": "1d354e9e42e277a8c3db3039b9ed83d327b90d33d1d5a533965e65af5cb9c121",
@@ -63,7 +68,9 @@ def write_private(path, data):
         os.fsync(target.fileno())
 
 
-def prepare(files, parent, export_parent, export_uid, export_gid, state, run=subprocess.run):
+def prepare(files, parent, export_parent, export_uid, export_gid, state, run=subprocess.run, *, name=NAME):
+    if name not in (NAME, DELTA_NAME):
+        raise Refused("unknown_incremental_backup_name")
     protected_parent(parent, os.geteuid())
     protected_parent(export_parent, export_uid)
     before_state = state()
@@ -78,7 +85,7 @@ def prepare(files, parent, export_parent, export_uid, export_gid, state, run=sub
         if expected is not None and actual != expected:
             raise Refused("source_hash_changed_before_backup", filename)
         records[filename] = {"sha256": actual, "attributes": meta}
-    root = parent / NAME
+    root = parent / name
     root.mkdir(mode=0o700)
     archive = root / "artifacts.tar"
     relative = [str(Path(filename).relative_to("/")) for filename in files]
@@ -118,7 +125,7 @@ def prepare(files, parent, export_parent, export_uid, export_gid, state, run=sub
     sums = f'{manifest["archive_sha256"]}  artifacts.tar\n{digest(data)}  manifest.json\n'
     write_private(root / "SHA256SUMS", sums.encode())
     # Export into the already existing protected export parent; never alter sources.
-    exported = export_parent / NAME
+    exported = export_parent / name
     exported.mkdir(mode=0o700)
     for name in ("artifacts.tar", "manifest.json", "SHA256SUMS"):
         value = (root / name).read_bytes()
@@ -142,6 +149,33 @@ def prepare(files, parent, export_parent, export_uid, export_gid, state, run=sub
             "model_request": False, "service_recreation_or_model_restart_tested": False}
 
 
+def verify_reused_base(parent=PARENT, files=FILES,
+                       manifest_sha256="6fb8ad9472f47875d01a35b4a3b73284951eeb5dc85048363255563824f36677",
+                       archive_sha256="49603207964cb3d37613f38797e7abf33cfeae2a895586be80ddf02433b5cf16"):
+    """Reuse the verified five unchanged files; only the newer router pair needs backup."""
+    root = parent / NAME
+    protected_parent(root, os.geteuid())
+    manifest_bytes = (root / "manifest.json").read_bytes()
+    if digest(manifest_bytes) != manifest_sha256 or digest((root / "artifacts.tar").read_bytes()) != archive_sha256:
+        raise Refused("previous_verified_backup_changed")
+    manifest = json.loads(manifest_bytes)
+    if set(manifest["files"]) != set(files):
+        raise Refused("previous_verified_file_set_changed")
+    reused = 0
+    for filename, record in manifest["files"].items():
+        if filename in DELTA_FILES:
+            continue
+        source = Path(filename)
+        if source.resolve() != source:
+            raise Refused("previously_verified_source_path_changed", filename)
+        restored = root / "restore-probe" / source.relative_to("/")
+        if (digest(source.read_bytes()) != record["sha256"] or digest(restored.read_bytes()) != record["sha256"]
+                or attributes(source) != record["attributes"] or attributes(restored) != record["attributes"]):
+            raise Refused("previously_verified_source_or_restore_changed", filename)
+        reused += 1
+    return reused
+
+
 def service_state():
     result = {}
     for unit in ("ai-deepseek.service", "ai-model-router.service", "netaigis-coding-agent.service"):
@@ -155,6 +189,7 @@ def service_state():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--remote", action="store_true")
+    parser.add_argument("--router-context-delta", action="store_true", help="back up only the two router files changed since the verified seven-file snapshot")
     args = parser.parse_args()
     if args.remote:
         helper = Path(__file__).with_name("netaigis-coding-agent-adapter-remote.py")
@@ -164,7 +199,7 @@ def main():
         source = Path(__file__).read_bytes()
         program = ("import base64,hashlib,sys; s=base64.b64decode(" + repr(base64.b64encode(source).decode())
                    + "); assert hashlib.sha256(s).hexdigest()==" + repr(digest(source))
-                   + "; sys.argv=['model-context-file-preflight']; "
+                   + "; sys.argv=" + repr(["model-context-file-preflight", *(["--router-context-delta"] if args.router_context_delta else [])]) + "; "
                    + "exec(compile(s,'public-model-context-preflight','exec'),{'__name__':'__main__'})")
         with open("/dev/tty") as terminal:
             return subprocess.call(transport.ssh_command(program), stdin=terminal)
@@ -173,7 +208,11 @@ def main():
     os.umask(0o077)
     account = pwd.getpwnam("friseer")
     try:
-        report = prepare(FILES, PARENT, EXPORT, account.pw_uid, account.pw_gid, service_state)
+        reused = verify_reused_base() if args.router_context_delta else 0
+        report = prepare(DELTA_FILES if args.router_context_delta else FILES, PARENT, EXPORT,
+                         account.pw_uid, account.pw_gid, service_state, name=DELTA_NAME if args.router_context_delta else NAME)
+        if args.router_context_delta:
+            report["previously_verified_files_reused_without_backup"] = reused
     except Refused as error:
         report = {"ok": False, "failure_class": type(error).__name__, "reason": error.code,
                   "source": error.source, "source_modified": False, "service_modified": False, "model_request": False}

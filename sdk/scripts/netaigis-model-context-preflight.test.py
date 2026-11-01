@@ -139,6 +139,22 @@ class ModelContextBackup(unittest.TestCase):
             self.assertEqual(call.args[0][:2], ["systemctl", "show"])
             self.assertNotIn("shell", call.kwargs)
 
+    def test_incremental_snapshot_preserves_the_completed_backup_without_recapturing_it(self):
+        completed = self.prepare()
+        saved = (Path(completed["backup"]) / "artifacts.tar").read_bytes()
+        result = self.prepare(name=preflight.DELTA_NAME)
+        self.assertTrue(result["actual_file_restore_verified"])
+        self.assertEqual(Path(result["backup"]).name, preflight.DELTA_NAME)
+        self.assertEqual((Path(completed["backup"]) / "artifacts.tar").read_bytes(), saved)
+
+    def test_reusing_the_base_checks_the_existing_restored_files_before_another_step(self):
+        result = self.prepare()
+        verified = dict(parent=self.parent, files=self.files, manifest_sha256=result["manifest_sha256"], archive_sha256=result["archive_sha256"])
+        self.assertEqual(preflight.verify_reused_base(**verified), len(self.files))
+        (self.sources / "runtime.json").write_text('{"changed":"fixture"}\n')
+        with self.assertRaisesRegex(preflight.Refused, "previously_verified_source_or_restore_changed"):
+            preflight.verify_reused_base(**verified)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

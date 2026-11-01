@@ -3036,3 +3036,77 @@ das allein bestätigt jedoch weder historische Exitcodes noch beendet es alte
 Terminalprozesse nachweislich. Schutz nicht entfernen, keine Befehle wiederholen,
 keine alten unbekannten Zustände als Completed umdeuten. Sichere Wiederaufnahme
 bleibt zusätzlich offen und darf nicht mit dem Checkbox-Fehler verwechselt werden.
+
+
+### Dynamische Kontextzuteilung: gemeinsamer Profilpfad vorbereitet und gezielt geprüft
+
+Lesender Acer-Nachweis: increase_context nutzt noch strata launch mit den alten
+familien-/modellspezifischen Optionen. Die aktivierte Schutzprüfung verweigert den
+falschen Modellstart. Der aktuelle Strata-Serve-Pfad bestätigt weiterhin nur
+32768 Tokens. Die vorhandene CLI bietet für serve Profil/Foreground-Start,
+keinen nachgewiesenen Hot-Context-Schalter. Der vorhandene Server unterstützt
+--engine strata, --config und --shutdown-timeout; tatsächlich aktiver Start nutzt
+--engine strata. Vorhandene Runtime-Log-, Arbeits-, Tokenizer- und Enginepfade sind
+für friseer lesbar bzw. der bestehende Logpfad schreibbar; keine Rechte verändert.
+Ein sinnvoller Kontextzuwachs erfordert einen kontrollierten Modellprozesswechsel,
+keine bloße Änderung einer Zahl in der Erweiterung.
+
+Vorhandene Profilarbeit fortgeführt: netaigis-model-profile.py bindet explizite
+bestehende Rollen, Modelldatei, Kontextargument, Unit und Benutzer. Signatur blendet
+nur das Kontextargument aus; Modell, Engine, Gewichtspfade und andere Optionen
+bleiben geprüft. Das nächste Modell benötigt passende Konfiguration statt eines
+neuen Modellnamens im Clientcode. Neuer netaigis-model-context.py läuft innerhalb
+der bestehenden Modell-Unit als nicht privilegierter Besitzer seines eigenen
+Foreground-Kinds. Er kann ausschließlich diesen Kindprozess verwalten. Keine
+Coding-/Learning-Steuerung und kein Cline-interner Watchdog. Private Unix-Schnittstelle
+mit Kernel-Peer-Prüfung für die vorhandene Router-Identität; keine Shell-Befehle
+oder fremden PIDs aus Anfragen. Aktive Backend-Verbindungen blockieren Vergrößerung.
+Beobachtungsfehler liefern unbekannt und keine bestätigte aktuelle Kapazität.
+Fehlgeschlagene größere Zuteilung wird ausdrücklich gemeldet, derselbe Stand des
+Modells nach Möglichkeit mit der vorigen kleineren Kapazität verfügbar gehalten;
+dieselbe fehlgeschlagene Stufe wird während dieser Dienstlaufzeit nicht endlos
+neu gestartet. Keine Wiederherstellung alter Implementierung als Normalablauf.
+
+Gezielter Byte-/AST-Patch netaigis-model-router-context.py gegen genau den aktuellen
+Router 948637effe8516d3196b64f332361ed946b245d408c2ca13cbc656f754aeb410:
+vorhandene Anfragesperre und Sitzungs-/Streamingmethoden bleiben erhalten,
+Kontextwachstum an den kontrollierten Profilpfad delegiert, Rollen verwenden ihre
+eigenen konfigurierten Grenzen. /v1/models erhält additive optionale Metadaten,
+die geladene Kapazität von konfigurierter Anforderungsobergrenze trennen. Unbekannte
+Steuerung wird nicht als dynamisch bereit ausgegeben. Kein neuer Modellendpunkt.
+Tatsächlicher Acer-Quelltext nur im Speicher gepatcht/kompiliert und unveränderte
+unbetroffene Methoden per AST verglichen; Kandidat SHA256
+f7c9a3e84b69928088383a2646213e4fe62b31ba4b8da7a2f42a2ce3a0cbdd66.
+Originaldateien, Modellrouten und Dienste unverändert.
+
+Prüfungen im bestehenden Nachweisordner:
+- p4-model-profile-unit-promotion: 10/10 reine Profil-/Unit-Transformationen.
+- p4-model-context-controller-native: erster Lauf 6/7; ein Test erwartete ValueError
+  statt der tatsächlich korrekten Verweigerung selected_runtime_changed.
+- p4-model-context-controller-corrected: 7/7.
+- p4-context-router-socket-native: erweitert 10/10 mit echten lokalen Kindprozessen,
+  HTTP und tatsächlichem Router-Client über Unix-Socket. Unsicherer Socket und
+  fremde Kernel-Peer-ID abgewiesen; alter Kontext nach Beobachtungsfehler nicht als
+  aktuell bestätigt gemeldet. Modelle bleiben ausdrücklich synthetische Fixtures.
+- p4-router-context-transforms: 6/6, Rollen/Fehlerfall/keine verdeckte Inferenz.
+- p4-actual-router-context-in-memory: Exit 0, actual source, keine Installation.
+
+Noch NICHT belegt: Installation dieses Steuerpfads, Modellstart als friseer,
+produktive Kontextvergrößerung, Hardware-Zuteilung bis eine Million Tokens oder
+vollständiger neuer Dienst-Rückfall. ai-deepseek.service ist weiterhin transient;
+vor einem Stop muss eine geprüfte persistente Definition und eine echte
+Wiederherstellungsreferenz vorliegen. Keine bestehende Modell-/Servicefreigabe
+auf diesen zusätzlichen Eingriff ausdehnen.
+
+Für den nötigen nächsten Sicherungsschritt vorhandenen Helfer erweitert, keine
+Phase-2-Wiederholung: --router-context-delta prüft den alten 7-Dateien-Nachweis und
+verwendet dessen fünf unveränderte Dateien weiter. Ausschließlich die inzwischen
+aktivierten zwei Routerdateien benötigen eine neue konsistente Dateisicherung
+mit tatsächlichem Restore. Ziel ist der notwendige Unterordner
+phase4-dynamic-context-delta unter den bereits vorhandenen geschützten Root- und
+Exportablagen; nichts überschreiben. p4-context-incremental-backup-helper: 13/13
+mit echtem GNU-tar-Restore in isolierten Fixtures. Anschließend nur gezielte
+Zählkorrektur wiederverwendeter Dateien getestet: p4-context-incremental-reused-count.
+Root-Ausführung, externe Zweitkopie und tatsächliche Prüfung dieses neuen
+Zweidateien-Nachweises stehen noch aus. Vorher keine Anwendung vorbereiteter
+produktiver Kontextänderungen.

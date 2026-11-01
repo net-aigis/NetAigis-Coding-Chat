@@ -1787,3 +1787,17 @@ The sink must also close successfully before publishing completion. A detached
 ChildProcess error reports unknown observation state and closes its log without
 a success marker; a later real exit may resolve process state independently,
 while the failed log evidence remains available for inspection.
+
+
+The Acer model router can negotiate a selected runtime's on-demand context policy
+through a private Unix socket owned by the existing model service user. The
+model-neutral service wrapper controls only its own foreground child and confirms
+model identity and allocated capacity before allowing inference. An occupied
+backend or an unknown observation prevents reallocation. A configured request
+ceiling remains distinct from an observed allocation; a failed allocation is an
+error and never permits truncation or a fabricated capacity. The profile binds
+existing coding/learning roles to the same explicitly configured model endpoints;
+embeddings and session storage remain outside this control path. These helpers
+are prepared and tested locally; productive activation and hardware capacity
+acceptance are separate recorded steps. The independent infrastructure watchdog
+remains a separate service and never belongs to this client or model wrapper.
