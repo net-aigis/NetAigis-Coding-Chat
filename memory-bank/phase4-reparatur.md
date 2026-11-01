@@ -2622,3 +2622,87 @@ oder anwenden. Der bereits aktualisierte Adapter bleibt erhalten. Die zusätzlic
 Freigabe für Router, weitere Module, Modellneustart oder eine eng begrenzte
 privilegierte Kontextschnittstelle ist noch nicht erteilt und wird erst bei
 konkret geprüftem Kandidaten unmittelbar vor dem jeweiligen Eingriff eingeholt.
+
+### Neueste Benutzerpriorität: benutzbaren KI-Chat vor dem weiteren Ausbau herstellen
+
+Der Benutzer verlangt jetzt ausdrücklich zuerst eine benutzbare KI/Zwischenversion
+und fragt nach der installierbaren eigenen VSIX. Das ist kein Nachweis bereits
+fertiger Funktionen. Die vollständigen bisherigen Anforderungen bleiben dokumentiert;
+die unmittelbare Arbeit konzentriert sich auf den defekten produktiven Modellpfad
+und einen tatsächlich geprüften Paketbau. Noch keine produktive VS-Code-Installation
+oder Migration und keine vollständige 1-Million-/Android-Abnahme behaupten.
+
+Der neue Sicherungslauf ist tatsächlich ausgeführt, sieben Dateien, Manifest-SHA256
+6fb8ad9472f47875d01a35b4a3b73284951eeb5dc85048363255563824f36677, Archiv-SHA256
+49603207964cb3d37613f38797e7abf33cfeae2a895586be80ddf02433b5cf16, Prüfliste
+033dd2697c842bf1aee3defa1c4d028fda121ba700d8b2a07f4317e055ced962. Root-Restore
+mit UID/GID/Modus/mtime/xattrs bestanden. Betreiberbeleg unverändert gespeichert.
+Geschützte Zweitkopie selbst erstellt und geprüft unter
+/home/friseer/MyContainer/backups/cline-phase2-20261030T173159+0100/phase4-model-context-preflight.
+Alle drei Prüfsummen stimmen mit dem Betreiberbeleg überein; Archiv enthält genau
+die sieben erwarteten regulären Dateien. Eigene tatsächliche Extraktion in
+external-restore-probe, sämtliche Inhalts-SHA256, Modi und Nanosekunden-mtime
+identisch. Lokale Extraktion verwendet den aktuellen Benutzer; die ursprünglichen
+Eigentümer/vollständigen xattrs sind durch den tatsächlichen Root-Restore auf Acer
+separat belegt. Kein bloßer Prüflistenvergleich als Wiederherstellung ausgegeben.
+external-verification.json liegt privat neben der Zweitkopie, außerhalb von Git.
+
+Aktueller Modelldienst hat tatsächlich Restart=no und CollectMode=inactive-or-failed.
+Kein ungeprüftes Stop/Start dieses transienten Dienstes. Für die akute Chatreparatur
+wird er nicht angefasst. Auch Coding-/Learning-Dienst, ihre Konfigurationen,
+Modellwahl und die äußeren API-Ports 11436/11441 bleiben erhalten.
+
+sdk/scripts/netaigis-model-router-activate.py bereitet nur ai-model-router.service
+und dessen zwei gesicherte Dateien vor. Root-Standard inspect ist lesend. Zielmodell
+und interne Modelladresse stammen ausschließlich aus der bereits bestätigten
+aktuellen Runtime-Datei und müssen vom tatsächlich laufenden API-Katalog/Health
+bestätigt werden. Coding-/Learning-Routen werden auf dieses vorhandene DeepSeek
+berichtigt; keine neue Standardmodellauswahl. Embedding und alle anderen
+Konfigurationswerte bleiben semantisch erhalten. Der bereits getestete native
+Streaming-/Tokenlimit-Patch wird übernommen. Eine modellneutrale ID-Prüfung verhindert,
+dass bei größerem Kontext versehentlich der alte Qwen-Launcher gestartet/downloaded
+wird. Der aktuell geladene 32k-Kontext bleibt beobachteter Zwischenstand; dynamische
+Vergrößerung/1 Million ist ausdrücklich noch offen, keine dauerhafte Zielreduzierung.
+
+Gegen die tatsächlichen privaten Dateien aus der geschützten externen Wiederherstellung
+im Speicher gebaut: Routerkandidat 948637effe8516d3196b64f332361ed946b245d408c2ca13cbc656f754aeb410,
+Konfigurationskandidat eea634e63e3534875123f9b9f1f32ea54351b125636ed91865857ed0670f04fe.
+Private Quellen nicht in den Git-Arbeitsbereich kopiert. Gezielte Koordinatorprüfungen
+10/10, nach zusätzlicher Prüfung privater Fehlertexte **11/11** bestanden. Tatsächliche
+Dateiänderungen in privaten Fixtures, nur Routersteuerung, Fremdänderungsschutz,
+aktive Verbindungen, unveränderte geschützte Dienste und Erhalt der neuen Version
+bei Fehlern mit anschließendem Forward-Repair. Keine automatische erste Rücknahme.
+Root-Sicherungen/Quelle/Dateimetadaten werden vor Anwendung erneut gegen die belegten
+Hashes geprüft. p4-acer-router-activation-stop-scope bestätigt am echten Acer typisiert:
+alle Stop-Weitergaben und vier Exec-Hooks leer. Keine anderen Dienste mitstoppen.
+
+Dieser neue produktive Eingriff ist durch die frühere Adapter-only-Freigabe nicht
+abgedeckt. Konkreter, vorbereiteter Bedienaufruf bei ruhenden Aufträgen:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-router-activate.py apply --remote --maintenance-confirmed --external-copy-verified
+```
+
+Erst mit gezielter Freigabe/Betreiberausführung. Nur Routerdateien und Routerdienst.
+Danach tatsächliche normale/Streaming-Anfragen über den Coding-Agent prüfen, statt
+Health als Modellabnahme auszugeben. action repair bleibt für konkrete Diagnose/
+gezielte Nachbesserung vorgesehen; neue Dateien bei Fehlern erhalten.
+
+Paketbau: frischer SDK-Build erfolgreich (61,9 s). Erster VSIX-Aufruf scheiterte
+an fehlendem grpc-tools-Protoc und Sandbox-DNS. Die bereits freigegebene gebundene
+Entwicklungsabhängigkeit wurde ausschließlich im Reparatur-Worktree nachgeladen;
+Codegenerierung erfolgreich (7,52 s). Vollständige Extension-, Kompatibilitäts- und
+Webview-Typprüfung danach erfolgreich; Paketlauf scheiterte an einem einzelnen
+Grit-Lintbefund beim legitimen Lesen des nativen Migrationsquell-Secrets. Parameter
+wie im vorhandenen Exportpfad explizit vscodeContext benannt und kommentiert;
+Semantik/Secret-Grenze unverändert, gezieltes Lint bestanden. Kein Wechsel auf den
+noch leeren Ziel-Cache. Packaging künftig mit Bun-Build und dem vorhandenen VSCE-
+pack-Einstieg, damit kein npm-Lifecycle ausgeführt wird. Noch keine fertige VSIX
+oder produktive Funktionsfähigkeit behauptet.
+
+Zusätzlicher eigener Cachefund: Der lokale reine Kandidatenimport erzeugte
+sdk/scripts/__pycache__/netaigis-model-router-activate.cpython-313.pyc. Nicht
+versioniert, nicht ausgeliefert und wegen der bestehenden Bereinigungsbeschränkung
+nicht gelöscht. Weitere Importe mit PYTHONDONTWRITEBYTECODE=1. Die zwei neuen
+modellneutralen Profil-Transformationsdateien sind vorbereitender, noch unverbundener
+Quellstand; ihre 10 lokalen Tests sind keine produktive Modellwechselabnahme.
