@@ -1,4 +1,7 @@
-import { resolveProviderRequestHeaders } from "@cline/llms";
+import {
+	getModelsForProvider,
+	resolveProviderRequestHeaders,
+} from "@cline/llms";
 import type {
 	AgentConfig,
 	AgentEvent,
@@ -60,6 +63,7 @@ import {
 	toProviderConfig,
 } from "../types/provider-settings";
 import { resolveWorkspacePath } from "./config";
+import { readDynamicModelContext } from "./dynamic-model-context";
 import {
 	filterExtensionToolRegistrations,
 	resolveDisabledAgentPluginNames,
@@ -579,6 +583,25 @@ export async function prepareLocalRuntimeBootstrap(
 		modelCatalogDefaults,
 		defaultFetch,
 	);
+	// This also runs on saved-session resume, whose untrusted client connection
+	// and catalog snapshot were removed. Resolve only at the runtime's resulting
+	// configured provider, without changing model selection or history.
+	const dynamicContext = await readDynamicModelContext(
+		providerConfig,
+		baseConfig.modelId,
+		providerConfig.fetch ?? globalThis.fetch,
+	);
+	if (dynamicContext) {
+		const modelId = baseConfig.modelId;
+		const existing = providerConfig.knownModels?.[modelId] ??
+			(await getModelsForProvider(baseConfig.providerId))[modelId] ?? {
+				id: modelId,
+			};
+		providerConfig.knownModels = {
+			...providerConfig.knownModels,
+			[modelId]: { ...existing, contextWindow: dynamicContext.requestLimit },
+		};
+	}
 	const hooks = mergeAgentHooks([
 		baseConfig.hooks,
 		baseConfig.checkpoint?.enabled === true

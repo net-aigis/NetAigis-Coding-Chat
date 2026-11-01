@@ -597,6 +597,12 @@ export {
 	setActiveConnectorSupervisor,
 } from "./services/connectors/connector-supervisor";
 export {
+	type DynamicModelContextInfo,
+	type DynamicModelEndpoint,
+	parseDynamicModelContext,
+	readDynamicModelContext,
+} from "./services/dynamic-model-context";
+export {
 	FeatureFlagsService,
 	type FeatureFlagsServiceOptions,
 	NoOpFeatureFlagsProvider,

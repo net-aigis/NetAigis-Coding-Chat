@@ -1801,3 +1801,11 @@ embeddings and session storage remain outside this control path. These helpers
 are prepared and tested locally; productive activation and hardware capacity
 acceptance are separate recorded steps. The independent infrastructure watchdog
 remains a separate service and never belongs to this client or model wrapper.
+
+Core's local runtime bootstrap and the VS Code model display share the explicit
+versioned `netaigis_context` catalog reader. Bootstrap refreshes the selected
+model's configured request ceiling using the resolved runtime provider endpoint
+and credentials, including when resuming canonical saved history. Client-supplied
+resume credentials/catalog snapshots remain rejected. The last observed loaded
+capacity stays distinct from that ceiling; failed or unsupported observations
+retain ordinary provider behavior and never imply an allocated maximum.

@@ -3396,3 +3396,88 @@ Passwort ausschließlich im Terminal. Keine erneute Freigabe, neue Sicherung ode
 Rechteänderung erforderlich. Anschließend tatsächliche Kontextvergrößerung und
 Inferenz prüfen; eine Million Tokens, Sitzungswiederaufnahme und der übrige
 Gesamtauftrag bleiben bis zu ihrem jeweiligen Nachweis offen.
+
+### Kontextaktivierung auf Acer erfolgreich, unabhängig kontrolliert
+
+Der Benutzer hat den korrigierten Aufruf aus d4c1b3e4a erneut im bestehenden
+Root-Terminal ausgeführt. Alle sieben gepinnten Kandidaten geschrieben, genau
+Coding-/Router-/Modell-Unit gestoppt und neu gestartet. Vorherige Zuteilung 32768,
+danach tatsächliche Backend-/Controller-Bestätigung 65536. Root-Journal:
+/root/netaigis-recall-backups/phase2-20261030T165000Z/phase4-dynamic-context-delta/activation-88d191a916f54bcfba20260644f3dee8.jsonl.
+Operator-Ergebnis ok=true, Learning unverändert; keine Inferenz im Root-Helfer.
+
+Anschließend p4-context-applied-independent-path-corrected ausschließlich lesend
+über den vorhandenen SSH-Zugang: alle sieben installierten SHA256 exakt bestätigt,
+Original-Runtime weiterhin 6280e8607baf4d5e9b6c2474619e7da9c3c370432d36a9bd41d3db03a8b65e1e
+und UID/GID 1000, Modus 0644. Modell persistent unter demselben Dienstnamen,
+User friseer, MainPID 2084241, InvocationID ef3cc7b7fe1947d6a39440c08177a408.
+Alle vier Dienste active/running; Learning-InvocationID unverändert.
+Health-Endpunkte alle HTTP 200; Modell und Router bestätigen 65536.
+Coding-Agent und Router reichen für genau das gewählte Modell dieselbe explizite
+on_demand-Kapazität durch: loaded_capacity=65536, request_limit=1000000,
+konfigurierte sieben Stufen. Das ist noch kein Million-Token-Inferenznachweis.
+Der erste lokale Prüflauf scheiterte vor SSH an einem falsch abgeleiteten
+Repositorypfad im Nachweisskript; nur dieser Pfad korrigiert und Prüfung wiederholt.
+Keine Wiederholung produktiver Aktivierung oder Sicherung.
+
+### Gespeicherte Sitzungen: dynamische Kapazität aus dem zuständigen Runtime-Zugang
+
+Einen zusätzlichen belegten Wiederaufnahmefehler korrigiert: resumeSavedSession
+entfernt aus Sicherheitsgründen den veralteten Client-Katalog und seine
+Zugangsdaten. Die bisher allein im VS-Code-Neustartpfad ermittelte dynamische
+Kapazität ging deshalb bei echter Runtime-Wiederaufnahme verloren. Roter Core-
+Test p4-resume-dynamic-authority-core-red reproduzierte fehlende 1000000-Grenze.
+Der frühere falsch aufgerufene SDK-Testlauf war kein gültiger Fehlernachweis.
+
+Protokollleser nach Core verschoben und von der Erweiterung wiederverwendet;
+keine zweite Speicherarchitektur. Runtime-Bootstrap fragt ausschließlich das
+bereits aufgelöste serverseitige Providerziel mit seinen vorhandenen Credentials
+ab. Ausdrücklich publizierte Grenze ergänzt die Metadaten genau dieses Modells;
+Modellauswahl, Originalnachrichten und ursprüngliche Urheberschaft bleiben erhalten.
+Neue Regression verwendet echten LocalRuntimeHost und kanonische Datei, mit
+Fixture-Agent/Fetch; fremde Client-URL/Credentials und erfundene 16m-Grenze werden
+ignoriert, kein Nachrichten-Overwrite. Dies behebt nicht die noch offene Prüfung
+alter unbekannter Runtime-/Werkzeugzustände oder den produktiven Modellwechsel
+einer historischen Sitzung.
+
+Gezielte Prüfungen: p4-resume-context-sdk-final 23/23, einschließlich bestehender
+Wiederaufnahme- und Prozessbeobachtungsfälle. Core-Entwicklungstypprüfung
+p4-core-resume-context-types-corrected erfolgreich (129,39 s); vorheriger Lauf
+meldete nur unzureichend typisierte Fetch-Spy-Argumente im neuen Test.
+Erweiterung p4-resume-context-app-stub-corrected 129/129; der erste Lauf nach
+Verschiebung scheiterte am bestehenden Core-Teststub, der die neuen Exporte noch
+nicht bereitstellte. Der Stub exportiert jetzt die echte gemeinsame Implementierung.
+Kein produktiver Fehler aus diesem Teststub behauptet. Core-Paket und Plugin-
+Runtime gezielt erfolgreich gebaut; keine Installation oder Gesamt-Neubau.
+Neues Erweiterungspaket und native Prüfung werden am aktuellen Stand fortgesetzt.
+
+#### Tatsächliche Millionengrenze und neuer nativer Paketnachweis
+
+p4-context-functional-live nach der Root-Aktivierung: normale und gestreamte
+Antwort über den bestehenden Coding-Agent erfolgreich, beide HTTP 200, nichtleer,
+finish_reason=stop; SSE zusätzlich [DONE]. Alle vier Dienstzustände vor/nach
+identisch. Kein Learning-Neustart oder Wechsel des bestehenden Modellzugangs.
+
+Anschließend einmalig über den bereits eingeführten benutzereigenen Control-Socket
+ensure_context(coding, 1000000) ausgeführt. Nach 17,662 s ok=true/state=ready,
+Backend-Health vorher 65536, danach loaded=true/max_context=1000000. Keine neue
+Modellauswahl oder Änderung der ursprünglichen Runtime-Datei. Das ist ein echter
+Zuwachs der konfigurierten laufenden Backend-Kapazität, aber noch kein Prompt mit
+einer Million tatsächlichen Tokens und kein entsprechender KV-Speicherlastnachweis.
+Unmittelbar danach p4-context-million-functional-live: beide echten normalen/
+gestreamten Coding-Agent-Antworten ebenfalls erfolgreich, HTTP 200/stop, SSE [DONE],
+Dienstzustände unverändert. Keine wiederholten sleep- oder Zuwachsversuche.
+
+Neues VSIX mit gemeinsamer Core-Kontextabfrage gezielt gebaut/gepackt, ohne
+Webview-Neubau (seit bestandenem nativen Hydrationstest unveränderte UI).
+netaigis-coding-chat-0.1.0-context-resume-candidate.vsix,
+SHA256 8596fc04665f1b82097cc3a06614dd2132c0bde9709d9c82806c748dcd38165b,
+14.225.329 Bytes, 148 Archivmitglieder, ZIP-Integrität und eigene Identität geprüft.
+p4-resume-context-packaged-native: bestanden (64,15 s) im abgeschotteten echten
+VS Code 1.144.0; alle fünf Freigaben tatsächlich gesetzt und gespeichert, dynamische
+Grenze und zuletzt geladene Kapazität getrennt sichtbar. Fixture-Backend, kein
+produktiver DeepSeek-Test aus diesem GUI-Lauf behauptet. Xvfb bis zum eigenen
+Cleanup aktiv, keine produktive VS-Code-Instanz beendet. Bestehende ältere Pakete,
+Sicherungen und Originaldaten unverändert erhalten. Produktiver eigener Rollout,
+alte unbekannte Sitzungs-/Werkzeugzustände, Recall/Learning-Gesamtabnahme,
+gemeinsame Android-Runtime und externer Watchdog bleiben offen.
