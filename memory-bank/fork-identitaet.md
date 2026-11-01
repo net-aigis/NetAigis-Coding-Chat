@@ -200,3 +200,14 @@ Die tatsächliche Übernahme einer gesicherten SDK-Sitzung und der Secret-Transp
 
 
 Ergänzender Prüfnachweis: Native Secret-Persistenz wird durch sechs **normale** isolierte VS-Code-Läufe ohne `--extensionTestsPath` belegt. Dieser Standard-Testschalter verwendet RAM-only Storage und ist dafür ungeeignet; frühe Wiederstart-/Fallback-Aussagen daraus waren nicht ausreichend. Der endgültige Fallback-Helfer darf nur in `seed` Fixtures erzeugen, nicht beim Rückfall. Reale neue Native-Secrets wurden nach zwei echten Prozessneustarts erneut gelesen. Xvfb-Absturzzuordnung und ausschließlich betroffene Startkorrektur sind im Phase-4-Bericht dokumentiert; die Fork-Identitäts-/Migrationsdateien wurden bei dieser Absturzprüfung nicht geändert.
+
+Am 01.11.2026 zusätzlich die tatsächliche eigene VSIX gebaut und mit dem Installer
+in einer abgeschirmten VS-Code-1.143.1-Instanz installiert. Paket-SHA256
+edef0ae50f424ada4feed54e151f1bc9a849fb76b7f147bfa61d34ba49d04c75,
+Quellstand 6976c4fd5. Die vorhandene Migrationssperre zunächst bestätigt; nach
+verifiziertem Import des bestehenden synthetischen Transfers und echtem Neustart
+startet die installierte Runtime, registriert 26 Produktionskommandos, öffnet
+die eigene Sidebar und aktiviert Original-Cline 4.1.25 daneben. Keine produktive
+Installation oder Migration und kein Modellantworttest aus dieser netzwerkisolierten
+Prüfung abgeleitet. Artefakt-/Prüfpfade und verbleibender Acer-Routerblocker stehen
+im neuesten Abschnitt von phase4-reparatur.md; Gesamtauftrag weiterhin offen.

@@ -2706,3 +2706,64 @@ versioniert, nicht ausgeliefert und wegen der bestehenden Bereinigungsbeschränk
 nicht gelöscht. Weitere Importe mit PYTHONDONTWRITEBYTECODE=1. Die zwei neuen
 modellneutralen Profil-Transformationsdateien sind vorbereitender, noch unverbundener
 Quellstand; ihre 10 lokalen Tests sind keine produktive Modellwechselabnahme.
+
+### Fertige eigene VSIX und tatsächlicher Paketstart, 01.11.2026
+
+Der vorherige Absatz „Noch keine fertige VSIX“ beschreibt den damaligen Stand.
+Jetzt tatsächlich gebaut: tmp/phase4-checks-20261030T193507+0100/netaigis-coding-chat-0.1.0.vsix,
+14.221.425 Bytes, SHA256 edef0ae50f424ada4feed54e151f1bc9a849fb76b7f147bfa61d34ba49d04c75.
+Quellstand 6976c4fd5. ZIP-Integrität erfolgreich, 148 Einträge, eigene Identität
+netaigis.netaigis-coding-chat / NetAigis Coding Chat / 0.1.0 bestätigt. Main-Bundle,
+Webview und 28 deklarierte eigene Kommandos vorhanden; keine fremden Command-IDs,
+privaten Daten oder erforderlichen Extension-Abhängigkeiten im Paket gefunden.
+Keine Veröffentlichung und keine produktive Installation.
+
+Webview-Produktionsbau und dessen Typprüfung erfolgreich; Extension-Produktionsbundle
+mit explizit leeren Telemetrie-/Fehlerdienst-Schlüsseln erfolgreich. Der erste lokale
+esbuild-Aufruf scheiterte an der Sandbox-Prozesskommunikation; nur dieser Aufruf
+mit freigegebener nativer Ausführung erfolgreich wiederholt. 42 gezielte Speicher-/
+Migrationsprüfungen bestanden. Die erste manuelle Proto-Lint-Ausführung ist trotz
+Exitcode 0 ungültig: buf fehlte im PATH und das Upstream-Skript verdeckte den Fehler.
+Danach tatsächliches buf mit lokalem PATH und explizitem Bash -e erfolgreich
+ausgeführt (p4-proto-lint-actual-local-buf). Keine ungültige Prüfung als bestanden
+übernommen. VSCE pack nach den einzelnen Build-/Typ-/Lint-Schritten benutzt;
+kein npm-Lifecycle, kein Versionswechsel und kein Release-Tag.
+
+Das tatsächliche VSIX wurde mit dem VS-Code-Installer in ein privates Testprofil
+installiert. Der erste Prüfaufruf scheiterte vor jedem Prozessstart am bereits
+vorbereiteten Prüfverzeichnis. Der erste Hostlauf fand die nachträglich verlinkte
+Originalextension wegen der vorherigen Extension-Erkennung nicht. Der nächste
+Lauf fand beide Extensions, verlangte aber fälschlich Runtime-Kommandos vor der
+erforderlichen Migration. Das war eine falsche Testannahme: fork-entry.ts sperrt
+bei erkannter Originalextension den leeren Neustart wie vorgesehen. Keine Änderung
+dieses Schutzes und keine Änderung am Paket zur Umgehung der Prüfung.
+
+Korrigierte Prüfung am unveränderten fertigen VSIX mit dem bereits vorhandenen
+synthetischen Transfer, zwei normale VS-Code-1.143.1-Prozesse: Import erfolgreich
+(13,25 s), nach echtem Prozessneustart Runtime erfolgreich (13,89 s), alle 26
+Produktionskommandos registriert (zwei deklarierte Dev-Kommandos absichtlich nicht
+im Produktionsmodus), eigene Sidebar geöffnet und Original-Cline 4.1.25 daneben
+tatsächlich aktiviert. Eigene Extension aus dem installierten Paketverzeichnis
+geladen, nicht aus dem Quell-Entwicklungsverzeichnis. Produktions-Home ausgeblendet,
+Netzwerk getrennt, nur private Profile/Testdaten schreibbar. Beide eigenen Xvfb-
+Prozesse mit deaktiviertem GLX liefen bis zur kontrollierten Beendigung; kein neuer
+Absturz. Die vorangegangenen Fehlprotokolle sind erhalten.
+
+51 Artefakte einschließlich fertigem VSIX, erfolgreicher und fehlgeschlagener
+Prüfprotokolle sowie tatsächlicher Host-/Xvfb-Belege versiegelt:
+tmp/phase4-checks-20261030T193507+0100/SHA256SUMS.own-vsix-20261101,
+SHA256 43f263430ed9785f1e7790cc1cfcd9984ff489bce16af5c05552b8c9c92eaae0.
+Das ist eine belegte Paket-/Start-/Fixture-Migrationsprüfung, keine produktive
+Secret-/Sitzungsmigration und kein tatsächlicher Modellantwort-/Android-Nachweis.
+
+Unmittelbar notwendiger nächster Eingriff bleibt der oben konkret vorbereitete
+Routerlauf. Der laufende DeepSeek-Dienst antwortete direkt; der unveränderte
+produktive Router zeigte auf den nicht mehr laufenden alten Qwen-Pfad und der
+Coding-Agent lieferte tatsächlich HTTP 503. Neue Routerfreigabe/Root-Bedienung
+noch ausstehend; die frühere Adapterfreigabe umfasst ihn nicht. Nach Betreiber-
+Ausgabe tatsächliche normale und gestreamte Antworten über den bestehenden
+Coding-Agent prüfen und Fehler gezielt an der neuen Version reparieren. Erst
+danach produktive VS-Code-Migration/Installation mit geprüfter Rückfallmöglichkeit
+und der ausdrücklich verlangten gesonderten Freigabe. Dynamische Kontextvergrößerung,
+gemeinsame Android-Sitzung und die übrigen offenen Gesamtanforderungen bleiben offen;
+der erfolgreiche Paketbau ist kein Abschluss des Gesamtauftrags.
