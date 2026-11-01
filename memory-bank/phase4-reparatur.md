@@ -2928,3 +2928,111 @@ Sitzungsinhalte oder Zugangsdaten in Git kopiert. Nach Commit d3e4a7ebe konkrete
 Benutzerfreigabe zur beschriebenen begrenzten produktiven Zwischeninstallation/
 Migration angefragt; bis zur Antwort nicht anwenden. Der übrige Gesamtauftrag
 bleibt offen und darf durch diesen Übergabestand nicht ersetzt werden.
+
+### Produktive Installation und Übernahme freigegeben und ausgeführt, 01.11.2026
+
+Benutzerantwort auf die konkrete Installations-/Migrationsfreigabe lautet „mach“,
+anschließend ausdrücklich „mach fertig“. Als Freigabe des bereits beschriebenen
+begrenzten produktiven Schritts übernommen; keine weitere gleichlautende Frage.
+Dies hebt keine offenen Gesamtanforderungen auf und genehmigt keine sonstigen
+privilegierten Acer-Eingriffe.
+
+Vor dem Eingriff bestehende Backup-/Transfer-Prüfsummen erneut gelesen sowie
+aktuellen eigenen Dateistand und logischen SQLite-Sitzungsstand gegen die bereits
+geprüfte aktuelle Sicherung verglichen: unverändert, kein erneuter Sicherungslauf.
+Originales natives Memento ebenfalls unverändert bestätigt. Produktiver Ablauf
+und ausschließlich geschützte Belege unter dem bestehenden Sicherungsunterordner
+phase6-vscode-preflight-20261101/productive-rollout.
+
+Eigene VSIX mit identischem SHA256 edef0ae50f424ada4feed54e151f1bc9a849fb76b7f147bfa61d34ba49d04c75
+über /usr/bin/code --install-extension, explizites bestehendes Code-Benutzerprofil
+und bestehendes Extension-Verzeichnis, --do-not-sync, ohne --force installiert.
+Installer Exit 0, Paket tatsächlich unter
+/home/friseer/.vscode/extensions/netaigis.netaigis-coding-chat-0.1.0,
+ID/Publisher/Anzeigename/Version verifiziert. Original-Cline 4.1.25 vorhanden.
+
+Der geprüfte aktuelle Transfer wurde danach tatsächlich über preview/apply im
+berechtigten eigenen produktiven Extension-Kontext importiert. Ziel exakt
+/home/friseer/.config/Code/User/globalStorage/netaigis.netaigis-coding-chat;
+Manifest-Digest vor preview/apply und produktiver Migrationsbeleg danach nochmals
+geprüft. result-migrate.json ok=true, 15 Dateien, erwartete null native Secrets.
+Keine direkten Änderungen an der produktiven VS-Code-SQLite-Datenbank. Der CLI-
+Aufruf für das eigens gestartete Migrationsfenster kehrte vor dem asynchronen
+Ergebnis zurück; der erste lokale Wrapper meldete deshalb fälschlich einen noch
+fehlenden Beleg. Anschließend der tatsächlich erfolgreiche Beleg und das produktive
+Journal gelesen. Migration nicht wiederholt und kein unbekannter Zustand als
+abgeschlossen ausgegeben.
+
+Nur eigene neue Konfiguration bei noch nicht gestarteter eigener Runtime auf das
+bereits gewählte, am bestehenden API-Katalog bestätigte Modell eingestellt:
+beide Modi und zugehöriger vorhandener Providerstore konsistent; API-Endpunkt
+bytegleich. Ursprüngliche Konfiguration im alten Namensraum erhalten. Geladene
+Kapazität weiterhin 32768, anfängliches geprüftes Ausgabebudget 1024; kein neues
+Backend-/Modellprofil und kein Modellneustart. Eigene vorangehende Konfiguration
+im geschützten Ablaufbeleg erhalten. Produktive Paket-/Oberflächen-/Modellprüfung
+läuft jetzt; Erfolg erst nach deren tatsächlichem Ergebnis dokumentieren.
+
+
+### Fortsetzung: tatsächliche produktive Prüfung und danach veränderter Profilstand
+
+Der vorige Abschnitt endet mitten in der Prüfung. Geschützte Belege unter
+phase6-vscode-preflight-20261101/productive-rollout zeigen inzwischen:
+productive-functional.json bestätigt echten Chat über die installierte öffentliche
+Extension-API und echte Modell-Dateibearbeitung; beide Turns idle. Geschriebene
+synthetische Datei SHA256 85d2229ef41818128e31b41a0d31da44a557e8019b11e543fed6f573feae84d2.
+Dies ist eine begrenzte Funktionsprüfung, keine Gesamt- oder GUI-Abnahme. Der
+vorangehende GUI-Smoke brach vor dem Chat mit TargetClosedError ab; konkrete
+Ursache ungeklärt. Datenimport und Runtime-Prüfung hatten eigene erfolgreiche
+Belege. Keine Schlussfolgerung, dass damit alle Nutzerprobleme behoben seien.
+
+Bei der anschließenden lesenden Prüfung fehlen die eigenen und ursprünglichen
+Extension-Pakete sowie der eigene globale Datenordner. VS Code meldet nun 1.144.0
+statt der vorher geprüften 1.143.1. Die vorhandenen Code-Protokolle belegen unter
+.config/Code/logs/20261101T172040/sharedprocess.log Marketplace-Installation von
+Original-Cline 4.1.26 um 17:23:05 und mehrfache De-/Installation bis 17:29:47.
+20261101T172959/sharedprocess.log belegt um 17:30:03 das Markieren und Löschen
+von netaigis.netaigis-coding-chat-0.1.0, saoudrizwan.claude-dev-4.1.25 und 4.1.26.
+Initiator dieser Änderungen und Ursache des fehlenden eigenen Datenordners sind
+nicht nachgewiesen. Kein Datenverlust durch automatische Wiederholung kaschiert;
+Phase-2-/aktuelle Datenkopie und Transfer bleiben erhalten. Frühere Installations-
+belege beschreiben den damaligen Stand, nicht eine aktuell vorhandene Installation.
+
+Neueste konkrete Nutzerfehler: dynamischer Kontext, nicht wirksame Freigaben für
+Read/Edit/Commands/Web Fetch/MCP, Anzeige 32,8k. Der beim Zwischenrollout gesetzte
+32k-Wert und das 1024-Ausgabebudget waren begrenzte Testwerte, keine endgültige
+Kontextpolitik. Kontextvergrößerung auf Acer ist weiterhin nicht abgenommen.
+
+### Nachgewiesener Einstellungswettlauf bei automatischen Werkzeugfreigaben
+
+Schnelle Checkbox-Änderungen verwendeten denselben veralteten Renderzustand und
+dieselbe Folgeversion. Der Host ignorierte gleiche Versionen; zusätzlich konnte
+sein asynchroner Zustandsabruf zwei gleichzeitige Schreiber akzeptieren. Korrektur:
+webviewweite Warteschlange für einzelne Änderungsabsichten, je aktueller Zustand
+vom vorhandenen Host; bei Versionskonflikt höchstens drei frische Versuche.
+Host-Versionsprüfung und Cache-Schreibvorgang synchron, veraltete Änderungen werden
+explizit abgewiesen. Keine pauschale Erweiterung der Werkzeugberechtigungen.
+
+Nachweise im bestehenden tmp/phase4-checks-20261030T193507+0100:
+- p4-auto-approve-ui-race-red: tatsächlicher Hook mit veraltetem Renderzustand,
+  1 bestanden/2 fehlgeschlagen vor Korrektur. Der frühere preliminary Test
+  p4-auto-approve-concurrent-red verwendete die neue API gegen alte Implementierung
+  und wird ausdrücklich nicht als gültiger Fehlernachweis gezählt.
+- p4-auto-approve-ui-race-green und -final: jeweils 3/3 bestanden; fünf Freigaben
+  bleiben erhalten, echter vorhandener Werkzeug-Policy-Mapper ausgewertet,
+  Transportfehler blockiert keine Folgeänderung, konkurrierendes Fenster erhalten.
+- p4-auto-approve-host-regression: 37/38 bestanden. Einziger Fehler war eine alte
+  Cline-Namens-Erwartung im bereits umbenannten Hinweistext. Erwartung korrigiert;
+  p4-mistake-limit-fork-guidance nur betroffener Fall bestanden, 27 übersprungen.
+- p4-auto-approve-extension-types und -webview-types: Exit 0.
+- Biome aus apps/vscode: alle sechs betroffenen TS-Dateien geprüft, Exit 0.
+  Erster Aufruf vom Monorepo-Root scheiterte an verschachtelter Konfiguration;
+  keine Konfigurationsmigration durchgeführt und diesen Aufruf nicht grün gezählt.
+Noch keine aktualisierte VSIX oder produktive Abnahme dieser Korrektur.
+
+Weiterer konkreter Fortsetzungsfehler in den bestehenden NetAigis-Ausgaben:
+Runtime owner exit is unconfirmed; saved work was retained without automatic replay.
+Die vorhandene alte Sitzung hat keinen heute lebenden gespeicherten Besitzer-PID;
+das allein bestätigt jedoch weder historische Exitcodes noch beendet es alte
+Terminalprozesse nachweislich. Schutz nicht entfernen, keine Befehle wiederholen,
+keine alten unbekannten Zustände als Completed umdeuten. Sichere Wiederaufnahme
+bleibt zusätzlich offen und darf nicht mit dem Checkbox-Fehler verwechselt werden.

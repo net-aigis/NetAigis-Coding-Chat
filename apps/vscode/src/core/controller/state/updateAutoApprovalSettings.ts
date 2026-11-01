@@ -9,9 +9,17 @@ import { Controller } from ".."
  * @returns Empty response
  */
 export async function updateAutoApprovalSettings(controller: Controller, request: AutoApprovalSettingsRequest): Promise<Empty> {
-	const currentSettings = (await controller.getStateToPostToWebview()).autoApprovalSettings
+	// Keep the version check and cache write in one synchronous turn. Awaiting
+	// a complete webview state here lets two requests accept the same version.
+	const currentSettings = controller.stateManager.getGlobalSettingsKey("autoApprovalSettings")
 	const incomingVersion = request.version
 	const currentVersion = currentSettings?.version ?? 1
+
+	if (!Number.isSafeInteger(incomingVersion) || incomingVersion < 1) throw new Error("Invalid auto-approval settings version")
+	if (incomingVersion <= currentVersion) {
+		await controller.postStateToWebview()
+		throw new Error("auto_approval_version_conflict")
+	}
 
 	// Only update if incoming version is higher
 	if (incomingVersion > currentVersion) {
