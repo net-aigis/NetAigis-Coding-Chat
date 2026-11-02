@@ -3778,3 +3778,48 @@ Die gemeinsame echte Modell-/VS-Code-/Android-Abnahme ist weiterhin erforderlich
 Der nächste isolierte Integrationstest soll den tatsächlich konfigurierten
 Coding-Agent-Zugang nutzen und den bereits vorhandenen Hub mit der echten neuen
 VS-Code-Anbindung verbinden; dabei keine produktiven Sitzungsdaten verändern.
+
+### Fortsetzungsnachweis: echte gemeinsame Modellsitzung, Installationsdatei
+
+Der anschließende isolierte native Pakettest verwendete den tatsächlich
+konfigurierten Coding-Agent-Zugang und DeepSeek, keinen Fixture-Provider.
+Arbeitsartefakte bleiben im bisherigen Prüfverzeichnis unter
+test-data/p4-real-shared-vscode-model. Erste zwei reale Modellturns unter
+Friseer und jimmi in derselben ID 1793568939815_yktbw; die zweite Antwort
+erschien in derselben echten VS-Code-Ansicht. Originalbeitrag unverändert.
+Die echte eigene Schreibrechtsübernahme über Befehlspalette und Bestätigungsdialog
+bestand im anschließenden result-ui-continuation.json. Keine Wiederholung der
+bereits erfolgreichen Modellturns. result-state-continuation.json bestätigt
+zusätzlich residente Runtime vor/nach Schließen des eigenen Testfensters,
+weitere tatsächliche Modellantwort danach und Urheberfolge Friseer/jimmi/jimmi
+in derselben kanonischen Sitzung. Zwischen Prüfversuchen wurde der Test-Hub
+kontrolliert beendet und dieselbe gespeicherte Sitzung wieder aufgenommen;
+kein durchgehend laufender Hub über diese Neustarts hinweg behauptet.
+Physisches Android, produktiver Hub und Recall-Abnahme bleiben offen.
+
+Vorherige Testfehler bleiben erhalten: erster Fensterstart vor jeder Inferenz
+fehlgeschlagen; Test-XDG-Pfad 124 Bytes erzeugt für Unix-Sockets nachgewiesen
+AF_UNIX path too long. Vorhandener /run/user/1000 statt neuer temporärer Ablage
+ermöglichte den nativen Start. Erste Browser-Fehlerausgabe war nicht erfasst.
+Xvfb blieb jeweils bis zur eigenen Beendigung aktiv, jeweils Exit 0. Später
+fehlte im Testtreiber das >-Präfix der Befehlspalette; anschließend benutzte eine
+Zusatzabfrage den nicht vorhandenen Befehl session.snapshot. Nur diese fehlenden
+Schritte korrigiert/fortgesetzt, auf den vorhandenen session.get-Vertrag mit
+runtimeResident umgestellt. Kein Core-Zugriffsschutz dafür abgeschwächt.
+
+Beim letzten Test-Hub-Shutdown zusätzliche reale Fehlermeldung des abgeleiteten
+Suchindexes: database is not open. Ursache im gelesenen Quellpfad: Index wird
+vor sessionHost.dispose geschlossen; dessen ended-Ereignis kann danach erneut
+refreshNow starten, weil der Suchdienst bisher keinen Dispose-Zustand prüft.
+Gezielte Shutdown-Regression und Korrektur stehen als nächste Reparatur offen.
+Erfolgreiche Modell-/UI-Schritte nicht erneut ausführen. Testquellen liegen im
+vorhandenen ignorierten Prüfverzeichnis; noch keine neue produktive Installation.
+
+Zuletzt dokumentiert produktiv installiertes Paket weiterhin vorhanden:
+tmp/phase4-checks-20261030T193507+0100/netaigis-coding-chat-0.1.0-terminal-fallback-candidate.vsix,
+SHA256 6777bc58774d87b847666782b247092a82f448ff4d855db8232858aa51b957bd.
+Bei der aktuellen ausschließlich lesenden Nachfrageprüfung jedoch kein eigener
+Paketordner unter /home/friseer/.vscode/extensions gefunden. Ursache dieses
+erneuten Fehlens ungeklärt; keine automatische Neuinstallation vorgenommen.
+Die neuere isolierte Shared-Writer-Test-VSIX ist kein bereits produktiv
+installierter Ersatz. Alle früheren Sicherungen und Belege bleiben erhalten.
