@@ -224,6 +224,13 @@ does not prove completion of the user's task when its owner is restarted.
 This maintenance release also suppresses fallback task-completion telemetry.
 Explicit session stops and in-flight aborts retain their separate lifecycle.
 
+Claiming an already owned writer role with the same actor, client, connection
+and current revision is idempotent. It neither persists new control metadata
+nor increments the revision; stale revisions and other connections retain the
+normal handover checks. The browser confirms its own successful claim per peer
+and authentication generation, rather than assuming the same actor name means
+that this device owns another device's writer connection.
+
 The own VSIX packages the existing Core daemon exports and the existing Hub
 dashboard through `apps/cline-hub/src/netaigis-runtime.ts`. The launcher sets
 the own extension's isolated storage before importing either process entry.

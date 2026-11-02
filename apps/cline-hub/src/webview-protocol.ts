@@ -313,6 +313,7 @@ export type WebviewOutboundMessage =
 			type: "session_control";
 			sessionId: string;
 			control: SessionWriterControl;
+			writerConfirmed?: boolean;
 	  }
 	| { type: "status"; text: string }
 	/**

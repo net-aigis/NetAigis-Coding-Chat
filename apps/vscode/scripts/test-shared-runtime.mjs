@@ -200,26 +200,61 @@ try {
 			args: ["--no-sandbox", `--ignore-certificate-errors-spki-list=${pin}`],
 		})
 		const page = browser.pages()[0]
+		const actorSockets = []
+		page.on("websocket", socket => {
+			if (!socket.url().includes("/browser")) return
+			const state = { socket, actor: undefined }
+			actorSockets.push(state)
+			socket.on("framereceived", event => {
+				try { const frame = JSON.parse(String(event.payload)); if (frame.type === "shared_actor") state.actor = frame.actorId } catch {}
+			})
+		})
 		await page.goto(`${config.dashboard.publicUrl}/chat?roomSecret=${config.dashboard.roomSecret}`, {
 			waitUntil: "domcontentloaded",
 		})
+		await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
 		await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.Friseer)
 		await page.getByRole("button", { name: "Verbinden", exact: true }).click()
-		await expect(page.getByText("Bestätigter Akteur: Friseer", { exact: true })).toBeVisible({ timeout: 15000 })
+		await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
+		if (process.env.NETAIGIS_RUNTIME_BROWSER_WAKE === "1") {
+			const account = page.getByRole("button", { name: "Sitzungszugang", exact: true })
+			const header = page.getByRole("banner", { name: "NetAigis Coding Chat Kopfbereich" })
+			const bounds = await account.boundingBox()
+			assert(bounds && bounds.y < 24 && bounds.x + bounds.width > 360, "Account control must be at the top right of the mobile viewport")
+			await account.click()
+			await expect(header.getByRole("button", { name: "Abmelden", exact: true })).toBeVisible()
+			await account.click()
+			const beforeWake = actorSockets.length
+			await page.evaluate(() => {
+				let visibility = "hidden"
+				Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility })
+				document.dispatchEvent(new Event("visibilitychange"))
+				visibility = "visible"
+				document.dispatchEvent(new Event("visibilitychange"))
+				delete document.visibilityState
+			})
+			await expect.poll(() => actorSockets.slice(beforeWake).some(state => state.actor === "Friseer"), { timeout: 15000 }).toBe(true)
+			await expect(account).toHaveText(/Friseer/)
+			report.accountMenuAtTopRightWithLogoutInsideHeader = true
+			report.simulatedScreenWakeCreatedNewSocketAndReauthenticatedPersonalActor = true
+			report.physicalScreenWakeTested = false
+		}
 		if (process.env.NETAIGIS_RUNTIME_BROWSER_RELOAD === "1") {
 			await expect.poll(async () => (await browser.cookies()).some(cookie => cookie.name === "__Host-netaigis_actor" && cookie.httpOnly && cookie.secure && cookie.sameSite === "Strict"), { timeout: 10000 }).toBe(true)
 			const storageValues = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage }, readableCookie: document.cookie }))
 			assert(!storageValues.includes(tokens.Friseer) && !storageValues.includes(tokens.jimmi) && !storageValues.includes("__Host-netaigis_actor"), "Personal browser credential or private cookie is script-readable")
 			await page.reload({ waitUntil: "domcontentloaded" })
-			await expect(page.getByText("Bestätigter Akteur: Friseer", { exact: true })).toBeVisible({ timeout: 15000 })
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
+			await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
 			await page.getByRole("button", { name: "Abmelden", exact: true }).click()
-			await expect(page.getByText("Lesender Zugang", { exact: true })).toBeVisible()
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Verbinden/)
 			await page.reload({ waitUntil: "domcontentloaded" })
-			await expect(page.getByText("Lesender Zugang", { exact: true })).toBeVisible()
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Verbinden/)
 			assert(!(await browser.cookies()).some(cookie => cookie.name === "__Host-netaigis_actor"))
+			await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
 			await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.Friseer)
 			await page.getByRole("button", { name: "Verbinden", exact: true }).click()
-			await expect(page.getByText("Bestätigter Akteur: Friseer", { exact: true })).toBeVisible({ timeout: 15000 })
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
 			report.browserReloadReauthenticatesSamePersonalActor = true
 			report.browserCookieHttpOnlySecureStrictWithoutPersonalKeyStorage = true
 			report.browserLogoutRevokedAndRemainsSignedOutAfterReload = true

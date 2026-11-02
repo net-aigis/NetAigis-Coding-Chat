@@ -389,6 +389,8 @@ export class HubSessionAccess {
 						"control_revision_conflict",
 						"Session control changed; read it before retrying",
 					);
+				if (command === "session.control.claim" && this.owns(control, authority))
+					return okReply(envelope, { sessionId: id, control });
 				if (
 					command === "session.control.release" &&
 					!this.owns(control, authority)

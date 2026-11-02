@@ -84,6 +84,7 @@ export async function authenticateBrowserActor(
 		);
 	const generation = (peer.actorGeneration ?? 0) + 1;
 	peer.actorGeneration = generation;
+	peer.writerConfirmation = undefined;
 	peer.browserAuthRequestId = undefined;
 	peer.selectionGeneration = (peer.selectionGeneration ?? 0) + 1;
 	peer.recallSelection = undefined;
@@ -176,12 +177,34 @@ export async function updateBrowserSessionControl(
 		peer.actorRuntime !== runtime
 	)
 		return;
-	ctx.send(peer, { type: "session_control", sessionId, control });
+	if (
+		action === "claim" &&
+		control.writer?.actorId === runtime.sessionControl.actorId()
+	)
+		peer.writerConfirmation = {
+			sessionId,
+			revision: control.revision,
+			actorGeneration: peer.actorGeneration ?? 0,
+		};
+	else if (action === "release") peer.writerConfirmation = undefined;
+	const known = peer.writerConfirmation;
+	const writerConfirmed =
+		known?.sessionId === sessionId &&
+		known.revision === control.revision &&
+		known.actorGeneration === (peer.actorGeneration ?? 0) &&
+		control.writer?.actorId === runtime.sessionControl.actorId();
+	ctx.send(peer, {
+		type: "session_control",
+		sessionId,
+		control,
+		writerConfirmed,
+	});
 }
 
 export async function disposeBrowserActor(peer: BrowserPeer): Promise<void> {
 	peer.recallSelection = undefined;
 	peer.closed = true;
+	peer.writerConfirmation = undefined;
 	peer.actorGeneration = (peer.actorGeneration ?? 0) + 1;
 	const runtime = peer.actorRuntime;
 	peer.actorRuntime = undefined;

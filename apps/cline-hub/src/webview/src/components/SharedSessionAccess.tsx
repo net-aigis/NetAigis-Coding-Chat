@@ -8,7 +8,127 @@ import {
 } from "../vscode";
 import { RecallSessions } from "./RecallSessions";
 
-/** Personal keys never enter persisted UI state; HTTPS can retain an opaque HttpOnly browser ticket. */
+function useBrowserActor() {
+	const [actorId, setActorId] = useState<string | undefined>(
+		getConfirmedBrowserActorId,
+	);
+	useEffect(() => {
+		const receive = (event: MessageEvent<WebviewOutboundMessage>) => {
+			if (event.data?.type === "shared_actor") setActorId(event.data.actorId);
+		};
+		window.addEventListener("message", receive);
+		setActorId(getConfirmedBrowserActorId());
+		return () => window.removeEventListener("message", receive);
+	}, []);
+	return actorId;
+}
+
+/** Personal keys remain transient; the server retains only a protected browser ticket. */
+export function SharedActorAccess() {
+	const actorId = useBrowserActor();
+	const [open, setOpen] = useState(false);
+	const [credential, setCredential] = useState("");
+	const [pending, setPending] = useState(false);
+	const [error, setError] = useState("");
+	const secure = window.isSecureContext;
+	useEffect(() => {
+		const receive = (event: MessageEvent<WebviewOutboundMessage>) => {
+			const message = event.data;
+			if (message?.type === "shared_actor" && message.actorId) {
+				setCredential("");
+				setPending(false);
+				setError("");
+				setOpen(false);
+			} else if (message?.type === "error") setPending(false);
+		};
+		window.addEventListener("message", receive);
+		return () => window.removeEventListener("message", receive);
+	}, []);
+	return (
+		<div className="relative ml-auto shrink-0 text-sm">
+			<button
+				type="button"
+				className="rounded border px-3 py-2"
+				aria-label="Sitzungszugang"
+				aria-expanded={open}
+				aria-controls="shared-actor-menu"
+				onClick={() => setOpen(!open)}
+			>
+				{actorId ?? "Verbinden"} <span aria-hidden="true">▾</span>
+			</button>
+			{open && (
+				<div
+					id="shared-actor-menu"
+					className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-md border bg-background p-4 shadow-lg"
+				>
+					<span>
+						{actorId ? `Bestätigter Akteur: ${actorId}` : "Lesender Zugang"}
+					</span>
+					{!actorId && (
+						<form
+							className="mt-3 grid min-w-0 gap-2"
+							onSubmit={(event) => {
+								event.preventDefault();
+								if (!secure || !credential.trim() || pending) return;
+								setPending(true);
+								setError("");
+								postToHost({ type: "authenticateActor", credential });
+								setCredential("");
+							}}
+						>
+							<label htmlFor="shared-actor-credential">
+								Eigener Sitzungszugang
+							</label>
+							<input
+								id="shared-actor-credential"
+								className="min-w-0 w-full rounded border bg-transparent px-2 py-1"
+								type="password"
+								autoComplete="off"
+								value={credential}
+								onChange={(event) => setCredential(event.target.value)}
+								disabled={!secure || pending}
+							/>
+							<button
+								type="submit"
+								className="rounded border px-3 py-2"
+								disabled={!secure || !credential.trim() || pending}
+							>
+								Verbinden
+							</button>
+						</form>
+					)}
+					{actorId && (
+						<button
+							type="button"
+							className="mt-3 rounded border px-3 py-2"
+							disabled={pending}
+							onClick={() => {
+								setPending(true);
+								setError("");
+								void forgetBrowserActor()
+									.then(() => {
+										setPending(false);
+										setOpen(false);
+									})
+									.catch(() => {
+										setError(
+											"Abmeldung nicht bestätigt. Verbindung prüfen und erneut abmelden.",
+										);
+										setPending(false);
+									});
+							}}
+						>
+							Abmelden
+						</button>
+					)}
+					{!secure && <p>Für die Anmeldung ist HTTPS erforderlich.</p>}
+					{error && <p role="alert">{error}</p>}
+				</div>
+			)}
+		</div>
+	);
+}
+
 export function SharedSessionAccess({
 	sessionId,
 	onOpenSession,
@@ -16,44 +136,35 @@ export function SharedSessionAccess({
 	sessionId?: string;
 	onOpenSession?: (id: string) => void;
 }) {
-	const [credential, setCredential] = useState("");
-	const [actorId, setActorId] = useState<string | undefined>(
-		getConfirmedBrowserActorId,
-	);
+	const actorId = useBrowserActor();
 	const [control, setControl] = useState<SessionWriterControl>();
 	const [pending, setPending] = useState(false);
-	const [authenticationError, setAuthenticationError] = useState("");
-	const secure = window.isSecureContext;
+	const [writerConfirmed, setWriterConfirmed] = useState(false);
 	useEffect(() => {
 		setControl(undefined);
+		setWriterConfirmed(false);
+		setPending(false);
 		if (actorId && sessionId)
 			postToHost({ type: "sessionControl", action: "get", sessionId });
 	}, [actorId, sessionId]);
 	useEffect(() => {
-		const onMessage = (event: MessageEvent<WebviewOutboundMessage>) => {
+		const receive = (event: MessageEvent<WebviewOutboundMessage>) => {
 			const message = event.data;
-			if (message?.type === "shared_actor") {
-				setAuthenticationError("");
-				setActorId(message.actorId);
-				setCredential("");
-				setControl(undefined);
-				setPending(false);
-			} else if (
+			if (
 				message?.type === "session_control" &&
 				message.sessionId === sessionId
 			) {
 				setControl(message.control);
+				setWriterConfirmed(message.writerConfirmed === true);
 				setPending(false);
 			} else if (message?.type === "error") setPending(false);
 		};
-		window.addEventListener("message", onMessage);
-		// The shared-runtime header mounts only after the initial Hub state arrives.
-		// A cookie-authenticated actor can have been confirmed before that render.
-		setActorId(getConfirmedBrowserActorId());
-		return () => window.removeEventListener("message", onMessage);
+		window.addEventListener("message", receive);
+		return () => window.removeEventListener("message", receive);
 	}, [sessionId]);
 	function request(action: "get" | "claim" | "release") {
-		if (!sessionId) return;
+		if (!sessionId || pending || (action === "claim" && writerConfirmed))
+			return;
 		setPending(true);
 		postToHost({
 			type: "sessionControl",
@@ -62,62 +173,14 @@ export function SharedSessionAccess({
 			expectedRevision: control?.revision,
 		});
 	}
+	if (!actorId) return null;
 	return (
 		<section
 			className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-sm"
 			aria-label="Gemeinsame Sitzung"
 		>
-			<form
-				className="flex flex-wrap items-center gap-2"
-				onSubmit={(event) => {
-					event.preventDefault();
-					if (!secure || !credential.trim()) return;
-					postToHost({ type: "authenticateActor", credential });
-					setCredential("");
-					setPending(true);
-				}}
-			>
-				<label htmlFor="shared-actor-credential">Eigener Sitzungszugang</label>
-				<input
-					id="shared-actor-credential"
-					className="min-w-0 rounded border bg-transparent px-2 py-1"
-					type="password"
-					autoComplete="off"
-					value={credential}
-					onChange={(event) => setCredential(event.target.value)}
-					disabled={!secure || pending}
-				/>
-				<button
-					type="submit"
-					disabled={!secure || !credential.trim() || pending}
-				>
-					Verbinden
-				</button>
-			</form>
-			<span>
-				{actorId ? `Bestätigter Akteur: ${actorId}` : "Lesender Zugang"}
-			</span>
-			{actorId && (
-				<button
-					type="button"
-					disabled={pending}
-					onClick={() => {
-						setPending(true);
-						void forgetBrowserActor().catch(() => {
-							setAuthenticationError(
-								"Abmeldung nicht bestätigt. Verbindung prüfen und erneut abmelden.",
-							);
-							setPending(false);
-						});
-					}}
-				>
-					Abmelden
-				</button>
-			)}
-			{!secure && <span>Für die Anmeldung ist HTTPS erforderlich.</span>}
-			{authenticationError && <span role="alert">{authenticationError}</span>}
-			{actorId && <RecallSessions onOpenSession={onOpenSession} />}
-			{sessionId && actorId && (
+			<RecallSessions onOpenSession={onOpenSession} />
+			{sessionId && (
 				<>
 					<span>
 						Zuletzt bestätigtes Schreibrecht:{" "}
@@ -134,14 +197,14 @@ export function SharedSessionAccess({
 					</button>
 					<button
 						type="button"
-						disabled={pending || !control}
+						disabled={pending || !control || writerConfirmed}
 						onClick={() => request("claim")}
 					>
 						Übernehmen
 					</button>
 					<button
 						type="button"
-						disabled={pending || control?.writer?.actorId !== actorId}
+						disabled={pending || !writerConfirmed}
 						onClick={() => request("release")}
 					>
 						Freigeben

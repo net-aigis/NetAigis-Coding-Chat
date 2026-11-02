@@ -62,7 +62,7 @@ import type {
 	WebviewOutboundMessage,
 	WebviewSessionSummary,
 } from "../../webview-protocol";
-import { SharedSessionAccess } from "./components/SharedSessionAccess";
+import { SharedActorAccess, SharedSessionAccess } from "./components/SharedSessionAccess";
 import { PageFrame, PageHeader } from "./components/views/page-layout";
 import type { CustomizationSection } from "./components/views/settings/extensions-view";
 import type { SettingsSection } from "./components/views/settings/settings-view";
@@ -428,7 +428,12 @@ function Shell({
 	};
 
 	return (
-		<div className="grid h-screen min-h-screen grid-cols-[14.5rem_minmax(0,1fr)] bg-background text-foreground max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_minmax(0,1fr)]">
+		<div className="flex h-dvh min-h-0 flex-col bg-background text-foreground">
+			{sharedRuntime && <header className="flex shrink-0 items-center gap-3 border-b px-4 py-2" aria-label="NetAigis Coding Chat Kopfbereich">
+				<div className="flex min-w-0 items-center gap-2 font-semibold"><img alt="" className="size-6 shrink-0" src="/cline-logo-filled.svg" /><span className="truncate">NetAigis Coding Chat</span></div>
+				<SharedActorAccess />
+			</header>}
+			<div className="grid min-h-0 flex-1 grid-cols-[14.5rem_minmax(0,1fr)] max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_minmax(0,1fr)]">
 			<aside className="flex min-h-0 flex-col border-r bg-sidebar p-4 text-sidebar-foreground max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:p-3">
 				<button
 					className="mb-5 flex min-w-0 items-center gap-2 rounded-md px-0 py-1 text-left text-lg font-semibold outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar max-[720px]:mb-2"
@@ -484,6 +489,7 @@ function Shell({
 			<main className="min-h-0 overflow-hidden bg-background [&>.h-screen]:h-full">
 				{children}
 			</main>
+			</div>
 		</div>
 	);
 }

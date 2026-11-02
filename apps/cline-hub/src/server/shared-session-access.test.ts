@@ -79,6 +79,17 @@ function fixture() {
 }
 beforeEach(() => create.mockReset());
 describe("separate actor connections for the existing shared browser session", () => {
+	it("confirms this view's writer only after its own claim and loses confirmation on actor generation changes", async () => {
+		const f = fixture();
+		await authenticateBrowserActor(f.ctx, f.peer, "fixture-key");
+		await updateBrowserSessionControl(f.ctx, f.peer, "claim", "same-session", 2);
+		f.runtime.sessionControl.get.mockResolvedValue({ version: 1, revision: 3, writer: { actorId: "jimmi" } } as never);
+		await updateBrowserSessionControl(f.ctx, f.peer, "get", "same-session");
+		expect(f.ctx.send).toHaveBeenLastCalledWith(f.peer, expect.objectContaining({ writerConfirmed: true }));
+		f.peer.actorGeneration = (f.peer.actorGeneration ?? 0) + 1;
+		await updateBrowserSessionControl(f.ctx, f.peer, "get", "same-session");
+		expect(f.ctx.send).toHaveBeenLastCalledWith(f.peer, expect.objectContaining({ writerConfirmed: false }));
+	});
 	it("refuses a remembered login if the selected Hub now attributes its key to another actor", async () => {
 		const f = fixture();
 		await expect(
@@ -273,6 +284,7 @@ describe("separate actor connections for the existing shared browser session", (
 			type: "session_control",
 			sessionId: "same-session",
 			control: { version: 1, revision: 3, writer: { actorId: "jimmi" } },
+			writerConfirmed: true,
 		});
 	});
 	it("refuses shared browser mutations through global observer commands", () => {

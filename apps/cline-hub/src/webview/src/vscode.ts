@@ -25,6 +25,71 @@ let pendingActorCredential:
 let actorPersistence: Promise<void> = Promise.resolve();
 let actorPersistenceGeneration = 0;
 let confirmedBrowserActorId: string | undefined;
+let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+let reconnectAttempt = 0;
+let hadBrowserConnection = false;
+let selectedBrowserSessionId: string | undefined;
+let needsFreshConnection = false;
+
+function browserHidden(): boolean {
+	return (
+		typeof document !== "undefined" && document.visibilityState === "hidden"
+	);
+}
+
+function scheduleBrowserReconnect(): void {
+	if (reconnectTimer !== undefined || browserHidden()) return;
+	const delay = Math.min(30_000, 500 * 2 ** Math.min(reconnectAttempt++, 6));
+	reconnectTimer = setTimeout(() => {
+		reconnectTimer = undefined;
+		if (!browserHidden()) createBrowserSocket();
+	}, delay);
+}
+
+function clearBrowserConnectionState(): void {
+	pendingActorCredential = undefined;
+	// A sent or interrupted write is never replayed after an uncertain delivery.
+	pendingMessages.splice(0);
+	dispatchHostMessage({ type: "shared_actor" });
+	dispatchHostMessage({
+		type: "status",
+		text: "Disconnected from the Cline Hub server.",
+	});
+}
+
+function resumeBrowserConnection(): void {
+	if (browserHidden()) return;
+	if (needsFreshConnection && browserSocket) {
+		const old = browserSocket;
+		browserSocket = undefined;
+		clearBrowserConnectionState();
+		old.close();
+	}
+	needsFreshConnection = false;
+	createBrowserSocket();
+}
+
+function installBrowserWakeHandlers(): void {
+	if (typeof document !== "undefined") {
+		needsFreshConnection = browserHidden();
+		document.addEventListener("visibilitychange", () => {
+			if (browserHidden()) {
+				needsFreshConnection = true;
+				if (reconnectTimer !== undefined) clearTimeout(reconnectTimer);
+				reconnectTimer = undefined;
+			} else resumeBrowserConnection();
+		});
+	}
+	window.addEventListener("offline", () => {
+		needsFreshConnection = true;
+	});
+	window.addEventListener("online", resumeBrowserConnection);
+	window.addEventListener("focus", resumeBrowserConnection);
+	window.addEventListener("pageshow", (event) => {
+		if ("persisted" in event && event.persisted) needsFreshConnection = true;
+		resumeBrowserConnection();
+	});
+}
 
 /** Display state only, from this socket's server acknowledgements; never a credential or writer grant. */
 export function getConfirmedBrowserActorId(): string | undefined {
@@ -110,6 +175,8 @@ function createBrowserSocket(): WebSocket {
 	}
 
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+	if (reconnectTimer !== undefined) clearTimeout(reconnectTimer);
+	reconnectTimer = undefined;
 	const params = new URLSearchParams();
 	const roomSecret = readBrowserRoomSecret();
 	if (roomSecret) {
@@ -121,6 +188,22 @@ function createBrowserSocket(): WebSocket {
 	browserSocket = socket;
 	socket.addEventListener("open", () => {
 		if (browserSocket !== socket) return;
+		if (hadBrowserConnection) {
+			dispatchHostMessage({
+				type: "status",
+				text: "Verbindung wiederhergestellt.",
+			});
+			// Cookie authentication is revalidated by the server. Only reads resume.
+			socket.send(JSON.stringify({ type: "ready" }));
+			if (selectedBrowserSessionId)
+				socket.send(
+					JSON.stringify({
+						type: "attachSession",
+						sessionId: selectedBrowserSessionId,
+					}),
+				);
+		}
+		hadBrowserConnection = true;
 		for (const message of pendingMessages.splice(0)) {
 			socket.send(JSON.stringify(message));
 		}
@@ -129,6 +212,13 @@ function createBrowserSocket(): WebSocket {
 		if (browserSocket !== socket) return;
 		try {
 			const message = JSON.parse(String(event.data)) as WebviewOutboundMessage;
+			reconnectAttempt = 0;
+			if (
+				message.type === "session_started" ||
+				message.type === "session_hydrated"
+			)
+				selectedBrowserSessionId = message.sessionId;
+			if (message.type === "reset_done") selectedBrowserSessionId = undefined;
 			if (message.type === "shared_actor" && message.actorId)
 				rememberConfirmedActor(message.actorId, message.authRequestId);
 			if (message.type === "error") pendingActorCredential = undefined;
@@ -143,13 +233,8 @@ function createBrowserSocket(): WebSocket {
 	});
 	socket.addEventListener("close", () => {
 		if (browserSocket !== socket) return;
-		pendingActorCredential = undefined;
-		pendingMessages.splice(0);
-		dispatchHostMessage({ type: "shared_actor" });
-		dispatchHostMessage({
-			type: "status",
-			text: "Disconnected from the Cline Hub server.",
-		});
+		clearBrowserConnectionState();
+		scheduleBrowserReconnect();
 	});
 	socket.addEventListener("error", () => {
 		if (browserSocket !== socket) return;
@@ -163,8 +248,13 @@ function createBrowserSocket(): WebSocket {
 }
 
 function createBrowserApi(): VsCodeApi {
+	selectedBrowserSessionId =
+		new URLSearchParams(window.location.search).get("id") || undefined;
+	installBrowserWakeHandlers();
 	return {
 		postMessage(message) {
+			if (message.type === "attachSession")
+				selectedBrowserSessionId = message.sessionId;
 			if (message.type === "authenticateActor") {
 				const authRequestId = crypto.randomUUID();
 				pendingActorCredential = {

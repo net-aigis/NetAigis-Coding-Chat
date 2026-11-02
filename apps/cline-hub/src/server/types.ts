@@ -59,6 +59,11 @@ export type BrowserPeer = {
 	/** Private, connection-scoped actor client; never the dashboard's observer credential. */
 	actorRuntime?: ClineCore;
 	actorGeneration?: number;
+	writerConfirmation?: {
+		sessionId: string;
+		revision: number;
+		actorGeneration: number;
+	};
 	recallGeneration?: number;
 	recallSelection?: {
 		conversationId: string;

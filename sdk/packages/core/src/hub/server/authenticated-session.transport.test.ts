@@ -154,6 +154,9 @@ it("authenticates Friseer/jimmi separately, hands one history both ways, and fen
 			},
 		});
 		await expect(
+			friseer.command("session.control.claim", { expectedRevision: 1 }, id),
+		).resolves.toMatchObject({ payload: { control: { revision: 1 } } });
+		await expect(
 			jimmi.command(
 				"run.start",
 				{

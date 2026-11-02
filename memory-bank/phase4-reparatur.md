@@ -5071,3 +5071,49 @@ Close-/Wake-Reconnect; bestehende persönliche HttpOnly-Tickets bleiben der
 Authentifizierungsweg. Neue Arbeit am belegten Stand, keine abgeschlossenen
 Modell-/Projekt-/Sicherungsphasen wiederholen. HTTPS-Zertifikatsvertrauen weiterhin
 offen; keine System-/Android-Vertrauensänderung durchgeführt.
+
+### Android-Kopfbereich, idempotente Übernahme und Aufweck-Reconnect
+
+Bedienerbefunde reproduziert: Browseradapter ohne Close-/Wake-Reconnect,
+erneuter Claim desselben tatsächlichen Writers erhöht unnötig Kontrollrevision.
+Neue rote Fälle:2Reconnectfehler bei2bestehenden grünen Adapterfällen; separater
+Core-Claimfall rot. Reparatur: echtes globales Kopfteil, persönliche Friseer-
+Schaltfläche rechts oben; Verbinden/Abmelden im zugehörigen aufklappbaren Menü.
+Keine persönlichen Schlüssel im UI-Storage. Sitzungs-/Recall-Bedienung bleibt
+getrennt im vorhandenen Sitzungsbereich. Erfolgreiche eigene Schreibübernahme
+wird pro Browserpeer, Sessionrevision und Auth-Generation bestätigt; gleichnamiger
+Akteur auf anderem Gerät verleiht dieser Ansicht keine Schreibrechte. Übernehmen
+bei bereits bestätigter Ansicht deaktiviert. Core prüft weiterhin die Revision
+und bestätigt identischen Actor/Client/Connection ohne Persistenz oder Erhöhung.
+
+Browser öffnet nach Close mit begrenztem exponentiellem Backoff neuen Socket;
+bei verborgenem Dokument pausiert dieser Timer. Visibility-/Focus-/Online- und
+BFCache-Wiederkehr ersetzen nötigenfalls scheinbar noch offene alte Verbindung.
+Bestehendes privates Cookie wird am tatsächlichen Hub neu bestätigt. Danach nur
+ready/Attach derselben zuletzt bestätigten Session; bereits gesendete/unterbrochene
+Schreibvorgänge werden NICHT erneut abgespielt. Keine automatische Writerübernahme
+oder Modellanforderung beim Aufwecken. Alte Socketcallbacks können die neue
+Verbindung nicht leeren; Logout bleibt widerrufen und reconnectet allenfalls lesend.
+
+Gezielte Browser-/Auth-/Ticket-/echte HTTP-/HTTPS-Abbruchtests30/30,Exit0(28,81s);
+Core-Berechtigungs-/echte WS-Tests23/23,Exit0(10,42s), einschließlich wiederholtem
+revisionsstabilem Claim über echten Socket. Web-Build Exit0(68,05s), Hub-Typen
+Exit0(54,20s), Core-Build Exit0(51,84s), Pluginruntime Exit0(1,45s), Bundle Exit0(5,98s).
+Neue eigene VSIX shared-runtime-android-wake-candidate.vsix SHA
+27eaee38efbd4e5cede18feacd36b3f5390d42742c5b7cfda47ef0685052cdd4,
+347Payload-Dateien tatsächlich gegen Build bytegleich geprüft. Echter extrahierter
+HTTPS-/Chromium-Pakettest Exit0(14,66s): Kontomenü geometrisch rechts oben,
+Abmelden im Kopf, simulierter Hidden/Visible-Wechsel erzeugt tatsächlich neuen
+Socket und bestätigte Friseer-Anmeldung ohne Schlüsselwiederholung. Zusätzlich
+Reload, HttpOnly/Secure/Strict, Logout+Reload anonym, Core bleibt nach Browserclose,
+Dashboardneustart und saubere Kinder-Exits geprüft. Kein physischer Android-
+Bildschirm-/VPN-Test und kein neuer Modellturn in dieser Prüfung.
+
+Vor Produktivaktualisierung nur aktuelle eigene Änderungen ergänzend gesichert
+in R/shared-android-wake-delta:11geänderte Dateien,27geprüfte unveränderte Dateien
+wiederverwendet, aktive SQLite-Backup-API, vollständige tatsächliche Wiederherstellung
+mit Attributen. Archiv78a718c862d1e7d8285bc18e17f1a49c96300c3f69808def5b562f7ec88083f5,
+Manifest472f6a235ba5cbd308aa3f9d0ee72001b3bebfcff93c30d7f9ae44d3b86ca606.
+Keine neue Schlüsselgenerierung oder produktive Dateiänderung beim Sichern.
+Produktive Installation dieser neuesten UI-Korrektur steht als nächster Schritt an;
+installiert bislang Lifecycle-Build e5477888... mit15Nachrichten und Recallseq2.

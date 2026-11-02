@@ -89,6 +89,16 @@ function fixture() {
 	return { row, messages, runtime, ctx, policy, dispatch, command };
 }
 describe("authenticated writer handover in existing session metadata", () => {
+	it("keeps repeated claims by the exact current writer idempotent without a new revision or metadata write", async () => {
+		const f = fixture();
+		const before = structuredClone(f.row.metadata);
+		for (let n = 0; n < 3; n++)
+			expect(await f.command("session.control.claim", friseer, { expectedRevision: 1 })).toMatchObject({
+				ok: true, payload: { control: { revision: 1 } },
+			});
+		expect(f.row.metadata).toEqual(before);
+		expect(f.runtime.updateSession).not.toHaveBeenCalled();
+	});
 	it("keeps legacy terminal text read-only until protected matching process exits permit handover", async () => {
 		const f = fixture();
 		f.messages.push(
