@@ -6,6 +6,121 @@ import type { RuntimeHost } from "../runtime/host/runtime-host";
 import type { CoreSessionEvent } from "../types/events";
 import { RuntimeRecallArchive } from "./recall-runtime-archive";
 
+it("archives each native session under its own canonical project and refuses unassigned work without a global fallback", async () => {
+	const directory = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "recall-project-capture-"),
+	);
+	const projects: Record<string, string | undefined> = {
+		first: "NetAigisOS",
+		second: "OtherProject",
+	};
+	const delivered: {
+		project_id: string;
+		conversation_id: string;
+		actor_id: string;
+	}[] = [];
+	const archive = new RuntimeRecallArchive(
+		{
+			getSession: async (id: string) => ({
+				metadata: projects[id] ? { recallProjectId: projects[id] } : {},
+			}),
+			readLiveSessionMessages: async () => [
+				{ role: "user", content: "Existing history" },
+			],
+		} as unknown as RuntimeHost,
+		{
+			directory,
+			getConfiguration: async () => undefined,
+			getConnection: async () => ({
+				baseUrl: "http://fixture-recall.invalid",
+				actor: "Friseer",
+				token: "fixture-friseer",
+				enabled: true,
+			}),
+			actorTokens: { jimmi: "fixture-jimmi" },
+			fetch: async (_input, init) => {
+				const value = JSON.parse(String(init?.body));
+				delivered.push(value);
+				expect(new Headers(init?.headers).get("Authorization")).toBe(
+					"Bearer fixture-" +
+						(value.actor_id === "Friseer" ? "friseer" : "jimmi"),
+				);
+				return Response.json({ event_id: value.event_id, inserted: true });
+			},
+		},
+	);
+	try {
+		await archive.start();
+		for (const [id, actor] of [
+			["first", "Friseer"],
+			["second", "jimmi"],
+			["unassigned", "Friseer"],
+		]) {
+			archive.observe({
+				type: "session_snapshot",
+				payload: {
+					sessionId: id,
+					snapshot: {
+						version: 1,
+						sessionId: id,
+						source: "vscode",
+						status: "idle",
+						createdAt: "2026-11-02T10:00:00Z",
+						updatedAt: "2026-11-02T10:00:00Z",
+						interactive: true,
+						workspace: { cwd: directory, root: directory },
+						model: {
+							providerId: "fixture-provider",
+							modelId: "interchangeable-model",
+						},
+						capabilities: {
+							enableTools: false,
+							enableSpawn: false,
+							enableTeams: false,
+						},
+						lineage: { isSubagent: false },
+						metadata: {
+							sharedSessionControl: {
+								version: 1,
+								revision: 1,
+								writer: {
+									actorId: actor,
+									clientId: "fixture",
+									connectionId: "fixture",
+								},
+							},
+						},
+					},
+				},
+			});
+		}
+		await archive.flush();
+		await vi.waitFor(() => expect(delivered).toHaveLength(2));
+		expect(
+			delivered.map(({ project_id, conversation_id, actor_id }) => ({
+				project_id,
+				conversation_id,
+				actor_id,
+			})),
+		).toEqual([
+			{
+				project_id: "NetAigisOS",
+				conversation_id: "first",
+				actor_id: "Friseer",
+			},
+			{
+				project_id: "OtherProject",
+				conversation_id: "second",
+				actor_id: "jimmi",
+			},
+		]);
+		expect(archive.status().lastFailure).toBe("capture_failed");
+	} finally {
+		await archive.stop();
+		await rm(directory, { recursive: true, force: true });
+	}
+});
+
 const archiveSigningKey = Buffer.alloc(32, 12);
 const config = {
 	baseUrl: "http://recall-fixture.invalid",
@@ -21,6 +136,66 @@ const event = {
 		snapshot: { version: 1, sessionId: "existing", status: "running" },
 	},
 } as CoreSessionEvent;
+
+it("replays already bound archives after a native task was deleted and refuses a contradictory surviving binding", async () => {
+	const directory = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "recall-deleted-retry-"),
+	);
+	const { DurableRecallOutbox } = await import("./recall-outbox");
+	const staged = new DurableRecallOutbox(directory);
+	await staged.archiveSdkEvent({ sessionId: "deleted" }, config, {
+		deferDelivery: true,
+	});
+	await staged.archiveSdkEvent({ sessionId: "changed" }, config, {
+		deferDelivery: true,
+	});
+	const delivered: string[] = [];
+	const { project: _project, ...connection } = config;
+	const archive = new RuntimeRecallArchive(
+		{
+			getSession: async (id: string) =>
+				id === "deleted"
+					? undefined
+					: { metadata: { recallProjectId: "DifferentProject" } },
+		} as unknown as RuntimeHost,
+		{
+			directory,
+			getConfiguration: async () => undefined,
+			getConnection: async () => connection,
+			fetch: async (_input, init) => {
+				const record = JSON.parse(String(init?.body));
+				delivered.push(record.conversation_id);
+				expect(record.project_id).toBe(config.project);
+				return Response.json({ event_id: record.event_id, inserted: true });
+			},
+		},
+	);
+	try {
+		await archive.start();
+		await vi.waitFor(() => expect(delivered).toEqual(["deleted"]));
+		await vi.waitFor(async () =>
+			expect(
+				(await readdir(directory)).filter((name) => name.endsWith(".json")),
+			).toHaveLength(1),
+		);
+		const pending = JSON.parse(
+			await readFile(
+				join(
+					directory,
+					(await readdir(directory)).find((name) => name.endsWith(".json"))!,
+				),
+				"utf8",
+			),
+		);
+		expect(pending).toMatchObject({
+			conversation_id: "changed",
+			project_id: config.project,
+		});
+	} finally {
+		await archive.stop();
+		await rm(directory, { recursive: true, force: true });
+	}
+});
 
 it("awaits pending transcript capture on shutdown without waiting for a stalled network", async () => {
 	const directory = await mkdtemp(

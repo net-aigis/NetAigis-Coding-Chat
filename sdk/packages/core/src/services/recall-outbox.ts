@@ -23,6 +23,11 @@ export interface RecallConfiguration {
 	enabled: boolean;
 }
 
+/** Connection-only retry has no default project. Each queued record needs its canonical session binding. */
+export type RecallDeliveryConfiguration =
+	| RecallConfiguration
+	| (Omit<RecallConfiguration, "project"> & { project?: undefined });
+
 interface QueuedRecallEvent extends RecallEvent {
 	_outbox: {
 		version: 1;
@@ -36,11 +41,11 @@ export interface RecallDrainResult {
 	blocked?: "unbound_legacy" | "invalid_record" | "delivery_failed";
 }
 
-function endpoint(config: RecallConfiguration): string {
+function endpoint(config: Pick<RecallConfiguration, "baseUrl">): string {
 	return config.baseUrl.replace(/\/+$/, "");
 }
 
-function scope(config: RecallConfiguration): string {
+function scope(config: RecallDeliveryConfiguration): string {
 	return createHash("sha256")
 		.update(JSON.stringify([endpoint(config), config.project, config.actor]))
 		.digest("hex");
@@ -91,7 +96,7 @@ export class DurableRecallOutbox {
 	private lastStamp = 0;
 	private readonly retry = new Map<string, { next: number; delay: number }>();
 	private readonly providers = new Set<
-		() => Promise<RecallConfiguration | undefined>
+		() => Promise<RecallDeliveryConfiguration | undefined>
 	>();
 	private retryTimer: ReturnType<typeof setTimeout> | undefined;
 	private retryAt = 0;
@@ -101,6 +106,8 @@ export class DurableRecallOutbox {
 			globalThis.fetch(...args),
 		private readonly resolveActorConfiguration?: (
 			actor: string,
+			project: string,
+			sessionId: string,
 		) => Promise<RecallConfiguration | undefined>,
 	) {}
 	private scheduleRetry(at: number): void {
@@ -124,12 +131,12 @@ export class DurableRecallOutbox {
 			if (!config?.enabled) continue;
 			const next = this.retry.get(scope(config))?.next ?? 0;
 			if (next > Date.now()) this.scheduleRetry(next);
-			else await this.drainRecallOutbox(config);
+			else await this.drainRecallOutbox(config, { respectBackoff: true });
 		}
 	}
 
 	startRecallOutbox(
-		getConfig: () => Promise<RecallConfiguration | undefined>,
+		getConfig: () => Promise<RecallDeliveryConfiguration | undefined>,
 	): () => void {
 		this.providers.add(getConfig);
 		void this.replayConfigured().catch(() => {});
@@ -183,7 +190,7 @@ export class DurableRecallOutbox {
 	}
 
 	async drainRecallOutbox(
-		config?: RecallConfiguration,
+		config?: RecallDeliveryConfiguration,
 		options: { respectBackoff?: boolean } = {},
 	): Promise<RecallDrainResult> {
 		if (!config?.enabled) return { sent: 0, pending: 0 };
@@ -199,6 +206,7 @@ export class DurableRecallOutbox {
 				.filter((name) => name.endsWith(".json"))
 				.sort();
 			const result: RecallDrainResult = { sent: 0, pending: files.length };
+			const failedProjects = new Set<string>();
 			if (
 				options.respectBackoff &&
 				(this.retry.get(scope(activeConfig))?.next ?? 0) > Date.now()
@@ -224,7 +232,8 @@ export class DurableRecallOutbox {
 				// The actor token is bound server-side. Retain other actors' work;
 				// never retag it or submit it with the currently selected actor's key.
 				if (
-					data.project_id !== activeConfig.project ||
+					(activeConfig.project !== undefined &&
+						data.project_id !== activeConfig.project) ||
 					(data.actor_id !== activeConfig.actor &&
 						!this.resolveActorConfiguration)
 				)
@@ -234,11 +243,27 @@ export class DurableRecallOutbox {
 					break;
 				}
 				if (data._outbox.destination !== endpoint(activeConfig)) continue;
+				const deliveryKey = scope({
+					...activeConfig,
+					project: data.project_id,
+				});
+				if (failedProjects.has(data.project_id)) continue;
+				const nextAttempt = this.retry.get(deliveryKey)?.next ?? 0;
+				if (options.respectBackoff && nextAttempt > Date.now()) {
+					result.blocked = "delivery_failed";
+					this.scheduleRetry(nextAttempt);
+					continue;
+				}
 				try {
 					const selected =
-						data.actor_id === activeConfig.actor
+						data.actor_id === activeConfig.actor &&
+						data.project_id === activeConfig.project
 							? activeConfig
-							: await this.resolveActorConfiguration?.(data.actor_id);
+							: await this.resolveActorConfiguration?.(
+									data.actor_id,
+									data.project_id,
+									data.conversation_id,
+								);
 					if (
 						!selected ||
 						selected.actor !== data.actor_id ||
@@ -248,19 +273,21 @@ export class DurableRecallOutbox {
 						throw new Error(
 							"TOTAL RECALL actor configuration unavailable; ordered event retained",
 						);
-					await this.send(data, selected);
+					await this.send(data, { ...selected, project: data.project_id });
 					await fs.unlink(target);
 					result.sent++;
 					result.pending--;
-					this.retry.delete(scope(activeConfig));
+					this.retry.delete(deliveryKey);
 				} catch {
 					result.blocked = "delivery_failed";
-					const key = scope(activeConfig),
+					const key = deliveryKey,
 						delay = Math.min(300000, (this.retry.get(key)?.delay ?? 15000) * 2);
 					const next = Date.now() + delay;
 					this.retry.set(key, { delay, next });
 					this.scheduleRetry(next);
-					break;
+					// Keep ordering within this project; an unrelated project can still sync.
+					failedProjects.add(data.project_id);
+					if (activeConfig.project !== undefined) break;
 				}
 			}
 			return result;
@@ -280,6 +307,10 @@ export class DurableRecallOutbox {
 		options: { deferDelivery?: boolean; archiveSigningKey?: Uint8Array } = {},
 	): Promise<void> {
 		if (!config?.enabled) return;
+		if (!config.project?.trim())
+			throw new Error(
+				"An explicit canonical Recall project is required before archival",
+			);
 		const sessionId = getRecallSessionId(event);
 		if (!sessionId) return;
 		const activeConfig = { ...config };

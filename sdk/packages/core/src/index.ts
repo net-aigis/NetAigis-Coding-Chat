@@ -1152,9 +1152,14 @@ export {
 	DurableRecallOutbox,
 	getRecallSessionId,
 	type RecallConfiguration,
+	type RecallDeliveryConfiguration,
 	type RecallDrainResult,
 	type RecallEvent,
 } from "./services/recall-outbox";
+export {
+	RECALL_PROJECT_METADATA_KEY,
+	readSessionRecallProject,
+} from "./services/recall-project";
 export {
 	type RecallSessionReadOptions,
 	type SessionTakeoverResult,

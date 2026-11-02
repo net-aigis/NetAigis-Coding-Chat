@@ -7,16 +7,25 @@ export function readRuntimeRecallConfiguration(
 ): RuntimeRecallArchiveOptions | undefined {
 	const baseUrl = environment.CLINE_HUB_RECALL_URL,
 		project = environment.CLINE_HUB_RECALL_PROJECT,
+		projectMode = environment.CLINE_HUB_RECALL_PROJECT_MODE,
 		actor = environment.CLINE_HUB_RECALL_ACTOR;
 	if (
 		baseUrl === undefined &&
 		project === undefined &&
+		projectMode === undefined &&
 		actor === undefined &&
 		environment.CLINE_HUB_RECALL_ARCHIVE_KEY === undefined
 	)
 		return undefined;
 	try {
-		if (!baseUrl || !project?.trim() || !actor?.trim()) throw new Error();
+		if (
+			!baseUrl ||
+			!actor?.trim() ||
+			(projectMode !== undefined && projectMode !== "session")
+		)
+			throw new Error();
+		if (projectMode === "session" ? project !== undefined : !project?.trim())
+			throw new Error();
 		const url = new URL(baseUrl);
 		if (
 			!["http:", "https:"].includes(url.protocol) ||
@@ -44,7 +53,6 @@ export function readRuntimeRecallConfiguration(
 		if (!token) throw new Error();
 		const configuration = {
 			baseUrl: baseUrl.replace(/\/+$/, ""),
-			project,
 			actor,
 			token,
 			enabled: true,
@@ -55,7 +63,13 @@ export function readRuntimeRecallConfiguration(
 				? { archiveSigningKey: decodeRecallArchiveKey(archiveSigningKey) }
 				: {}),
 			actorTokens: { ...actorTokens },
-			getConfiguration: async () => ({ ...configuration }),
+			getConfiguration: async () =>
+				projectMode === "session"
+					? undefined
+					: { ...configuration, project: project! },
+			...(projectMode === "session"
+				? { getConnection: async () => ({ ...configuration }) }
+				: {}),
 		};
 	} catch {
 		throw new Error(

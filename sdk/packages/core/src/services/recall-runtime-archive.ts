@@ -12,14 +12,20 @@ import {
 import {
 	DurableRecallOutbox,
 	type RecallConfiguration,
+	type RecallDeliveryConfiguration,
 	type RecallFetch,
 } from "./recall-outbox";
 import { TotalRecallSessionHost } from "./recall-session-reader";
+import { readSessionRecallProject } from "./recall-project";
 
 export interface RuntimeRecallArchiveOptions {
 	/** Runtime-only producer key; independent of actor/API/login credentials. */
 	archiveSigningKey?: Uint8Array;
 	getConfiguration: () => Promise<RecallConfiguration | undefined>;
+	/** Session-scoped deployment has credentials but no universal project. */
+	getConnection?: () => Promise<
+		Omit<RecallConfiguration, "project"> | undefined
+	>;
 	/** Recall API keys, independent of the Hub's own login tokens. No key reuse is inferred. */
 	actorTokens?: Readonly<Record<string, string>>;
 	directory?: string;
@@ -48,28 +54,58 @@ export class RuntimeRecallArchive {
 		this.queue = new DurableRecallOutbox(
 			options.directory ?? join(resolveClineDir(), "netaigis-recall-outbox"),
 			options.fetch,
-			(actor) => this.configuration(actor),
+			async (actor, project, sessionId) => {
+				const config = await this.configuration(actor, sessionId, project);
+				return config?.project === project ? config : undefined;
+			},
 		);
 	}
-	private async configuration(
+	private async connection(
 		actor?: string,
-	): Promise<RecallConfiguration | undefined> {
-		const config = await this.options.getConfiguration();
+	): Promise<RecallDeliveryConfiguration | undefined> {
+		const config = this.options.getConnection
+			? await this.options.getConnection()
+			: await this.options.getConfiguration();
 		if (!config?.enabled) return undefined;
+		if (
+			this.options.getConnection &&
+			"project" in config &&
+			config.project !== undefined
+		)
+			throw new Error(
+				"Session-scoped Recall connection cannot select a global project",
+			);
 		if (!actor || actor === config.actor) return { ...config };
 		// Keep the true actor even while its key is unavailable. Never submit with another actor's key.
 		return { ...config, actor, token: this.options.actorTokens?.[actor] ?? "" };
 	}
+	private async configuration(
+		actor?: string,
+		sessionId?: string,
+		queuedProject?: string,
+	): Promise<RecallConfiguration | undefined> {
+		const base = await this.connection(actor);
+		if (!base) return undefined;
+		if (base.project !== undefined) return { ...base, project: base.project };
+		if (!sessionId) return undefined;
+		const session = await this.runtime.getSession(sessionId);
+		// A deleted local task must not strand its already bound durable journal.
+		// This hint comes only from an existing private outbox record, never a client/default.
+		const project = session
+			? readSessionRecallProject(session.metadata)
+			: queuedProject;
+		return project ? { ...base, project } : undefined;
+	}
 
 	/** The owning runtime selects credentials and producer verification; clients cannot supply either. */
 	async sessionReader(actor: string): Promise<TotalRecallSessionHost> {
-		const config = await this.configuration(actor);
+		const config = await this.connection(actor);
 		if (!config?.enabled || !config.token || config.actor !== actor)
 			throw new Error(
 				"Runtime Recall credentials unavailable for authenticated actor",
 			);
 		const reader = new TotalRecallSessionHost(
-			() => this.configuration(actor),
+			() => this.connection(actor),
 			undefined,
 			this.options.fetch,
 			{
@@ -81,13 +117,13 @@ export class RuntimeRecallArchive {
 		return reader;
 	}
 	async start(): Promise<void> {
-		const config = await this.configuration();
+		const config = await this.connection();
 		if (!config) return;
 		const url = new URL(config.baseUrl);
 		if (
 			!["http:", "https:"].includes(url.protocol) ||
 			!config.actor ||
-			!config.project ||
+			(!this.options.getConnection && !config.project) ||
 			!config.token
 		)
 			throw new Error("Invalid runtime Recall configuration");
@@ -101,7 +137,7 @@ export class RuntimeRecallArchive {
 				"Runtime archive producer key must be independent of API credentials",
 			);
 		this.active = true;
-		this.stopReplay = this.queue.startRecallOutbox(() => this.configuration());
+		this.stopReplay = this.queue.startRecallOutbox(() => this.connection());
 	}
 	observe(event: CoreSessionEvent): void {
 		if (!this.active) return;
@@ -146,7 +182,7 @@ export class RuntimeRecallArchive {
 			(value) => ({ value }),
 			() => ({ value: copied, incomplete: true }),
 		);
-		const configuration = this.configuration(actor).then(
+		const configuration = this.configuration(actor, id).then(
 			(value) => ({ value }),
 			() => ({ value: undefined }),
 		);
@@ -238,7 +274,7 @@ export class RuntimeRecallArchive {
 			deferDelivery: true,
 			archiveSigningKey: this.signingKey,
 		});
-		void this.configuration()
+		void this.connection()
 			.then((base) =>
 				this.queue.drainRecallOutbox(base, { respectBackoff: true }),
 			)

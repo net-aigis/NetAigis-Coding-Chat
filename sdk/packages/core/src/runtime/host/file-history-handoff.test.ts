@@ -9,6 +9,57 @@ import { CoreSessionService } from "../../session/services/session-service";
 import { SessionSource } from "../../types/common";
 import { LocalRuntimeHost } from "./local-runtime-host";
 
+it("keeps the canonical Recall project through ordinary metadata updates and refuses reassignment without touching history", async () => {
+	const root = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "recall-project-owner-"),
+	);
+	const service = new FileSessionService(join(root, "sessions"));
+	const host = new LocalRuntimeHost({ sessionService: service });
+	try {
+		const artifacts = await service.createRootSessionWithArtifacts({
+			sessionId: "project-bound-history",
+			source: SessionSource.VSCODE,
+			pid: process.pid,
+			status: "idle",
+			interactive: true,
+			provider: "existing-provider",
+			model: "interchangeable-model",
+			cwd: root,
+			workspaceRoot: root,
+			enableTools: true,
+			enableSpawn: false,
+			enableTeams: false,
+			metadata: { recallProjectId: "NetAigisOS" },
+		});
+		await service.persistSessionMessages("project-bound-history", [
+			{ role: "user", content: "Original project order" },
+		]);
+		const before = await readFile(artifacts.messagesPath);
+		expect(
+			await host.updateSession("project-bound-history", {
+				metadata: { title: "New title" },
+			}),
+		).toEqual({ updated: true });
+		expect(
+			(await host.getSession("project-bound-history"))?.metadata
+				?.recallProjectId,
+		).toBe("NetAigisOS");
+		await expect(
+			host.updateSession("project-bound-history", {
+				metadata: { recallProjectId: "OtherProject" },
+			}),
+		).rejects.toThrow("cannot be reassigned");
+		expect(
+			(await host.getSession("project-bound-history"))?.metadata
+				?.recallProjectId,
+		).toBe("NetAigisOS");
+		expect(await readFile(artifacts.messagesPath)).toEqual(before);
+	} finally {
+		await host.dispose();
+		await rm(root, { recursive: true, force: true });
+	}
+});
+
 it("lists the existing file-backed history through the SQLite owner without rewriting or reauthoring it", async () => {
 	const root = await mkdtemp(join(tmpdir(), "file-history-handoff-"));
 	const sessions = join(root, "sessions");

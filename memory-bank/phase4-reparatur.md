@@ -4621,3 +4621,56 @@ Shell-Aufruf setzte den Commit trotz Scan-Exit1 fort; Fehler im Arbeitsablauf,
 kein Push/Secret-Export. Genau diese Hashzeile mit gitleaks:allow kommentiert,
 keine globale Ausnahme und keine Historienumschreibung. Negativreport erhalten;
 abhängige Scans/Commits künftig getrennt und Exitcode prüfen.
+
+
+### 2026-11-02: Firewall angewendet, Recall-Zweitkopie geprüft, Producer pro Sitzung
+
+Bediener-Root-Aufruf b73c44621 erfolgreich: die zwei exakten Quellregeln für
+LAN192.168.178.0/24 und VPN-Peer10.8.0.2/32 auf TCP8787 sind permanent UND
+runtime bestätigt. Vollständige Wiederherstellungsprobe einschließlich SELinux
+bestanden, Manifest52e05492f390c614dbb1bdae92eb0f6161136c6be7a2c0d9fee10e32b7272182.
+Kein Reload, keine Acer-/DS-/Routenänderung. Nicht erneut anwenden.
+Tatsächlicher HTTPS-Aufruf vom Acer mit exakt gepinntem öffentlichem Zertifikat:
+HTTP200, healthy=true, connected=true; Quittung p4-local-dashboard-lan-after-firewall.
+Die frühere LAN-Sperre ist damit behoben. Physischer Android-/externer VPN-Test
+ist weiterhin offen; Bediener wurde zum ausschließlich lesenden ersten Test der
+kanonischen Sitzung1793603066247_pk2cs angeleitet. Einladungslink/Personentokens
+nur in vorhandenen geschützten lokalen Dateien, niemals im Chat ausgeben.
+
+Root-Sicherung der zwei Recall-Module erfolgreich, bestehender Phase2-Baum/
+phase4-recall-projects-delta. Geschützte externe Kopie auf440 unter
+/home/friseer/MyContainer/backups/cline-phase2-20261030T173159+0100/phase4-recall-projects-delta
+über bestehenden SSH-Zugang tatsächlich übertragen, nicht erneut gesichert.
+Archiv c2940c6984d8f9e30b23d5c6fded3d387c62db3d8311ae8ec8c8503c1d6ddeed,
+Manifest a2a25fbe4b42c617941e4c3b007c3cbcfca3a2427544a4ccba77b2ddf3469d2f,
+SHA256SUMS4ee5b728c61480915c770090ec69ee80686e3805cb79bee4a98252ddb1d7d849.
+Alle drei gegen Root-Quittung UND Export geprüft; exakte Archivmitglieder,
+Quellhashes/UID/GID/Mode im Archiv geprüft. Beide Dateien lokal tatsächlich
+wiederhergestellt und Python-AST geprüft; Modus/mtime stimmen. Root-Eigentümer
+und security-xattrs vollständig auf Acer wiederhergestellt, lokal unprivilegiert
+nicht als erneut gesetzte Root-/SELinuxattribute ausgegeben. Nachweis in
+external-verification.json. Keine Quelle, Konfiguration oder Dienste verändert.
+
+Producer: bestehendes kanonisches Session-Metadatum recallProjectId erhält die
+explizite Projektkennung. Abgeschlossener Recall-Import kann seine belegte
+Quellkennung weiterverwenden; kein Workspace-/NetAigisOS-/default-Fallback.
+Normale Metadatenänderungen erhalten die bestehende Zuordnung; abweichende
+Neuzuordnung wird vor Persistenz verweigert. Session-Mode verbindet nur vorhandene
+persönliche Recall-Zugänge; Konfiguration enthält ausdrücklich kein globales
+Projekt. Dieselbe dauerhafte Outbox hält Projekt/Session/Urheber/Ziel pro Record
+fest, auch nach Neustart oder Löschung der nativen Sitzung. Widersprechende noch
+vorhandene Session-Zuordnung blockiert den Record ohne Umdeutung. Backoff einer
+Projektzustellung hält dessen Reihenfolge, blockiert andere Projekte nicht.
+
+Neue Backoff-Regression zunächst rot (ProjectA503 verhinderte ProjectB), danach
+gezielt korrigiert. Erster breiter Lauf51bestanden/1Timeout im dynamischen Import
+des finalen Archivtests; isolierter unveränderter Testlauf7/7 in6,43s bestanden.
+Kein Produktivtimeout verlängert. Nach zusätzlichem Replay-/Löschungsfall laufen
+alle sechs betroffenen Suites seriell mit53/53 in19,90s erfolgreich
+(p4-recall-multiproject-final-serial). Alte negative Prüfprotokolle bleiben erhalten.
+Fixtures sind keine produktive Recall-Abnahme. Core-Build läuft; Produktiv-API,
+UI-Zuordnung, Paketintegration und tatsächliche Recall-Restore-Abnahme noch offen.
+
+Core-Build/Typen/Build-ID Exit0(18,02s). Vollständige Core-Dev-Typprüfung wies
+ein unvollständiges neues Snapshot-Fixture aus; dessen echte Pflichtfelder statt
+zusätzlichem Cast ergänzt. Korrigierte vollständige Dev-Typprüfung Exit0(50,10s).

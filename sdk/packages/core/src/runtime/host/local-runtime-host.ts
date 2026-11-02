@@ -147,6 +147,7 @@ import {
 import type { RuntimeBuilder } from "../orchestration/session-runtime";
 import { SessionRuntime } from "../orchestration/session-runtime-orchestrator";
 import { PendingPromptsController } from "../turn-queue/pending-prompt-service";
+import { preserveSessionRecallProject } from "../../services/recall-project";
 import {
 	assertRuntimeOwnerConfirmed,
 	hasUnresolvedCommandObservation,
@@ -1858,7 +1859,9 @@ export class LocalRuntimeHost implements RuntimeHost {
 			const currentMetadata =
 				resident?.sessionMetadata ?? (await this.getRow(sessionId))?.metadata;
 			if (updates.metadata !== undefined) {
-				const metadata = { ...updates.metadata };
+				const metadata = preserveSessionRecallProject(currentMetadata, {
+					...updates.metadata,
+				});
 				for (const field of RUNTIME_OWNER_METADATA_FIELDS)
 					if (currentMetadata && Object.hasOwn(currentMetadata, field))
 						metadata[field] = currentMetadata[field];

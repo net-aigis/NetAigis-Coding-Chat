@@ -10,7 +10,11 @@ import {
 	recallArchiveKeyId,
 	verifyRuntimeRecallRecord,
 } from "./recall-archive-proof";
-import type { RecallConfiguration, RecallFetch } from "./recall-outbox";
+import type {
+	RecallConfiguration,
+	RecallDeliveryConfiguration,
+	RecallFetch,
+} from "./recall-outbox";
 
 export interface TotalRecallProject {
 	projectId: string;
@@ -159,7 +163,7 @@ export class TotalRecallSessionHost {
 	private readonly requireVerifiedSource: boolean;
 	constructor(
 		private readonly configManager: () => Promise<
-			RecallConfiguration | undefined
+			RecallDeliveryConfiguration | undefined
 		>,
 		_telemetry?: ITelemetryService,
 		private readonly fetch: RecallFetch = globalThis.fetch,
@@ -170,10 +174,10 @@ export class TotalRecallSessionHost {
 			: undefined;
 		this.requireVerifiedSource = options.requireVerifiedSource !== false;
 	}
-	async initialize(_config: RecallConfiguration): Promise<void> {
+	async initialize(_config: RecallDeliveryConfiguration): Promise<void> {
 		this.initialized = true;
 	}
-	private async configuration(): Promise<RecallConfiguration> {
+	private async configuration(): Promise<RecallDeliveryConfiguration> {
 		if (!this.initialized)
 			throw new Error("TotalRecallSessionHost not initialized");
 		const config = await this.configManager();
@@ -184,7 +188,7 @@ export class TotalRecallSessionHost {
 	private async request(
 		route: "events" | "conversations" | "projects",
 		parameters: Record<string, string>,
-		config: RecallConfiguration,
+		config: RecallDeliveryConfiguration,
 		signal?: AbortSignal,
 	): Promise<Record<string, unknown>> {
 		const url = new URL(
@@ -202,7 +206,7 @@ export class TotalRecallSessionHost {
 		return object(await response.json());
 	}
 	private async readProjects(
-		config: RecallConfiguration,
+		config: RecallDeliveryConfiguration,
 	): Promise<TotalRecallProject[]> {
 		const data = await this.request("projects", {}, config);
 		if (!Array.isArray(data.projects))
@@ -237,7 +241,14 @@ export class TotalRecallSessionHost {
 		projectId?: string,
 	): Promise<RecallConfiguration> {
 		const config = await this.configuration();
-		if (projectId === undefined || projectId === config.project) return config;
+		if (projectId === undefined) {
+			if (!config.project?.trim())
+				throw new Error(
+					"An explicit Recall project is required for this session-scoped connection",
+				);
+			return { ...config, project: config.project };
+		}
+		if (projectId === config.project) return { ...config, project: projectId };
 		// Discover real IDs through the authenticated existing store. A failed
 		// catalog must never silently fall back to the configured legacy project.
 		if (

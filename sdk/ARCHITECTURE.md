@@ -1921,3 +1921,17 @@ Matching conversation IDs in different projects cannot change the selected scope
 or authorize importing the uninspected project. Archive import still neither
 starts a process nor grants a writer. Producer project binding is separate and
 must be completed before configuring productive multi-project archival.
+
+Session-scoped archival uses the existing canonical `recallProjectId` metadata.
+An explicitly completed Recall import retains its actual source project. Neither
+workspace names nor the connection configuration supply a universal default.
+Normal metadata updates preserve an existing binding; contradictory reassignment
+fails inside the host's serialized manifest mutation. An unassigned session is
+reported as a capture failure rather than archived under an invented project.
+`CLINE_HUB_RECALL_PROJECT_MODE=session` selects connection-only credentials and
+cannot be combined with a fixed project. The existing durable outbox freezes the
+project, session, destination and author on each record; replay resolves personal
+credentials without retagging. Already queued events survive deletion of the
+native session. A contradictory surviving binding retains the record. Backoff
+preserves order inside a failed project while allowing unrelated projects to
+sync; this remains one outbox and one canonical session store.

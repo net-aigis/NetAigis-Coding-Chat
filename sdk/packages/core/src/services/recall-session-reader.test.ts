@@ -3,6 +3,27 @@ import { expect, it, vi } from "vitest";
 import { createCoreSessionSnapshot } from "../session/session-snapshot";
 import { TotalRecallSessionHost } from "./recall-session-reader";
 
+it("can discover projects on a connection-only deployment but requires explicit scope before reading history", async () => {
+	const { project: _unused, ...connection } = config;
+	const fetch = vi.fn(
+		async () => new Response(JSON.stringify({ projects: [] })),
+	);
+	const host = new TotalRecallSessionHost(
+		async () => connection,
+		undefined,
+		fetch,
+	);
+	await host.initialize(connection);
+	expect(await host.listProjects()).toEqual([]);
+	await expect(host.listConversations()).rejects.toThrow(
+		"explicit Recall project",
+	);
+	await expect(host.getSessionSnapshot("same-id")).rejects.toThrow(
+		"explicit Recall project",
+	);
+	expect(fetch).toHaveBeenCalledTimes(1);
+});
+
 it("discovers only stored exact project IDs through personal authentication without a global scope", async () => {
 	const fetch = vi.fn(
 		async () =>
