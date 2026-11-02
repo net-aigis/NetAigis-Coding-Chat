@@ -176,7 +176,7 @@ export function SharedSessionAccess({
 	if (!actorId) return null;
 	return (
 		<section
-			className="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-sm"
+			className="flex max-h-[35%] min-h-0 shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-b px-4 py-2 text-sm"
 			aria-label="Gemeinsame Sitzung"
 		>
 			<RecallSessions onOpenSession={onOpenSession} />

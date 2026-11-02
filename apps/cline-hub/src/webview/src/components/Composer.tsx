@@ -376,7 +376,7 @@ export function Composer({
 	const ReasonIcon = reasonLevels[reasonLevelOption].icon;
 
 	return (
-		<div className="border-t bg-background">
+		<div className="min-w-0 shrink-0 border-t bg-background" aria-label="Nachricht verfassen">
 			<PromptInput
 				accept="image/*,.txt,.md,.json,.ts,.tsx,.js,.jsx"
 				globalDrop

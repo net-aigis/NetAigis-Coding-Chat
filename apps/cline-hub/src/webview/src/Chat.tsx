@@ -1305,8 +1305,8 @@ export default function Chat({
 
 	return (
 		<PromptInputProvider>
-			<div className="relative flex h-screen flex-col overflow-hidden">
-				<div className="flex items-center justify-between border-b px-4 py-3">
+			<div className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+				<div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
 					<div className="min-w-0">
 						{sessions.length > 0 ? (
 							<select

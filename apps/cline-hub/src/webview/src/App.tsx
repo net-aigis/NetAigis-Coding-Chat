@@ -436,7 +436,7 @@ function Shell({
 			<div className="grid min-h-0 flex-1 grid-cols-[14.5rem_minmax(0,1fr)] max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_minmax(0,1fr)]">
 			<aside className="flex min-h-0 flex-col border-r bg-sidebar p-4 text-sidebar-foreground max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:p-3">
 				<button
-					className="mb-5 flex min-w-0 items-center gap-2 rounded-md px-0 py-1 text-left text-lg font-semibold outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar max-[720px]:mb-2"
+					className={`mb-5 flex min-w-0 items-center gap-2 rounded-md px-0 py-1 text-left text-lg font-semibold outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar max-[720px]:mb-2 ${sharedRuntime ? "max-[720px]:hidden" : ""}`}
 					onClick={() => onNavigate("home")}
 					type="button"
 				>
@@ -486,7 +486,7 @@ function Shell({
 					</div>
 				</div>
 			</aside>
-			<main className="min-h-0 overflow-hidden bg-background [&>.h-screen]:h-full">
+			<main className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-background">
 				{children}
 			</main>
 			</div>
@@ -1498,7 +1498,9 @@ function App() {
 					onOpenSession={openSession}
 				/>
 			)}
-			<Suspense fallback={<ViewLoading />}>{content}</Suspense>
+			<div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+				<Suspense fallback={<ViewLoading />}>{content}</Suspense>
+			</div>
 		</Shell>
 	);
 }

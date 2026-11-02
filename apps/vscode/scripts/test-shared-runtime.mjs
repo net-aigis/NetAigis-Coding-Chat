@@ -116,6 +116,19 @@ async function stop(state) {
 	assert(!state.forced && state.child.exitCode === (state.expectedExit ?? 0), `${state.mode} did not exit as expected`)
 }
 try {
+	const layoutSessionId = "mobile-composer-layout"
+	if (process.env.NETAIGIS_RUNTIME_MOBILE_COMPOSER === "1") {
+		// Native persisted history with no agent, inference or tool execution.
+		const { CoreSessionService, SqliteSessionStore } = await import(path.join(extension, "dist/plugin-runtime/node_modules/@cline/core/dist/index.js"))
+		const db = new SqliteSessionStore({ sessionsDir: path.join(storage, "data/db") })
+		try {
+			const service = new CoreSessionService(db, { sessionArtifactsDir: path.join(storage, "data/sessions") })
+			await service.createRootSessionWithArtifacts({ sessionId: layoutSessionId, source: "vscode", pid: 0, status: "idle", interactive: true,
+				provider: "openai-compatible", model: "layout-model", cwd: root, workspaceRoot: root, enableTools: false, enableSpawn: false, enableTeams: false })
+			await service.persistSessionMessages(layoutSessionId, Array.from({ length: 16 }, (_, index) => ({ id: `layout-${index}`, role: index % 2 ? "assistant" : "user",
+				content: `Mobile layout history ${index}. ` + "Retained history. ".repeat(20), metadata: { author: { actorId: index % 4 ? "jimmi" : "Friseer" } } })))
+		} finally { db.close() }
+	}
 	const daemon = start("daemon")
 	const discovery = path.join(storage, "data/locks/hub/production.json")
 	await expect
@@ -216,6 +229,35 @@ try {
 		await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.Friseer)
 		await page.getByRole("button", { name: "Verbinden", exact: true }).click()
 		await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
+		if (process.env.NETAIGIS_RUNTIME_MOBILE_COMPOSER === "1") {
+			await page.goto(`${config.dashboard.publicUrl}/chat?roomSecret=${config.dashboard.roomSecret}&id=${layoutSessionId}`, { waitUntil: "domcontentloaded" })
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
+			await expect(page.getByRole("button", { name: "Übernehmen", exact: true })).toBeEnabled({ timeout: 15000 })
+			const input = page.getByPlaceholder("Type @ for context and / for skills", { exact: true })
+			await expect(input).toBeEnabled({ timeout: 15000 })
+			const measurements = []
+			for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }, { width: 390, height: 430 }, { width: 844, height: 390 }, { width: 1280, height: 800 }]) {
+				await page.setViewportSize(viewport)
+				await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+				for (const [label, locator] of [["input", input], ["send", page.getByRole("button", { name: "Submit", exact: true })]]) {
+					const geometry = await locator.evaluate(el => {
+						const r = el.getBoundingClientRect()
+						const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+						return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, width: innerWidth, height: innerHeight, reachable: hit === el || el.contains(hit) }
+					})
+					measurements.push({ label, ...geometry })
+					assert(geometry.y >= 0 && geometry.x >= 0 && geometry.bottom <= geometry.height && geometry.right <= geometry.width && geometry.reachable,
+						`${label} is clipped or unreachable at ${viewport.width}x${viewport.height}: ${JSON.stringify(geometry)}`)
+				}
+				await input.tap()
+				await input.fill("Unsent mobile layout test")
+				await expect(input).toHaveValue("Unsent mobile layout test")
+				await input.fill("")
+			}
+			await page.setViewportSize({ width: 390, height: 844 })
+			report.composerAndSendReachableWithoutScrollingAtFiveViewportSizes = measurements
+			report.mobileDraftTypingWithoutSubmissionPassed = true
+		}
 		if (process.env.NETAIGIS_RUNTIME_BROWSER_WAKE === "1") {
 			const account = page.getByRole("button", { name: "Sitzungszugang", exact: true })
 			const header = page.getByRole("banner", { name: "NetAigis Coding Chat Kopfbereich" })

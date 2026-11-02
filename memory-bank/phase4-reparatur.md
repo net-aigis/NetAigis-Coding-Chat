@@ -5259,3 +5259,52 @@ E/verify-physical-android-vpn-turn.mjs vorbereitet. Er sendet selbst KEINEN Prom
 übernimmt kein Schreibrecht und erfindet keine Geräteerkennung. Prüfung nach
 Bedienertest gegen vorhandenen15Nachrichten-Präfix/kanonische Autoren und tatsächlichen
 signierten Acer-Snapshot; erfolgreiche frühere Modellturns nicht wiederholen.
+
+
+### Fehlendes mobiles Eingabefeld: tatsächlicher Layoutfehler
+
+Benutzer kann den angefragten physischen Android-Modellturn mangels Eingabefeld
+nicht ausführen. Anweisung war verfrüht. Keine Inferenz/Abnahme daraus erfinden.
+p4-mobile-composer-productive-red Exit1(9,72s), echte produktive HTTPS-Seite mit
+isoliertem mobilen Chromium, KEIN Claim/Modellturn: Textarea vorhanden und enabled,
+aber bei360x640 y643..707 und bei390x844 y827..891 außerhalb/geclippt. Desktop
+1280x800 ebenfalls unten abgeschnitten. Alter separater SharedSessionAccess plus
+Chat h-full verbrauchen mehr als die Mainhöhe; kein Beleg fehlender Schreibrechte
+als Ursache dieses konkreten Befunds. Verlauf bytegleich unverändert.
+
+App-Main als begrenzte Flexspalte, gemeinsame Steuerung als begrenzter scrollbarer
+Bereich, Inhaltswrapper mit verbleibender Höhe; Chat h-full/min-h-0, eigener Header
+und Composer schrumpfen nicht. Auf Mobilgeräten entfällt nur der doppelte Titelblock
+in der Sidebar, eigener globaler Kopf bleibt erhalten. Kein Auth-/Writerbypass,
+keine API-/Modell-/Datenpfadänderung.
+
+Persistenter nativer Paket-Regressionsmodus NETAIGIS_RUNTIME_MOBILE_COMPOSER=1:
+legt ausschließlich isolierte native16Nachrichten-Fixture an, keine Agenten/Modelle;
+prüft Textarea UND Submit vor jedem Auto-Scroll geometrisch und mit Element-Hittest
+bei390x844,360x640,390x430,844x390,1280x800. Zusätzlich echtes Tap/Entwurfstippen/
+Leeren, niemals Absenden. Neues Oracle gegen alten unveränderten extrahierten
+Recall-VSIX reproduziert Fehler,Exit1(16,11s),Send y841..873 bei844Höhe.
+Erster neuer Kandidat besteht größere Größen, scheitert aber bei430Höhe an
+Send bottom440,5; negativer Nachweis Exit1(21,15s) und Paket d749de77... bleiben.
+Kompakter mobiler Sidebar-Titel behebt verbleibenden Platzmangel.
+
+Finaler Web-Build inklusive Typprüfung Exit0(28,51s), Bundle Exit0(4,30s),
+Paketierung Exit0(9,72s). Neues eigenständiges Paket
+netaigis-coding-chat-0.1.0-shared-runtime-mobile-composer-v2-candidate.vsix,
+SHA23afa23989cc941418726ce3136d259cafadbb1ce79117f7c23cdf35ad8a9902,
+363Payload-Dateien tatsächlich bytegleich verifiziert/extrahiert.
+p4-mobile-composer-v2-native-package Exit0(24,09s): alle10geometrischen Input-/Send-
+Hittests bei5Größen grün; bei390x430 Eingabe320..384,Send390..422. Zusätzlich
+Drafttippen, persönliche Cookie-Anmeldung, Wake-Reconnect, Reload/Logout,
+Runtimebesitz/-Speicherpfade und saubere eigene Kinder-Exits positiv. Kein
+physischer Android-/Bildschirmtastaturnachweis und keine Inferenz.
+
+Nachweisbare Paketdifferenz betrifft ausschließlich Browserdateien. Geplante
+minimal nötige produktive Übernahme: alte HTML-Einstiegsdatei geschützt sichern
+und mit Attributen tatsächlich wiederherstellen; neue geprüfte Hash-Assets zuerst
+hinzufügen, index.html danach atomar ersetzen. Alte Hash-Assets erhalten, kein
+VS-Code-/Core-/Dashboard-/Acer-Neustart, keine Sitzungs-/Secretänderung. Der
+bestehende HTTP-Server liest index.html pro Request mit no-store. Deshalb bleiben
+bestehende RAM-only persönliche Browser-Tickets gültig. Anwendung erst nach den
+vorstehenden positiven Paketprüfungen; anschließender tatsächlicher Layout-/Draft-
+Nachweis am produktiven HTTPS-Dienst erforderlich.
