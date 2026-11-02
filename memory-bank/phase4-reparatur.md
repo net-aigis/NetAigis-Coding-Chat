@@ -4054,3 +4054,71 @@ gestartet; eigentliche gemeinsame produktive Runtime, Recall/Learning-, Android-
 und Watchdog-Abnahme bleiben offen. Aktueller nächster Schritt: kontrollierte
 Vorlage für zwei eigene User-Dienste und geschützte Zugänge vorbereiten; vor
 Aktivierung gezielte zusätzliche Freigabe und aktuelles Own-Data-Restore prüfen.
+
+### 2026-11-02: Konkrete Vorlage für zwei eigene lokale User-Dienste
+
+Noch KEINE neue produktive Dienstfreigabe angenommen. Neuer eng begrenzter
+Helfer sdk/scripts/netaigis-chat-runtime-deploy.py bietet prepare/apply. prepare
+ändert nur private Staging-/Sicherungsartefakte. apply erfordert die gesonderte
+Freigabe --new-local-services-approved und prüft vorbereitete Hashes, Zielmenge,
+installierten Payload, aktuellen Datenstand und zunächst fehlende eigene Units.
+Ausschließlich Start/Enable der beiden neuen User-Units, kein Stop/Restart-
+Befehl und keine Acer-/Backend-Serviceadresse im Steuerpfad. Bereits bestehende
+Zieldateien werden nicht überschrieben, Symlink-Eltern vor mkdir abgewiesen.
+Fehler bleiben zur Diagnose erhalten, keine automatische erste Rücknahme.
+
+Vorbereitete sieben neue Ziele:
+- ~/.config/systemd/user/netaigis-coding-chat-runtime.service
+- ~/.config/systemd/user/netaigis-coding-chat-dashboard.service
+- unter dem bestehenden eigenen home/data/settings: shared-runtime-launch.json,
+  shared-runtime-actors.json, shared-runtime-cert.pem, shared-runtime-key.pem,
+  shared-runtime-android-invite.txt.
+Nur der Runtime-Loopback-Port 127.0.0.1:25463 und HTTPS-Browser
+192.168.178.25:8787. Eigenes lokales selbstsigniertes TLS-Zertifikat mit passendem
+IP-SAN vorbereitet, keine System-/Browser-Vertrauensänderung. Persontokens
+Friseer/jimmi getrennt von Invite/Modell-/Recall-Zugängen neu erzeugt, privat
+und außerhalb Git. Keine Tokens/Einladungs-URL im Chat/Protokoll. Source- und
+Modelleinstellungen werden nicht verändert. Cline-Verbindung wird durch den
+Helfer nicht automatisch umgestellt; dafür bleibt der geprüfte eigene
+runtime.configure-Befehl zuständig.
+
+Staging im bestehenden Prüfbereich:
+test-data/p4-local-runtime-prepare/data. Manifest-SHA256
+8a4046b4674b8977aa6916cdfd37a29bb6fe443a368a2ffc6003f8e763c1c966.
+Keine neue willkürliche produktive Datenablage, kein Listener gestartet.
+
+Tatsächliche Sicherung des nun wieder vorhandenen eigenen Namespace vor
+kommender Runtime-Bereitstellung: 23 Dateien einschließlich des neuen
+erfolgreichen produktiven Auftrags, konsistente SQLite-Backup-API mit
+WAL-Inhalten, eigene Archivextraktion in getrennten Restore-Probe-Ordner,
+Datei-/SQLite-Integrität sowie UID/GID/Mode/mtime/xattrs geprüft. Sicherungsort:
+produktive-rollout/shared-runtime-repair-20261102/own-runtime-preflight
+unter dem vorhandenen Phase-6-Bereich (Ordnername tatsächlich productive-rollout).
+Archiv-SHA256: 36c45b6414e553570f952cd7672a46c24a3bf5d565327b4ff0d76e4f7f59a74e.
+Manifest-SHA256: 5b1117e32110a092ce2601e55135a1b5daf03481da2e04d4a2cc004fe0271f10.
+Aktueller Daten-Fingerprint bei abschließender Validierung identisch.
+Keine bisherige Sicherung überschrieben/erneut erstellt.
+
+Prüfungen: p4-local-runtime-deployment-safety zuerst 5 bestanden/1 Fehler,
+p4-local-runtime-deployment-safety-corrected ebenfalls 5/1. Der neue WAL-Test
+deckte auf, dass Python-SQLite-Kontextmanager eine Verbindung nicht schließen;
+beim Prüfen des statischen Backups entstanden sonst nicht erfasste Sidecars.
+Explizites closing für Verbindungen und immutable-Lesen der abgeschlossenen
+Backups korrigiert, vor jeder produktiven Anwendung.
+p4-local-runtime-deployment-wal-closed: 6/6 bestanden, einschließlich lebendem
+WAL-Writer, tatsächlicher Wiederherstellung und abgewiesener fremder/stoppender
+Dienstaktionen. p4-local-runtime-prepare Exit 0. systemd-analyze --user verify
+in Sandbox durch SO_PASSRIGHTS/SO_PASSCRED EPERM blockiert, gezielt nativ Exit 0.
+openssl verify mit ausschließlich vorbereitetem Zertifikat Exit 0. Abschließende
+validate_only-Quittung ok, 23 Dateien, aktuelle Daten unverändert, Dienste aus.
+
+Konkreter Apply-Aufruf ausschließlich nach neuer lokaler Dienstfreigabe:
+PYTHONDONTWRITEBYTECODE=1 python3 sdk/scripts/netaigis-chat-runtime-deploy.py apply --stage /home/friseer/MyGIT/cline-4.1.26-repair/tmp/phase4-checks-20261030T193507+0100/test-data/p4-local-runtime-prepare/data --new-local-services-approved
+
+Vor Anwendung erneut Staging/Snapshot prüfen; neue Nutzerdaten seit prepare
+erfordern gezielte Delta-Sicherung, keine erneute Komplettbestandsaufnahme.
+Startup-Prüfung misst tatsächliches HTTP-Readiness (maximal 20 Sekunden),
+vergleicht Core-Hub-ID/Discovery-PID mit eigener systemd-MainPID und bestätigt
+Browser connected/healthy/address vor Enable. Keine Modellinferenz während
+Aktivierung. Physischer Android-/Vertrauensnachweis, echter produktiver
+Sitzungswechsel, Recall und externer Watchdog bleiben zusätzliche Aufgaben.
