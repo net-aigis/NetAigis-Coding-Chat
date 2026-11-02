@@ -132,7 +132,12 @@ export function withLatestAssistantTurnMetadata(
 		const merged = sameMessage
 			? ({
 					...previous,
-					...message,
+					// Agent.cloneMessage materializes optional fields as undefined.
+					// Absence in its working copy must not erase metadata that final
+					// persistence added to the same canonical historical message.
+					...Object.fromEntries(
+						Object.entries(message).filter(([, value]) => value !== undefined),
+					),
 				} as StoredMessageWithMetadata)
 			: ({ ...message } as StoredMessageWithMetadata);
 		return normalizeStoredMessageModelMetadata(merged);

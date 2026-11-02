@@ -1889,3 +1889,11 @@ load the resident runtime. No prompt/history seed is part of that start. A chang
 selection generation or actor connection prevents the later send. Saved model
 identity/capabilities are retained and failed or unconfirmed resume never sends
 the user's message automatically through a replacement conversation.
+
+
+Canonical historical-message persistence preserves fields that exist only in the
+previous stored version when the same-ID agent working copy exposes them as
+undefined. Agent cloning explicitly materializes absent metrics/model metadata;
+those absent fields are not deletion instructions. Defined working-copy changes
+still win. This preserves persisted author/turn context without synthesizing
+missing historical observations or copying a separate conversation.

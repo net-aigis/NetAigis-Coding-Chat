@@ -170,6 +170,55 @@ describe("messages file provenance", () => {
 });
 
 describe("withLatestAssistantTurnMetadata", () => {
+	it.each([
+		0, 15,
+	])("retains persisted historical usage (%s) and authors when the agent clone contains explicit undefined fields", (tokens) => {
+		const previous: MessageWithMetadata[] = [
+			{
+				id: "original-user",
+				role: "user",
+				content: "Original order",
+				metadata: { author: { actorId: "jimmi" } },
+			},
+			{
+				id: "old-answer",
+				role: "assistant",
+				content: "Existing answer",
+				metrics: {
+					inputTokens: tokens,
+					outputTokens: tokens,
+					cost: 0,
+					cacheReadTokens: 0,
+					cacheWriteTokens: 0,
+				},
+				modelInfo: { id: "saved-model", provider: "saved-provider" },
+			},
+		];
+		// Agent.cloneMessage explicitly writes these optional properties, even
+		// when only final persistence added them to the canonical transcript.
+		const cloned = previous.map((message) => ({
+			...message,
+			metrics: undefined,
+			metadata: undefined,
+			modelInfo: undefined,
+		}));
+		const persisted = withLatestAssistantTurnMetadata(
+			[
+				...cloned,
+				{
+					id: "next-user",
+					role: "user",
+					content: "Continue",
+					metadata: { author: { actorId: "Friseer" } },
+				},
+				{ id: "next-answer", role: "assistant", content: "New answer" },
+			],
+			createResult(),
+			previous,
+		);
+		expect(persisted.slice(0, previous.length)).toEqual(previous);
+		expect(persisted[2]?.metadata?.author).toEqual({ actorId: "Friseer" });
+	});
 	it("does not attach assistant usage to display-only errors", () => {
 		const persisted = withLatestAssistantTurnMetadata(
 			[

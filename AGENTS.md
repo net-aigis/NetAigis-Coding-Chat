@@ -14,6 +14,24 @@ Continuation 2026-11-01: `be11bad51` fixes concurrent approval intents; `a460bd1
 
 ## Cloud Agent Instructions
 
+Current 2026-11-02 correction supersedes older pending/stopped notes below:
+cold-resume VSIX 2d3a8a2c... installed/309 files verified; own Runtime PID2611805
+and dashboard PID2611858 active. Actual productive jimmi browser turn passed;
+isolated native VS Code authenticated Friseer, saw the same history, claimed
+writer and completed one actual model turn. Canonical controlled session
+1793603066247_pk2cs now eleven messages/idle. Native overall receipt correctly
+failed historical metadata preservation; targeted undefined-field merge fix
+passed 144/144 and is not yet installed. Never replay successful model turns.
+User now approved AND ran independent Acer Watchdog apply: three files published,
+then invocation proof refused. Timer remains disabled; fix the helper and proceed
+within existing approval, not a new watchdog architecture. Root terminal still
+needed. Recall is cross-project: NetAigisOS is one existing ID, never a global
+fallback. Read actual productive SQLite project mappings through bounded Root
+inspection (SSH PermissionError); add project listing if necessary. Local public
+zone/wlp3s0 has no 8787 rule; mutation is NOT approved. Physical Android and full
+Recall/Learning acceptance remain open; no overall completion claim.
+
+
 IMPORTANT correction to the following first diagnosis: /proc/2595926/fd PROVED
 the newly packaged daemon opened ~/.cline/data/db/*.db instead of its configured
 own storage. Read-only SQL confirms current session 1793603066247_pk2cs IS in the

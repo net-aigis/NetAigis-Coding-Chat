@@ -4296,3 +4296,62 @@ neuen Stand geprüft. Archiv-SHA256
 Manifest fb739e7b1a68fd6e239f4573fc9d493f8f69266d3d2afb7d295e4a38831eb7cc.
 Neue eigene VSIX shared-runtime-cold-resume-candidate: 309 Dateien gegen Build,
 SHA256 2d3a8a2cb849f40ac4304820b0635734adf987101a0f839d17816ce03307bf0d.
+
+
+### 2026-11-02: Reale gemeinsame Turns; historische Metadaten repariert
+
+Die cold-resume-VSIX wurde erfolgreich installiert (309 Dateien geprüft); beide
+eigenen User-Dienste laufen. Echte produktive Browserprüfung
+p4-productive-shared-browser-cold-resume-fixed: Exit 0, 110,64 s, jimmi persönlich
+authentifiziert, kanonische Sitzung 1793603066247_pk2cs von sieben auf neun
+Nachrichten, alte sieben unverändert. Keine Modell-Fixtures; kein physisches Android.
+Die anschließende isolierte echte VS-Code-Instanz verband sich persönlich als
+Friseer mit derselben produktiven Runtime, zeigte jimmis Verlauf, übernahm das
+Schreibrecht und erhielt auf genau eine Eingabe die tatsächliche Modellantwort
+NETAIGIS_PRODUCTIVE_SHARED_VSCODE_READY. Kanonisch jetzt elf Nachrichten, idle,
+Owner-PID 2611805. Hauptprofil noch nicht auf gemeinsame Runtime umgestellt.
+
+Gesamtprüfung result-custom-dialog.json scheiterte trotzdem korrekt: vorherige
+Assistant-Metriken wurden bei der nächsten Persistierung entfernt. Das späte
+actualModel=false in dieser Negativquittung ist kein Nachweis fehlender Inferenz;
+p4-native-actual-completed-turn-readonly.json belegt den abgeschlossenen echten
+Turn separat, ohne Wiederholung. Ursache: Agent.cloneMessage materialisiert
+optionale Felder als undefined; der Historien-Merge überschrieb damit Metadaten,
+die nur die endgültige Persistierung ergänzt hatte. Fix übernimmt bei derselben
+Nachricht nur definierte Arbeitskopie-Felder; vorhandene kanonische Felder bleiben.
+Zwei neue Regressionen zuerst rot, anschließend p4-history-undefined-metadata-green:
+144/144 aus vier gezielten Suites, Exit 0. Fix noch nicht produktiv installiert;
+keine verlorenen historischen Werte erfunden oder nachträglich eingetragen.
+Alle Quittungen im bestehenden tmp/phase4-checks-20261030T193507+0100 erhalten.
+Eigene Xvfb-Testkinder vor kontrollierter Beendigung lebend, Exit 0; kein neuer
+Xvfb-Absturz belegt. Original-Sitzungsdatenbank logisch gegen geprüfte Sicherung
+unverändert. Fünf zusätzliche Datenbanken im ursprünglichen ~/.cline/data/db
+gegenüber Baseline dokumentiert; keine Löschung oder pauschale Herkunftsbehauptung.
+
+### Verbindliche Ergänzung: projektübergreifendes Recall / Watchdog / LAN
+
+Benutzer bestätigt die vorhandene Projektkennung NetAigisOS, ausdrücklich KEINEN
+globalen Scope. Gemeinsame Wissensbasis Friseer/jimmi, je Projekt tatsächliche
+Kennung, unveränderliche Urheberschaft. Coding-/Learning-Agent projektunabhängig.
+Vor produktiver Anbindung gespeicherte Zuordnungen aus produktiver recall.sqlite3
+und recall.env lesen; nötigenfalls Projektauflistung API ergänzen. Keine erfundene
+default/local-ID und kein globales NetAigisOS. Aktuelle Runtime-Konfiguration mit
+einem festen Recall-Projekt genügt dieser Architektur noch nicht.
+
+Benutzer hat den separaten Acer-Watchdog freigegeben und Root-apply ausgeführt:
+alle drei bekannten Dateien geschrieben, danach watchdog_invocation_not_confirmed;
+keine Rücknahme. Aktuelle lesende SSH-Prüfung: Watchdog inactive/dead,
+Result=success, ExecMainStatus=0, InvocationID leer; Timer inactive/disabled.
+Kein strukturierter Journalnachweis über unprivilegierten Zugang verfügbar.
+Der Helfer muss eine abgeschlossene Oneshot-Ausführung belastbar nachweisen,
+statt eine nach Abschluss fehlende Live-Invocation als gescheiterten Prozess
+zu behandeln. Bestehende Datei-Hashes/Schutzprüfung erlauben schon jetzt nur exakt
+die bekannten eigenen Dateien wiederzuverwenden. Vier KI-Dienste nicht steuern.
+Produktive Recall-Dateien für SSH-Benutzer PermissionError: begrenzter lesender
+Root-Nachweis erforderlich, keine Dateiberechtigungen ändern.
+
+Lokale Root-Firewallausgabe 440G5suse: public/wlp3s0, keine Ports/Rich-Regeln.
+Acer-Ausgabe mit br0/eth0/wlan0 ist separat und wird nicht verändert. Port 8787
+lokal erreichbar; vom Acer errno113 bei vorhandener Route. Noch KEINE Freigabe
+für Firewalländerung; eng begrenzte lokale LAN-Regel gesondert vorbereiten.
+Android-Gerätetest durch Benutzer bleibt nach tatsächlicher LAN-Freigabe offen.
