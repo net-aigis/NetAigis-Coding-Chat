@@ -1735,8 +1735,18 @@ export class LocalRuntimeHost implements RuntimeHost {
 		await this.pluginCommandManager.dispose();
 		if (sessions.length === 0) return;
 		await Promise.allSettled(
-			sessions.map((session) =>
-				session.interactive && !isNonTerminalSessionStatus(session.status)
+			sessions.map((session) => {
+				// Disposing the owning runtime does not finish an idle user's task.
+				// Keep the durable status, exit evidence and history for the next owner.
+				if (
+					session.interactive &&
+					session.status === "idle" &&
+					session.agent.canStartRun()
+				)
+					return this.releaseSessionRuntime(session, reason, {
+						preserveTaskState: true,
+					});
+				return session.interactive && !isNonTerminalSessionStatus(session.status)
 					? this.releaseSessionRuntime(session, reason)
 					: session.interactive && session.agent.canStartRun()
 						? this.shutdownSession(session, {
@@ -1750,8 +1760,8 @@ export class LocalRuntimeHost implements RuntimeHost {
 								exitCode: 0,
 								shutdownReason: reason,
 								endReason: "disposed",
-							}),
-			),
+							});
+			}),
 		);
 		this.usageBySession.clear();
 		this.aggregateUsageBySession.clear();
@@ -3051,14 +3061,16 @@ export class LocalRuntimeHost implements RuntimeHost {
 	private async releaseSessionRuntime(
 		session: ActiveSession,
 		reason: string,
+		options: { preserveTaskState?: boolean } = {},
 	): Promise<void> {
 		// Releasing is a full session exit too: interactive sessions whose
 		// reported status is already terminal are stopped/disposed through
 		// this branch. The completion emission must happen here as well —
 		// this is the branch that silently dropped `task.completed` when
 		// truthful status reporting re-routed interactive stops onto it.
+		// An idle task released for runtime maintenance is not a task exit.
 		session.pluginCommandsClosing = true;
-		this.emitTaskCompletedOnTeardown(session);
+		if (!options.preserveTaskState) this.emitTaskCompletedOnTeardown(session);
 		const cleanupErrors: unknown[] = [];
 		const recordCleanupError = (stage: string, error: unknown) => {
 			cleanupErrors.push(error);

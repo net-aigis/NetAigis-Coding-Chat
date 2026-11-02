@@ -12,6 +12,7 @@ import { join } from "node:path";
 import type { AgentConfig, AgentResult } from "@cline/shared";
 import { expect, it, vi } from "vitest";
 import { SqliteSessionStore } from "../../services/storage/sqlite-session-store";
+import { ProviderSettingsManager } from "../../services/storage/provider-settings-manager";
 import { FileSessionService } from "../../session/services/file-session-service";
 import type { SessionPersistenceAdapter } from "../../session/services/persistence-service";
 import { CoreSessionService } from "../../session/services/session-service";
@@ -318,9 +319,25 @@ it.each([
 		.mockRejectedValue(
 			new Error("No model/provider request is allowed in this admission test"),
 		);
+	// Dynamic context legitimately reads GET /models at the runtime's saved
+	// endpoint. Keep that metadata request isolated; no inference or cloud fallback.
+	const providerSettingsManager = new ProviderSettingsManager({
+		filePath: join(root, "fixture-providers.json"),
+	});
+	providerSettingsManager.saveProviderSettings({
+		provider: "openai",
+		model: "gpt-4.1",
+		apiKey: "fixture-no-model-request",
+		baseUrl: "http://127.0.0.1:9/v1",
+	});
+	const metadataFetch = vi.fn(async (..._args: Parameters<typeof fetch>) =>
+		Response.json({ data: [] }),
+	);
 	const options = {
 		sessionService: service,
 		distinctId: "fixture-real-agent-identities",
+		providerSettingsManager,
+		fetch: metadataFetch,
 		runtimeBuilder: {
 			build: async () => ({ tools: [], shutdown: async () => {} }),
 		} as never,
@@ -373,6 +390,10 @@ it.each([
 			),
 		).toEqual(stored.map((message: { id: string }) => message.id));
 		expect(network).not.toHaveBeenCalled();
+		for (const [input, init] of metadataFetch.mock.calls) {
+			expect(String(input)).toBe("http://127.0.0.1:9/v1/models");
+			expect(init?.method ?? "GET").toBe("GET");
+		}
 	} finally {
 		await cold?.dispose();
 		await host.dispose();

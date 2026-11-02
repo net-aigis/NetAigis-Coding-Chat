@@ -4939,3 +4939,54 @@ Produktiver Lesebefund vor Recall-Aktivierung: CorePID2659602, idletrue,
 keine aktiven Turns/Cloud-/Pluginaufrufe/angenommenen Runs; zwei Dashboardclients
 plus eigener lesender Prüfer. Kontrollierte Sitzung idle, ursprüngliche lange
 Sitzung weiterhin failed; kein unbekannter Zustand als beendet umetikettiert.
+
+### Recall-Aktivierung vor Installation gestoppt: alter Dispose verfälscht Idle
+
+Private Recall-Kandidatenkonfiguration mit vorhandenen persönlichen Acer-Keys
+und getrenntem neuem32Byte-Archivsignierer vorbereitet; sessionbezogen, keine
+globale Projektkennung. Tatsächlicher Launchparser akzeptiert sie. Neuer Schlüssel
+nur geschützt im bestehenden R/shared-recall-owner-drain-delta, niemals Git/Chat.
+Erste TAR-Probe hatte ausschließlich92ns-Mtimeabweichung; unverändert als negativer
+Nachweis behalten. Derselbe Kandidat ohne neue Schlüsselgenerierung anschließend
+mit exaktem PAX-Mtime neu gesichert und vollständig restauriert:
+recall-launch-candidate-v2.tar SHA41a258caaa91c90b3de1b60a21133d30be8d27c60eca39bc20923f59f34ce185,
+Konfigurationshash51d6cdf2d543d7c80c2bbbc85a42000eccba95fa02c9f33e74e62cf976101e4b.
+
+Begrenzter Aktivierungsversuch: Dashboard gestoppt, danach über echten bestehenden
+Hub bestätigt ausschließlich eigener Wartungsclient, kein aktiver/angenommener
+Turn/Plugin-/Cloudaufruf. Alter Owner-Drain bekanntermaßen defekt; nur für diesen
+Bootstrap nach gesperrtem Dashboardzugang und finaler Auftragsruhe den eigenen
+Core regulär gestoppt. Anschließender obligatorischer Datenvergleich verweigert
+Fortsetzung: alter Dispose ändert die vorherige kontrollierte Testsitzung
+1793603066247_pk2cs von idle/null auf completed/Exit0. Ausschließlich deren fünf
+SQL-Statusfelder geändert; beide historischen Nachrichtenbestände und die
+ursprüngliche failed-Sitzung1793046128327_2s1er unverändert. Keine VSIX installiert,
+keine Launch-Konfiguration geändert; finally startet beide eigenen Dienste wieder.
+Keine Acer-/VS-Code-/Modellaktion. Diesen falschen Abschluss nicht als Erfolg
+ausgeben und die Prüfung nicht durch Ignorieren der sessions.db umgehen.
+
+Neuer realer Datei-/SQLite-Rotfall p4-dispose-idle-state-red4/4 fehlgeschlagen:
+mit und ohne vorherigen Fixtureturn erzeugt Runtime-Dispose falschen terminalen
+Status. Quelle jetzt gezielt: ruhende interaktive Sitzung nur freigeben, dauerhaften
+Status/Exitbeleg/Nachrichten beibehalten und keine Task-Abschlusstelemetrie erfinden.
+Laufende Abbruchpfade und ausdrücklich abgeschlossene Sitzungen bleiben getrennt.
+Erster Grünlauf neue4/4 sowie bestehender Runtimehost bestanden; Gesamt126/128,
+zwei ältere Cold-History-Fälle sehen unerwartete Hintergrund-GET/models-Anfragen.
+Diese Fehler nicht verschweigen: enge Isolation/Typ-/Buildprüfung laufen weiter.
+Noch keine produktive Statuskorrektur oder neue Recall-Producer-Aktivierung.
+
+Enger Folgelauf bestätigt: beide alten Identity-Fälle scheitern auch isoliert.
+Sie prüfen reale Agent-IDs ohne Inferenz, hatten aber keinen gespeicherten
+Runtime-Provider und verboten pauschal auch die inzwischen explizit eingeführte
+GET/models-Metadatenabfrage. Test-Fixture erhält jetzt eigene private gespeicherte
+Providerkonfiguration plus ausschließlich simulierte Metadatenantwort. Nach
+Kaltaufnahme müssen ALLE Abfragen GET am exakt gespeicherten lokalen Testendpunkt
+sein; echter globaler Fetch bleibt verboten, kein Inferenz-/Cloudaufruf toleriert.
+Keine produktive Provider-/Endpointentscheidung geändert. Abschließender gezielter
+Lauf p4-dispose-native-persistence-corrected128/128,Exit0(32,72s), tatsächliche
+Datei-/SQLite-Persistenz mit vier neuen vorher roten Disposefällen. Core-Build
+Exit0(22,68s), abschließende Core-Dev-Typen Exit0(48,36s), Pluginruntime Exit0(1,97s).
+Neue produktive Paketierung/Statuskorrektur bleibt bis zu weiteren Prüfungen offen.
+Nach dem verweigerten Versuch alter Browser-Auth-V2-Build weiterhin installiert;
+CorePID2772664,Hubhub_1793623648445_6fj2z; Launchhash weiterhin
+5bde849fcb32930990072f12e81eef4c77ee1a36d70d504b085b7ea8493b670d,keinrecall.

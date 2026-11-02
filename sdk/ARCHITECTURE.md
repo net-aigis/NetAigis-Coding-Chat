@@ -218,6 +218,12 @@ the model turn. This avoids stale-owner reconciliation mistaking the previous
 process's PID for the owner of newly resumed work; it does not clear existing
 unknown-owner evidence or invent an exit result for older interrupted processes.
 
+Disposing the runtime releases an idle interactive task without changing its
+durable status, exit code, end time or transcript. A successful earlier response
+does not prove completion of the user's task when its owner is restarted.
+This maintenance release also suppresses fallback task-completion telemetry.
+Explicit session stops and in-flight aborts retain their separate lifecycle.
+
 The own VSIX packages the existing Core daemon exports and the existing Hub
 dashboard through `apps/cline-hub/src/netaigis-runtime.ts`. The launcher sets
 the own extension's isolated storage before importing either process entry.
