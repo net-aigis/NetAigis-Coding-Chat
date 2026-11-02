@@ -10,6 +10,7 @@ import {
 } from "../../runtime/host/runtime-host";
 import { createSessionCompactionState } from "../../session/models/session-compaction";
 import { SessionVersioningService } from "../../session/session-versioning-service";
+import type { CoreSessionEvent } from "../../types/events";
 import { createLocalHubScheduleRuntimeHandlers } from "../daemon/runtime-handlers";
 import { HubServerTransport } from "../server";
 import {
@@ -63,6 +64,45 @@ describe("HubServerTransport boundaries", () => {
 	function getContext(transport: HubServerTransport): HubTransportContext {
 		return (transport as unknown as { ctx: HubTransportContext }).ctx;
 	}
+
+	it("does not reopen search when host disposal emits its final ended event", async () => {
+		let onSessionEvent!: (event: CoreSessionEvent) => void;
+		const listSessions = vi.fn(async () => []);
+		const transport = createTransport({
+			eventLog: false,
+			runQueue: false,
+			sessionSearchOptions: { dbPath: ":memory:" },
+			taskOptions: { dbPath: ":memory:", watchFiles: false },
+			sessionHost: {
+				listSessions,
+				subscribe: (listener: typeof onSessionEvent) => {
+					onSessionEvent = listener;
+				},
+				dispose: async () => {
+					onSessionEvent({
+						type: "ended",
+						payload: {
+							sessionId: "session-1",
+							reason: "hub_server_stop",
+							ts: Date.now(),
+						},
+					});
+				},
+			},
+		});
+		const refresh = vi.spyOn(getContext(transport).sessionSearch, "refreshNow");
+		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			await transport.stop();
+			expect(refresh).toHaveBeenCalledTimes(1);
+			await expect(refresh.mock.results[0]?.value).resolves.toBeUndefined();
+			expect(listSessions).not.toHaveBeenCalled();
+			expect(errors).not.toHaveBeenCalled();
+		} finally {
+			refresh.mockRestore();
+			errors.mockRestore();
+		}
+	});
 
 	it("recovers an empty cloud snapshot set from a fresh daemon", async () => {
 		const transport = createTransport({ eventLog: false, runQueue: false });

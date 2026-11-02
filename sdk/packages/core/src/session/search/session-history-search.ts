@@ -183,6 +183,7 @@ export class SessionHistorySearchService {
 	private readonly failedEvictionSessionIds = new Set<string>();
 	private timer: ReturnType<typeof setInterval> | undefined;
 	private refreshPromise: Promise<void> | undefined;
+	private disposePromise: Promise<void> | undefined;
 	private readyPromise: Promise<void> = Promise.resolve();
 
 	constructor(
@@ -202,7 +203,7 @@ export class SessionHistorySearchService {
 	}
 
 	start(): void {
-		if (!this.db) return;
+		if (!this.isAvailable()) return;
 		this.readyPromise = this.refreshNow();
 		void this.readyPromise.catch((error) =>
 			console.warn("[hub] session search indexing failed", error),
@@ -215,16 +216,23 @@ export class SessionHistorySearchService {
 		this.timer.unref?.();
 	}
 
-	async dispose(): Promise<void> {
-		if (this.timer) clearInterval(this.timer);
-		this.timer = undefined;
-		await this.refreshPromise?.catch(() => undefined);
-		this.db?.close?.();
+	dispose(): Promise<void> {
+		if (!this.disposePromise) {
+			if (this.timer) clearInterval(this.timer);
+			this.timer = undefined;
+			// Fence new work immediately, while allowing the accepted refresh to
+			// commit before closing. Host teardown can still emit session events.
+			this.disposePromise = (async () => {
+				await this.refreshPromise?.catch(() => undefined);
+				this.db?.close?.();
+			})();
+		}
+		return this.disposePromise;
 	}
 
 	refreshNow(): Promise<void> {
 		const db = this.db;
-		if (!db) return Promise.resolve();
+		if (!db || this.disposePromise) return Promise.resolve();
 		if (!this.refreshPromise) {
 			this.refreshPromise = this.reconcile(db).finally(() => {
 				this.removedDuringRefresh.clear();
@@ -241,7 +249,7 @@ export class SessionHistorySearchService {
 	 */
 	removeSession(sessionId: string): void {
 		const db = this.db;
-		if (!db) return;
+		if (!db || this.disposePromise) return;
 		const normalized = sessionId.trim();
 		if (!normalized) return;
 		if (this.refreshPromise) this.removedDuringRefresh.add(normalized);
@@ -261,7 +269,7 @@ export class SessionHistorySearchService {
 	}
 
 	isAvailable(): boolean {
-		return this.db !== undefined;
+		return this.db !== undefined && this.disposePromise === undefined;
 	}
 
 	getInitializationError(): unknown | undefined {
@@ -270,7 +278,7 @@ export class SessionHistorySearchService {
 
 	search(input: SessionSearchInput): SessionSearchHit[] {
 		const db = this.db;
-		if (!db) return [];
+		if (!db || this.disposePromise) return [];
 		const query = ftsQuery(input.query);
 		if (!query) return [];
 		const limit = Math.min(Math.max(Math.trunc(input.limit ?? 50), 1), 200);

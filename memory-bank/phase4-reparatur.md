@@ -3823,3 +3823,41 @@ Paketordner unter /home/friseer/.vscode/extensions gefunden. Ursache dieses
 erneuten Fehlens ungeklärt; keine automatische Neuinstallation vorgenommen.
 Die neuere isolierte Shared-Writer-Test-VSIX ist kein bereits produktiv
 installierter Ersatz. Alle früheren Sicherungen und Belege bleiben erhalten.
+
+### 2026-11-02: Suchindex beim Runtime-Shutdown abgesichert
+
+Am bestehenden Shared-Writer-Stand fortgesetzt. Der tatsächliche Fehler aus
+`p4-real-shared-vscode-model-state-continuation.log` stammt aus dem Suchindex-
+Lebenszyklus: `HubServerTransport.stop` schließt den Index, danach kann
+`sessionHost.dispose` noch `ended` auslösen. Keine Modell-/Terminalursache.
+
+`SessionHistorySearchService.dispose` sperrt neue Arbeit sofort und hält genau
+ein Abschluss-Promise. Bereits angenommene Indexierung darf vor dem einmaligen
+Schließen committen. Danach keine neue Indexierung, Suche, Eviction oder Timer-
+Aktivierung; Verfügbarkeit ist bereits während des Schließens false. Reihenfolge
+der kanonischen Runtime-/Recall-Abschaltung nicht verändert.
+
+Nachweise im unveränderten Prüfverzeichnis:
+- `p4-search-shutdown-red`: 10 bestanden, alle drei neuen Regressionen
+  fehlgeschlagen, jeweils tatsächliches SQLite `database is not open`.
+- `p4-search-shutdown-green`: 13/13 bestanden.
+- `p4-search-shutdown-boundaries`: 61/61 bestanden, einschließlich des echten
+  Hub-Transport-Callbacks nach Index-Schließung sowie bestehender Recall-
+  Archivierungsprüfungen. Runtime-Ereignis als Fixture; keine neue Inferenz.
+- `p4-search-shutdown-core-build`: Exit 0; Core-Bundle/Declarations/Build-ID.
+- `p4-search-shutdown-types`: Exit 0; Core inklusive Testquellen.
+- Biome für die drei geänderten TypeScript-Dateien: Exit 0.
+Bereits bestandene echte Modell-/VS-Code-Übergabeschritte nicht wiederholt.
+
+Die neuere `netaigis-coding-chat-0.1.0-shared-writer-candidate.vsix` ist intakt,
+SHA256 `73e060868f9b75b7bc3647867c19ff8167ff64afc438e43a526ce7e486a16ebd`.
+Ihr Programmcode stimmt bytegleich mit der isolierten nativen Testinstallation
+überein. package.json unterscheidet sich dort ausschließlich durch von VS Code
+eingefügte `__metadata`. Dieses vorhandene Paket enthält die neue Shutdown-
+Korrektur noch nicht und wird nicht überschrieben. Kein produktiver Eingriff.
+
+Nächste offene Schritte bleiben: Learning-Integrationsvertrag gezielt bestätigen,
+produktive gemeinsame Runtime und Recall vorbereiten/abnehmen, physischer
+Android-Test durch den Nutzer, getrennten Watchdog nach ausstehender Freigabe
+aktivieren und abschließenden eigenen Rollout belegen. Keine Gesamtabnahme
+aus den Einzeltests abgeleitet.

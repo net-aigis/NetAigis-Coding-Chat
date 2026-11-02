@@ -5,6 +5,7 @@ import {
 	SESSION_SEARCH_PREVIEW_MAX_LENGTH,
 	SESSION_SEARCH_TITLE_MAX_LENGTH,
 } from "@cline/shared";
+import { loadSqliteDb } from "@cline/shared/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SessionRecord } from "../../types/sessions";
 import { SessionHistorySearchService } from "./session-history-search";
@@ -43,6 +44,96 @@ function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
 }
 
 describe("SessionHistorySearchService", () => {
+	it("ignores late session events after closing its derived database", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "cline-session-search-"));
+		tempDirs.push(dir);
+		const listSessions = vi.fn(async () => [session()]);
+		const service = new SessionHistorySearchService(
+			{ listSessions, readSessionMessages: async () => [] },
+			{ dbPath: join(dir, "search.db") },
+		);
+		await service.refreshNow();
+		await service.dispose();
+		listSessions.mockClear();
+
+		// Host disposal can emit `ended` after the search service has closed.
+		await expect(service.refreshNow()).resolves.toBeUndefined();
+		expect(() => service.removeSession("session-1")).not.toThrow();
+		expect(service.search({ query: "parser" })).toEqual([]);
+		expect(service.isAvailable()).toBe(false);
+		const schedule = vi.spyOn(globalThis, "setInterval");
+		try {
+			service.start();
+			await service.waitUntilReady();
+			expect(schedule).not.toHaveBeenCalled();
+			expect(listSessions).not.toHaveBeenCalled();
+		} finally {
+			schedule.mockRestore();
+		}
+	});
+
+	it("drains existing indexing but rejects new work as soon as disposal starts", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "cline-session-search-"));
+		tempDirs.push(dir);
+		const dbPath = join(dir, "search.db");
+		let finishReading!: () => void;
+		let readingStarted!: () => void;
+		const started = new Promise<void>((resolve) => {
+			readingStarted = resolve;
+		});
+		const reading = new Promise<void>((resolve) => {
+			finishReading = resolve;
+		});
+		const listSessions = vi.fn(async () => [session()]);
+		const service = new SessionHistorySearchService(
+			{
+				listSessions,
+				readSessionMessages: async () => {
+					readingStarted();
+					await reading;
+					return [{ role: "user", content: "retained before shutdown" }];
+				},
+			},
+			{ dbPath },
+		);
+		const refresh = service.refreshNow();
+		await started;
+		const closing = service.dispose();
+		const availableWhileClosing = service.isAvailable();
+		const lateRefresh = service.refreshNow();
+		const secondClosing = service.dispose();
+		finishReading();
+		await Promise.all([refresh, closing, lateRefresh, secondClosing]);
+		expect(availableWhileClosing).toBe(false);
+		expect(listSessions).toHaveBeenCalledTimes(1);
+
+		// The already accepted refresh committed before the connection closed.
+		const restored = loadSqliteDb(dbPath);
+		try {
+			expect(
+				restored
+					.prepare("SELECT content FROM session_search WHERE ordinal = 0")
+					.get(),
+			).toMatchObject({ content: "retained before shutdown" });
+		} finally {
+			restored.close?.();
+		}
+	});
+
+	it("allows repeated and concurrent disposal without closing twice", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "cline-session-search-"));
+		tempDirs.push(dir);
+		const service = new SessionHistorySearchService(
+			{ listSessions: async () => [], readSessionMessages: async () => [] },
+			{ dbPath: join(dir, "search.db") },
+		);
+		const first = service.dispose();
+		const second = service.dispose();
+		await Promise.all([first, second]);
+		expect(second).toBe(first);
+		await expect(service.dispose()).resolves.toBeUndefined();
+	});
+
 	it("indexes session turns and returns ranked snippets", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "cline-session-search-"));
 		tempDirs.push(dir);

@@ -205,6 +205,12 @@ field.
 
 ### Hub-Backed Runtime
 
+The derived session search index fences new refreshes, searches and evictions as
+soon as disposal starts, drains any accepted refresh, and closes its SQLite
+connection once. Runtime disposal may still emit final `ended` events after the
+index closes; these must not restart indexing or touch a closed connection.
+Canonical history and final Recall archival retain their separate shutdown paths.
+
 The hub health endpoint includes its `hubId`. Restart callers compare this instance identity while waiting for shutdown, so a replacement started by reconnecting clients at the same address counts as retirement of the original hub. Desktop local activity is recorded only at its local hub observer subscription; cloud session projection does not write to that activity list.
 
 1. Host constructs a `RuntimeHost` through `@cline/core`.
