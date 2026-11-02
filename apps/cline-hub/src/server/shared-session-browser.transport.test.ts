@@ -52,6 +52,10 @@ it.each([
 		startedAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		interactive: true,
+		enableTools: false,
+		enableSpawn: false,
+		enableTeams: false,
+		isSubagent: false,
 		provider: "fixture-provider",
 		model: "fixture-model",
 		cwd: root,
@@ -68,6 +72,28 @@ it.each([
 	}> = [{ role: "user", content: "Original task remains" }];
 	let gate: Promise<void> | undefined;
 	const runtime = {
+		startSession: vi.fn(),
+		resumeSession: vi.fn(async () => ({
+			sessionId: id,
+			manifestPath: "",
+			messagesPath: "",
+			manifest: {
+				version: 1,
+				session_id: id,
+				source: row.source,
+				pid: process.pid,
+				started_at: row.startedAt,
+				status: row.status,
+				interactive: true,
+				provider: row.provider,
+				model: row.model,
+				cwd: row.cwd,
+				workspace_root: row.workspaceRoot,
+				enable_tools: false,
+				enable_spawn: false,
+				enable_teams: false,
+			},
+		})),
 		subscribe: () => () => {},
 		getSession: async () => row,
 		listSessions: async () => [row],
@@ -263,7 +289,14 @@ it.each([
 			resolveRun = resolve;
 		});
 		send({ type: "send", prompt: "jimmi continues original task" });
-		await vi.waitFor(() => expect(runtime.runTurn).toHaveBeenCalledOnce());
+		const beforeErrors = frames.filter((f) => f.type === "error").length;
+		await vi.waitFor(() => {
+			const errors = frames.filter((f) => f.type === "error");
+			if (errors.length > beforeErrors)
+				throw new Error(String(errors.at(-1)?.text));
+			expect(runtime.runTurn).toHaveBeenCalledOnce();
+		});
+		expect(runtime.resumeSession).toHaveBeenCalledOnce();
 		expect(messages.at(-1)?.metadata?.author).toMatchObject({
 			actorId: "jimmi",
 			source: "hub-authenticated",

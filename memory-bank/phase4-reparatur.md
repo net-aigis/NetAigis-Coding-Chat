@@ -4244,3 +4244,55 @@ einschließlich UID/GID/Mode/mtime/xattrs. Delta-Archiv-SHA256
 904ea9678da6e7f683c6545e3810082032a0e5ff22a8320582538e46cdbd9342;
 Manifest 12681c2abb43bab9657620ce6f489eb8abe4ff68fb6f9c621ac15609237f7766.
 Keine Phase-2-Wiederholung. Altes VSIX und alle Negativnachweise bleiben erhalten.
+
+### 2026-11-02: Eigene Pfadkorrektur produktiv, kalte Browser-Aufnahme nachgebessert
+
+Die zuvor freigegebene eigene Paket-/Dienstreparatur wurde ausgeführt, 307 eigene
+installierte Dateien gegen VSIX geprüft, andere Extension-IDs/Versionen/Pfade
+unverändert. Tatsächlich geöffnete sechs Datenbanken samt WAL/SHM ausschließlich
+unter eigenem Namespace. Beide eigenen User-Dienste anschließend active/running,
+Result=success, NRestarts=0 (Runtime 2606679, Dashboard 2606738). Quittung im
+bestehenden shared-storage-fix-delta/installation.json. Keine Acer-Änderung,
+kein produktives VS-Code-Fenster beendet. Erneuter zuvor negativer Verlaufstest
+p4-productive-shared-history-storage-fixed erfolgreich: beide persönlichen
+Akteure bestätigt, alte und aktuelle ID sichtbar, alle sieben Nachrichten der
+aktuellen Sitzung bytegleich erhalten (SHA256
+0e8db02a64ac7dbc251e1e826c2155d2e2071accd06901e1b4376fedfafaa925).
+
+Neuer echter produktiver Chromium-Test p4-productive-shared-browser-first-turn:
+Verlauf sichtbar, jimmi persönlich authentifiziert und Schreibrecht bestätigt;
+Senden aus dem Browser erfolgreich ausgelöst, aber keine neue Modellantwort.
+Timeout nach 180 Sekunden, tatsächlicher Zustand weiterhin sieben Nachrichten,
+idle, kein erfolgreiches Modell-Turn behauptet. Serverfehler session not found.
+Konkrete Ursache: sendMessage schickt direkt runtime.send, ohne eine nach dem
+Daemon-Neustart noch nicht residente gespeicherte Sitzung vorher aufzunehmen.
+Frühere echte Tests hatten bereits residente Sitzungen und deckten das nicht ab.
+
+Fix: Vor Senden in gemeinsamer Runtime gespeicherten Datensatz persönlich lesen,
+dieselbe ID über den vorhandenen Core-Start-/Resume-Pfad aufnehmen/anhängen und
+ID bestätigen. Keine initialMessages, kein neuer Chat, kein impliziter Writer-
+Claim im Browsercode und keine übernommene UI-Modell-/Endpoint-Auswahl. Auswahl-
+Generation, Actor-Verbindung und Browserlebensdauer vor/nach Resume prüfen.
+Bei verweigertem Resume kein Senden/Wiederholen. Vorhandene serverseitige Guards
+für unbekannte Owner-/Werkzeugzustände bleiben erhalten.
+
+Neue Regressionen zuerst rot: bestehende sieben Tests bestanden, drei neue
+Wiederaufnahme-/Fehler-/Auswahltests gescheitert. Gezielte Korrektur grün.
+Erste Transport- und Typprüfung deckten unvollständigen gespeicherten Fixture-
+Datensatz sowie fehlende erforderliche Startflags auf; beides gezielt korrigiert.
+p4-browser-cold-resume-transport-complete-fixture: 17/17 bestanden, tatsächliche
+HTTP-/HTTPS-WebSocket-Strecke, expliziter Resume-Aufruf und unveränderte laufende
+Sitzung beim Browserdisconnect. Modell in diesem Transporttest ist ein Fixture.
+p4-browser-cold-resume-types-complete: Exit 0. Kein produktiver Modellnachweis
+daraus abgeleitet; derselbe betroffene produktive Test muss erneut bestehen.
+
+Für diesen zweiten gezielten eigenen Patch beide eigenen Units erst nach
+bestätigt fehlenden running/pending-Datenbankeinträgen angehalten. Aktuelle
+notwendige Delta-Sicherung shared-cold-resume-delta: neun inzwischen neue/geänderte
+Dateien, 27 unveränderte geprüfte Dateien aus bestehenden Sicherungen referenziert.
+Backup-API und tatsächlicher Gesamt-Restore/Attribute erneut nur für diesen
+neuen Stand geprüft. Archiv-SHA256
+3c310175ab4a14ac5a77e2a66a3a5490e596be12201cafa3dbef64ece5ba06b3;
+Manifest fb739e7b1a68fd6e239f4573fc9d493f8f69266d3d2afb7d295e4a38831eb7cc.
+Neue eigene VSIX shared-runtime-cold-resume-candidate: 309 Dateien gegen Build,
+SHA256 2d3a8a2cb849f40ac4304820b0635734adf987101a0f839d17816ce03307bf0d.

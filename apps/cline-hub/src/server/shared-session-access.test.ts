@@ -31,6 +31,14 @@ vi.mock("./providers", () => ({
 function fixture() {
 	const runtime = {
 		list: vi.fn(async () => []),
+		get: vi.fn(async () => ({
+			sessionId: "same-session",
+			provider: "saved-provider",
+			model: "saved-model",
+			cwd: "/fixture",
+			workspaceRoot: "/fixture",
+		})),
+		start: vi.fn(async () => ({ sessionId: "same-session" })),
 		send: vi.fn(),
 		dispose: vi.fn(async () => {}),
 		sessionControl: {
@@ -95,6 +103,22 @@ describe("separate actor connections for the existing shared browser session", (
 			actorId: "jimmi",
 		});
 		await sendMessage(f.ctx, f.peer, "correction");
+		expect(f.runtime.start).toHaveBeenCalledExactlyOnceWith({
+			config: {
+				sessionId: "same-session",
+				providerId: "saved-provider",
+				modelId: "saved-model",
+				cwd: "/fixture",
+				workspaceRoot: "/fixture",
+				systemPrompt: "",
+				enableTools: false,
+				enableSpawnAgent: false,
+				enableAgentTeams: false,
+			},
+		});
+		expect(f.runtime.start.mock.invocationCallOrder[0]).toBeLessThan(
+			f.runtime.send.mock.invocationCallOrder[0],
+		);
 		expect(f.runtime.send).toHaveBeenCalledWith(
 			expect.objectContaining({
 				sessionId: "same-session",
@@ -102,6 +126,30 @@ describe("separate actor connections for the existing shared browser session", (
 			}),
 		);
 		expect(f.observer.send).not.toHaveBeenCalled();
+	});
+	it("does not send or replace history when cold resume fails", async () => {
+		const f = fixture();
+		await authenticateBrowserActor(f.ctx, f.peer, "fixture-token");
+		f.runtime.start.mockRejectedValueOnce(
+			new Error("Unconfirmed saved tool state"),
+		);
+		await expect(sendMessage(f.ctx, f.peer, "correction")).rejects.toThrow(
+			"Unconfirmed saved tool state",
+		);
+		expect(f.runtime.send).not.toHaveBeenCalled();
+		expect(f.observer.start).not.toHaveBeenCalled();
+	});
+	it("fences selection and actor changes while a cold resume is pending", async () => {
+		const f = fixture();
+		await authenticateBrowserActor(f.ctx, f.peer, "fixture-token");
+		const gate = Promise.withResolvers<{ sessionId: string }>();
+		f.runtime.start.mockReturnValueOnce(gate.promise);
+		const pending = sendMessage(f.ctx, f.peer, "correction");
+		await vi.waitFor(() => expect(f.runtime.start).toHaveBeenCalledOnce());
+		f.peer.selectedSessionId = "another";
+		gate.resolve({ sessionId: "same-session" });
+		await expect(pending).rejects.toThrow("changed");
+		expect(f.runtime.send).not.toHaveBeenCalled();
 	});
 	it("does not mistake a shared/observer token for an actor identity", async () => {
 		const f = fixture();

@@ -1881,3 +1881,11 @@ host. Provider/model credentials, selection and endpoint settings are unchanged.
 Native package smoke removes inherited path overrides, supplies an unselected
 isolated CLINE_DIR and verifies actual Linux database file descriptors remain
 within the selected own root; discovery/HTTP alone is not sufficient evidence.
+
+Before a shared browser sends to a previously saved session, it uses its personal
+actor connection to get and start the same canonical ID through Core's existing
+cold-resume/reattach path. Displaying history and claiming a lease alone do not
+load the resident runtime. No prompt/history seed is part of that start. A changed
+selection generation or actor connection prevents the later send. Saved model
+identity/capabilities are retained and failed or unconfirmed resume never sends
+the user's message automatically through a replacement conversation.

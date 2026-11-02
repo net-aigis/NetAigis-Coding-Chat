@@ -290,8 +290,49 @@ export async function sendMessage(
 		await createSession(ctx, peer, text, config, attachments);
 		return;
 	}
+	const sessionId = peer.selectedSessionId;
+	if (ctx.externalHub) {
+		const generation = peer.selectionGeneration;
+		const current = () =>
+			!peer.closed &&
+			peer.selectedSessionId === sessionId &&
+			peer.selectionGeneration === generation &&
+			peer.actorRuntime === runtime;
+		const record = await runtime.get(sessionId);
+		if (!current())
+			throw new Error(
+				"Shared session selection or actor changed before resume",
+			);
+		if (!record || record.sessionId !== sessionId)
+			throw new Error("The selected session does not exist in this runtime");
+		// start by an EXISTING ID uses the SDK's canonical cold resume/reattach
+		// path. It does not send a prompt, seed history, claim a lease or select
+		// a new provider. Unknown tool/owner state remains a server-side refusal.
+		const resumed = await runtime.start({
+			config: {
+				sessionId,
+				providerId: record.provider,
+				modelId: record.model,
+				cwd: record.cwd,
+				workspaceRoot: record.workspaceRoot,
+				systemPrompt:
+					typeof record.metadata?.systemPrompt === "string"
+						? record.metadata.systemPrompt
+						: "",
+				enableTools: record.enableTools === true,
+				enableSpawnAgent: record.enableSpawn === true,
+				enableAgentTeams: record.enableTeams === true,
+			},
+		});
+		if (!current())
+			throw new Error(
+				"Shared session selection or actor changed during resume",
+			);
+		if (resumed.sessionId !== sessionId)
+			throw new Error("The canonical shared session resume was not confirmed");
+	}
 	await runtime.send({
-		sessionId: peer.selectedSessionId,
+		sessionId,
 		prompt: text,
 		mode: config?.mode === "plan" ? "plan" : "act",
 		userImages: attachments?.userImages,
