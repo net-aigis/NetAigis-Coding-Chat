@@ -19,7 +19,7 @@ li{margin:1rem 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}
 const vscode=acquireVsCodeApi();
 const list=document.getElementById('list'),status=document.getElementById('status'),snapshot=document.getElementById('snapshot');
 const restore=document.getElementById('restore');let selected;
-restore.addEventListener('click',()=>{if(selected){restore.disabled=true;vscode.postMessage({command:'restore-session',conversationId:selected});}});
+restore.addEventListener('click',()=>{if(selected){restore.disabled=true;vscode.postMessage({command:'restore-session',conversationId:selected.conversationId,projectId:selected.projectId});}});
 document.getElementById('refresh').addEventListener('click',()=>vscode.postMessage({command:'list-sessions'}));
 document.getElementById('configure').addEventListener('click',()=>vscode.postMessage({command:'configure'}));
 window.addEventListener('message',event=>{
@@ -31,12 +31,12 @@ window.addEventListener('message',event=>{
    const item=document.createElement('li'),title=document.createElement('span'),button=document.createElement('button');
    title.textContent=(session.title||session.conversationId)+' | '+session.projectId+' | '+session.eventCount+' Ereignisse';
    button.textContent='Verlauf lesen';
-   button.addEventListener('click',()=>vscode.postMessage({command:'read-session',conversationId:session.conversationId}));
+   button.addEventListener('click',()=>vscode.postMessage({command:'read-session',conversationId:session.conversationId,projectId:session.projectId}));
    item.append(title,button);list.append(item);
   }
   status.textContent=data.sessions.length+' Sitzungen';
  }else if(data.cmd==='snapshot'){
-  selected=data.snapshot.conversationId;restore.disabled=data.canRestore!==true;
+  selected={conversationId:data.snapshot.conversationId,projectId:data.snapshot.projectId};restore.disabled=data.canRestore!==true;
   snapshot.textContent=JSON.stringify(data.snapshot,null,2);
   status.textContent='Verlauf geladen; keine laufende Aufgabe übernommen';
  }else if(data.cmd==='restored'){

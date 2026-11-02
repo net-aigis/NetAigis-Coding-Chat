@@ -921,6 +921,7 @@ export class HubServerTransport implements NativeHubTransport {
 			}
 		}
 		switch (envelope.command) {
+			case "session.recall.projects":
 			case "session.recall.list":
 			case "session.recall.inspect":
 			case "session.recall.restore":
@@ -1217,9 +1218,23 @@ export class HubServerTransport implements NativeHubTransport {
 			);
 		try {
 			const reader = await this.recallArchive.sessionReader(authority.actorId);
+			if (envelope.command === "session.recall.projects")
+				return okReply(envelope, { projects: await reader.listProjects() });
+			const projectId = envelope.payload?.projectId;
+			if (
+				projectId !== undefined &&
+				(typeof projectId !== "string" || !projectId.trim())
+			)
+				return errorReply(
+					envelope,
+					"invalid_recall_request",
+					"An explicit project ID must be nonempty",
+				);
 			if (envelope.command === "session.recall.list")
 				return okReply(envelope, {
-					conversations: await reader.listConversations(),
+					conversations: await reader.listConversations(
+						projectId as string | undefined,
+					),
 				});
 			const id = envelope.payload?.conversationId;
 			if (
@@ -1232,7 +1247,11 @@ export class HubServerTransport implements NativeHubTransport {
 					"invalid_recall_request",
 					"A consistent conversation/session ID is required",
 				);
-			const saved = await reader.getSessionSnapshot(id);
+			const saved = await reader.getSessionSnapshot(
+				id,
+				undefined,
+				projectId as string | undefined,
+			);
 			if (envelope.command === "session.recall.inspect")
 				return okReply(envelope, { snapshot: saved });
 			if (
@@ -1241,6 +1260,7 @@ export class HubServerTransport implements NativeHubTransport {
 						![
 							"conversationId",
 							"expectedJournalSeq",
+							"projectId",
 							"controlRevision",
 						].includes(key),
 				)
@@ -1323,6 +1343,7 @@ export class HubServerTransport implements NativeHubTransport {
 			});
 			return okReply(envelope, {
 				sessionId: result.manifest.session_id,
+				projectId: saved.projectId,
 				imported: true,
 				runtimeResident: false,
 				journalSeq: saved.journalSeq,

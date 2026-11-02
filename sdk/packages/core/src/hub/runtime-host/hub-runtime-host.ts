@@ -1718,16 +1718,27 @@ export class HubRuntimeHost implements RuntimeHost {
 		};
 	}
 
-	listRecallConversations() {
-		return new HubRecallClient(this.client).listConversations();
+	listRecallProjects() {
+		return new HubRecallClient(this.client).listProjects();
 	}
-	readRecallSession(conversationId: string) {
-		return new HubRecallClient(this.client).getSessionSnapshot(conversationId);
+	listRecallConversations(projectId?: string) {
+		return new HubRecallClient(this.client).listConversations(projectId);
 	}
-	restoreRecallSession(conversationId: string, expectedJournalSeq: number) {
+	readRecallSession(conversationId: string, projectId?: string) {
+		return new HubRecallClient(this.client).getSessionSnapshot(
+			conversationId,
+			projectId,
+		);
+	}
+	restoreRecallSession(
+		conversationId: string,
+		expectedJournalSeq: number,
+		projectId?: string,
+	) {
 		return new HubRecallClient(this.client).restoreSession(
 			conversationId,
 			expectedJournalSeq,
+			projectId,
 		);
 	}
 

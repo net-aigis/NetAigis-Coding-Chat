@@ -405,17 +405,24 @@ export interface ListSessionsOptions {
  * plus optional named `localRuntime` bootstrap fields before invoking a host.
  */
 export interface RuntimeHost {
-	listRecallConversations?(): Promise<
+	listRecallProjects?(): Promise<
+		import("../../services/recall-session-reader").TotalRecallProject[]
+	>;
+	listRecallConversations?(
+		projectId?: string,
+	): Promise<
 		import("../../services/recall-session-reader").TotalRecallConversation[]
 	>;
 	readRecallSession?(
 		conversationId: string,
+		projectId?: string,
 	): Promise<
 		import("../../services/recall-session-reader").TotalRecallSessionSnapshot
 	>;
 	restoreRecallSession?(
 		conversationId: string,
 		expectedJournalSeq: number,
+		projectId?: string,
 	): Promise<string>;
 	/** Internal native import; remote adapters must establish source proof on the owning server. */
 	importSessionSnapshot?(

@@ -46,15 +46,21 @@ describe("TOTAL RECALL browser message contract", () => {
 		const row = elements.get("list")!.children[0]
 		expect(row.children[0].textContent).toContain(conversationId)
 		row.children[1].listeners.get("click")!()
-		expect(messages.at(-1)).toEqual({ command: "read-session", conversationId })
+		expect(messages.at(-1)).toEqual({ command: "read-session", conversationId, projectId: "independent-project" })
 		receive({
 			data: { cmd: "snapshot", snapshot: { messages: [{ actor_id: "Friseer", payload: "<img onerror=alert(1)>" }] } },
 		})
 		expect(elements.get("snapshot")!.textContent).toContain("Friseer")
 		expect(elements.get("status")!.textContent).toContain("keine laufende Aufgabe übernommen")
-		receive({ data: { cmd: "snapshot", snapshot: { conversationId, journalSeq: 11 }, canRestore: true } })
+		receive({
+			data: {
+				cmd: "snapshot",
+				snapshot: { conversationId, projectId: "independent-project", journalSeq: 11 },
+				canRestore: true,
+			},
+		})
 		elements.get("restore")!.listeners.get("click")!()
-		expect(messages.at(-1)).toEqual({ command: "restore-session", conversationId })
+		expect(messages.at(-1)).toEqual({ command: "restore-session", conversationId, projectId: "independent-project" })
 		receive({ data: { cmd: "restored", sessionId: conversationId } })
 		expect(elements.get("status")!.textContent).toContain("kein Prozess gestartet und kein Schreibrecht erteilt")
 	})

@@ -12,18 +12,24 @@ const mocks = vi.hoisted(() => ({
 	dispose: undefined as undefined | (() => void),
 	post: vi.fn(async (_message: unknown) => true),
 	messageDispose: vi.fn(),
-	list: vi.fn(async () => [
+	projects: vi.fn(async () => [{ projectId: "project" }]),
+	list: vi.fn(async (_projectId?: string) => [
 		{ conversationId: "first", title: "same title", projectId: "project" },
 		{ conversationId: "second", title: "same title", projectId: "project" },
 	]),
-	snapshot: vi.fn(async (id: string) => ({ conversationId: id, messages: [{ actor_id: "Friseer" }] })),
+	snapshot: vi.fn(async (id: string, _actorId?: string, projectId = "project") => ({
+		conversationId: id,
+		projectId,
+		messages: [{ actor_id: "Friseer" }],
+	})),
 	configure: vi.fn(async () => {}),
 	input: vi.fn(),
 	quickPick: vi.fn(),
 	error: vi.fn(async () => {}),
 	shared: undefined as undefined | { endpoint: string; authToken: string },
 	sharedRestore: vi.fn(async (id: string, _seq: number) => id),
-	sharedSnapshot: vi.fn(async (id: string) => ({
+	sharedSnapshot: vi.fn(async (id: string, projectId = "project") => ({
+		projectId,
 		conversationId: id,
 		journalSeq: 11,
 		sourceVerified: true,
@@ -37,6 +43,7 @@ vi.mock("@/sdk/recall-runtime-client", () => ({
 		constructor(connection: typeof mocks.shared) {
 			this.connection = { ...connection! }
 		}
+		listProjects = mocks.projects
 		listConversations = mocks.list
 		getSessionSnapshot = mocks.sharedSnapshot
 		restoreSession = mocks.sharedRestore
@@ -88,6 +95,7 @@ vi.mock("@/sdk/recall-config-manager", () => ({
 vi.mock("@/sdk/recall-session-host", () => ({
 	TotalRecallSessionHost: class {
 		initialize = async () => {}
+		listProjects = mocks.projects
 		listConversations = mocks.list
 		getSessionSnapshot = mocks.snapshot
 	},
@@ -105,30 +113,56 @@ afterEach(() => {
 	mocks.receive = undefined
 })
 describe("TOTAL RECALL command wiring", () => {
+	it("keeps project identity when two projects contain the same conversation ID", async () => {
+		mocks.shared = { endpoint: "wss://fixture.invalid/transport", authToken: "fixture-login" }
+		mocks.projects.mockResolvedValueOnce([{ projectId: "one" }, { projectId: "two" }])
+		mocks.list
+			.mockResolvedValueOnce([{ conversationId: "same", title: "same", projectId: "one" }])
+			.mockResolvedValueOnce([{ conversationId: "same", title: "same", projectId: "two" }])
+		await openRecallSessionView()
+		expect(mocks.list).toHaveBeenNthCalledWith(1, "one")
+		expect(mocks.list).toHaveBeenNthCalledWith(2, "two")
+		await mocks.receive?.({ command: "read-session", projectId: "two", conversationId: "same" })
+		expect(mocks.sharedSnapshot).toHaveBeenCalledWith("same", "two")
+		await mocks.receive?.({ command: "restore-session", projectId: "one", conversationId: "same" })
+		expect(mocks.sharedRestore).not.toHaveBeenCalled()
+	})
 	it("binds recovery to the inspected shared runtime and server watermark, never to webview-supplied proof", async () => {
 		mocks.shared = { endpoint: "wss://fixture.invalid/transport", authToken: "fixture-login" }
 		await openRecallSessionView()
-		await mocks.receive?.({ command: "restore-session", conversationId: "first", journalSeq: 1, snapshot: {} })
+		await mocks.receive?.({
+			command: "restore-session",
+			projectId: "project",
+			conversationId: "first",
+			journalSeq: 1,
+			snapshot: {},
+		})
 		expect(mocks.sharedRestore).not.toHaveBeenCalled()
-		await mocks.receive?.({ command: "read-session", conversationId: "first" })
-		await mocks.receive?.({ command: "restore-session", conversationId: "first", journalSeq: 1, sourceVerified: true })
-		expect(mocks.sharedRestore).toHaveBeenCalledExactlyOnceWith("first", 11)
+		await mocks.receive?.({ command: "read-session", projectId: "project", conversationId: "first" })
+		await mocks.receive?.({
+			command: "restore-session",
+			projectId: "project",
+			conversationId: "first",
+			journalSeq: 1,
+			sourceVerified: true,
+		})
+		expect(mocks.sharedRestore).toHaveBeenCalledExactlyOnceWith("first", 11, "project")
 		expect(mocks.post).toHaveBeenCalledWith({ cmd: "restored", sessionId: "first" })
 	})
 	it("requires inspection again after the selected runtime or actor credential changes", async () => {
 		mocks.shared = { endpoint: "wss://fixture.invalid/transport", authToken: "fixture-first-login" }
 		await openRecallSessionView()
-		await mocks.receive?.({ command: "read-session", conversationId: "first" })
+		await mocks.receive?.({ command: "read-session", projectId: "project", conversationId: "first" })
 		mocks.shared.authToken = "fixture-other-login"
-		await mocks.receive?.({ command: "restore-session", conversationId: "first" })
+		await mocks.receive?.({ command: "restore-session", projectId: "project", conversationId: "first" })
 		expect(mocks.sharedRestore).not.toHaveBeenCalled()
 		expect(mocks.error).toHaveBeenCalled()
 	})
 	it("connects the actual standalone panel to listing and reading without claiming restore or takeover", async () => {
 		await openRecallSessionView()
 		expect(mocks.post).toHaveBeenCalledWith({ cmd: "render", sessions: await mocks.list() })
-		await mocks.receive?.({ command: "read-session", conversationId: "stable's ID" })
-		expect(mocks.snapshot).toHaveBeenCalledWith("stable's ID")
+		await mocks.receive?.({ command: "read-session", projectId: "project", conversationId: "stable's ID" })
+		expect(mocks.snapshot).toHaveBeenCalledWith("stable's ID", undefined, "project")
 		await mocks.receive?.({ command: "takeover-session", conversationId: "stable's ID" })
 		expect(mocks.post.mock.calls.at(-1)?.[0]).toMatchObject({
 			cmd: "msg",
@@ -142,7 +176,7 @@ describe("TOTAL RECALL command wiring", () => {
 		expect(command).toBeTypeOf("function")
 		expect(mocks.commands.has("cline.recall.quickPick")).toBe(false)
 		await command!()
-		expect(mocks.snapshot).toHaveBeenCalledWith("second")
+		expect(mocks.snapshot).toHaveBeenCalledWith("second", undefined, "project")
 	})
 	it("does not persist partial configuration after a cancelled prompt", async () => {
 		mocks.input.mockResolvedValueOnce("http://new-fixture.invalid").mockResolvedValueOnce(undefined)

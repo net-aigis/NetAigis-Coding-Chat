@@ -1,5 +1,6 @@
 /** VS Code entry points for the existing TOTAL RECALL journal. */
 // biome-ignore-all plugin: VS Code owns command registration and browser panels.
+import type { TotalRecallConversation } from "@cline/core"
 import * as vscode from "vscode"
 import { getRecallConfigManager, getRecallConfiguration } from "@/sdk/recall-config-manager"
 import { drainRecallOutbox } from "@/sdk/recall-outbox"
@@ -10,7 +11,9 @@ import { getSharedSessionHubConnection } from "@/sdk/shared-session-hub"
 import { Logger } from "@/shared/services/Logger"
 
 let recallPanel: vscode.WebviewPanel | undefined
-let selectedSnapshot: { conversationId: string; journalSeq: number; eligible: boolean; runtime?: RecallRuntimeClient } | undefined
+let selectedSnapshot:
+	| { conversationId: string; projectId: string; journalSeq: number; eligible: boolean; runtime?: RecallRuntimeClient }
+	| undefined
 async function host(): Promise<TotalRecallSessionHost | RecallRuntimeClient> {
 	const shared = getSharedSessionHubConnection()
 	if (shared) return new RecallRuntimeClient(shared)
@@ -58,17 +61,27 @@ export async function openRecallSessionView(): Promise<void> {
 				else if (
 					input.command === "read-session" &&
 					typeof input.conversationId === "string" &&
-					input.conversationId.length > 0
+					input.conversationId.length > 0 &&
+					typeof input.projectId === "string" &&
+					input.projectId.length > 0
 				)
-					await readTotalRecallSession(input.conversationId)
+					await readTotalRecallSession(input.conversationId, input.projectId)
 				else if (input.command === "restore-session") {
 					const selected = selectedSnapshot
-					if (!selected?.eligible || selected.conversationId !== input.conversationId)
+					if (
+						!selected?.eligible ||
+						selected.conversationId !== input.conversationId ||
+						selected.projectId !== input.projectId
+					)
 						throw new Error("Inspect an eligible archive before recovery")
 					const runtime = selected.runtime
 					if (!runtime?.matchesConnection(getSharedSessionHubConnection()))
 						throw new Error("Shared runtime changed; inspect the archive again")
-					const sessionId = await runtime.restoreSession(selected.conversationId, selected.journalSeq)
+					const sessionId = await runtime.restoreSession(
+						selected.conversationId,
+						selected.journalSeq,
+						selected.projectId,
+					)
 					selectedSnapshot = undefined
 					await panel.webview.postMessage({ cmd: "restored", sessionId })
 				} else if (input.command === "takeover-session") {
@@ -96,17 +109,29 @@ export async function openRecallSessionView(): Promise<void> {
 }
 async function listTotalRecallSessions(): Promise<void> {
 	selectedSnapshot = undefined
-	const sessions = await (await host()).listConversations()
+	const sessions = await listProjectConversations()
 	await recallPanel?.webview.postMessage({ cmd: "render", sessions })
 }
-async function readTotalRecallSession(conversationId: string): Promise<void> {
+async function listProjectConversations() {
+	const client = await host()
+	const projects = await client.listProjects()
+	const sessions: TotalRecallConversation[] = []
+	for (const project of projects) sessions.push(...(await client.listConversations(project.projectId)))
+	return sessions
+}
+async function readTotalRecallSession(conversationId: string, projectId: string): Promise<void> {
 	selectedSnapshot = undefined
 	const runtime = await host()
-	const snapshot = await runtime.getSessionSnapshot(conversationId)
+	const snapshot =
+		runtime instanceof RecallRuntimeClient
+			? await runtime.getSessionSnapshot(conversationId, projectId)
+			: await runtime.getSessionSnapshot(conversationId, undefined, projectId)
+	if (snapshot.projectId !== projectId) throw new Error("Recall project selection was not confirmed")
 	const eligible =
 		runtime instanceof RecallRuntimeClient && snapshot.sourceVerified === true && snapshot.restoration?.available === true
 	selectedSnapshot = {
 		conversationId,
+		projectId,
 		journalSeq: snapshot.journalSeq,
 		eligible,
 		...(runtime instanceof RecallRuntimeClient ? { runtime } : {}),
@@ -115,17 +140,18 @@ async function readTotalRecallSession(conversationId: string): Promise<void> {
 }
 async function quickPickRecallSession(): Promise<void> {
 	try {
-		const sessions = await (await host()).listConversations()
+		const sessions = await listProjectConversations()
 		const items = sessions.map((session) => ({
 			label: session.title || session.conversationId,
 			description: session.projectId,
 			detail: session.conversationId,
 			conversationId: session.conversationId,
+			projectId: session.projectId,
 		}))
 		const selection = await vscode.window.showQuickPick(items, { title: "TOTAL RECALL – gemeinsamen Verlauf lesen" })
 		if (selection) {
 			await openRecallSessionView()
-			await readTotalRecallSession(selection.conversationId)
+			await readTotalRecallSession(selection.conversationId, selection.projectId)
 		}
 	} catch {
 		await showError()

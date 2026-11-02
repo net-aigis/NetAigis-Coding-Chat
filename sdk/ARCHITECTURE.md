@@ -1908,3 +1908,16 @@ authorship or the legacy project's selection. A missing catalog or unknown ID
 fails instead of silently reading a different project. Snapshot results retain
 the selected project ID; actor and project arguments remain distinct. This reader
 capability alone does not configure productive producer/session project bindings.
+
+
+The authenticated Hub exposes `session.recall.projects` as read-only discovery.
+List/inspect/recovery requests carry an explicit project ID through the existing
+producer-verified reader; restoration accepts only a reference, not client history
+or proof. The RPC client verifies the selected project on lists, snapshots and
+import acknowledgements. Native Core and VS Code adapters retain this scope.
+The existing Recall panel aggregates real catalog projects and includes both
+project and conversation IDs in read/restore messages and inspected selection.
+Matching conversation IDs in different projects cannot change the selected scope
+or authorize importing the uninspected project. Archive import still neither
+starts a process nor grants a writer. Producer project binding is separate and
+must be completed before configuring productive multi-project archival.

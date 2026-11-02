@@ -55,6 +55,7 @@ const READ_COMMANDS = new Set([
 	"session.get",
 	"session.messages",
 	"session.list",
+	"session.recall.projects",
 	"session.recall.list",
 	"session.recall.inspect",
 	"session.search",

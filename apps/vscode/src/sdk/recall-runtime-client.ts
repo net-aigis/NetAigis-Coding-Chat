@@ -1,5 +1,5 @@
 /** Archive operations on the explicitly selected owning runtime; never spawns a Hub. */
-import type { TotalRecallConversation, TotalRecallSessionSnapshot } from "@cline/core"
+import type { TotalRecallConversation, TotalRecallProject, TotalRecallSessionSnapshot } from "@cline/core"
 import { HubRecallClient, NodeHubClient } from "@cline/core/hub"
 import { type SharedSessionHubConnection, validateSharedSessionHubConnection } from "./shared-session-hub"
 
@@ -25,13 +25,16 @@ export class RecallRuntimeClient {
 			client.close()
 		}
 	}
-	listConversations(): Promise<TotalRecallConversation[]> {
-		return this.usingClient((client) => client.listConversations())
+	listProjects(): Promise<TotalRecallProject[]> {
+		return this.usingClient((client) => client.listProjects())
 	}
-	getSessionSnapshot(id: string): Promise<TotalRecallSessionSnapshot> {
-		return this.usingClient((client) => client.getSessionSnapshot(id))
+	listConversations(projectId?: string): Promise<TotalRecallConversation[]> {
+		return this.usingClient((client) => client.listConversations(projectId))
 	}
-	restoreSession(id: string, seq: number): Promise<string> {
-		return this.usingClient((client) => client.restoreSession(id, seq))
+	getSessionSnapshot(id: string, projectId?: string): Promise<TotalRecallSessionSnapshot> {
+		return this.usingClient((client) => client.getSessionSnapshot(id, projectId))
+	}
+	restoreSession(id: string, seq: number, projectId?: string): Promise<string> {
+		return this.usingClient((client) => client.restoreSession(id, seq, projectId))
 	}
 }

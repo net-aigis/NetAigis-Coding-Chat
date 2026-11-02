@@ -138,6 +138,17 @@ async function fixture() {
 					readActors.push("Friseer");
 				else return new Response("{}", { status: 403 });
 				const url = new URL(String(input));
+				if (url.pathname.endsWith("/projects"))
+					return Response.json({
+						projects: [
+							{
+								project_id: "fixture-project",
+								event_count: 1,
+								conversation_count: 1,
+								last_seq: 11,
+							},
+						],
+					});
 				return Response.json(
 					url.pathname.endsWith("/conversations")
 						? {
@@ -190,6 +201,28 @@ async function fixture() {
 		},
 	};
 }
+
+it("discovers the same projects for both personal clients and rejects unknown project scope without starting work", async () => {
+	const f = await fixture();
+	try {
+		const browser = await f.browser.command("session.recall.projects", {});
+		expect(browser.ok).toBe(true);
+		const projects = await f.vscode.listRecallProjects();
+		expect(projects).toEqual(browser.payload?.projects);
+		expect(projects[0].projectId).toBe("fixture-project");
+		expect(f.readActors).toContain("Friseer");
+		expect(f.readActors).toContain("jimmi");
+		await expect(f.browser.command("session.recall.list", {
+			projectId: "UnknownProject",
+		})).rejects.toThrow();
+		await expect(f.browser.command("session.recall.list", {
+			projectId: {},
+		})).rejects.toThrow();
+		expect(f.createAgent).not.toHaveBeenCalled();
+	} finally {
+		await f.close();
+	}
+});
 
 it("recovers one verified canonical session through authenticated writer admission, then attaches a second actor to the same resident runtime", async () => {
 	const f = await fixture();
