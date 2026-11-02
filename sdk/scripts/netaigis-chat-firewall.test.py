@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import tarfile
 import unittest
 from unittest import mock
 
@@ -27,8 +28,8 @@ class LocalFirewallTests(unittest.TestCase):
         key = 'permanent' if '--permanent' in args else 'runtime'
         if '--list-rich-rules' in args: return '\n'.join(self.states[key])
         self.assertIn('--zone=public', args)
-        self.assertEqual(args[-1], '--add-rich-rule=' + module.RULE)
-        self.states[key].append(module.RULE)
+        self.assertTrue(args[-1].startswith('--add-rich-rule='))
+        self.states[key].append(args[-1].removeprefix('--add-rich-rule='))
         return 'success'
 
     def prepared(self, parent, before):
@@ -59,6 +60,22 @@ class LocalFirewallTests(unittest.TestCase):
              mock.patch.object(module, 'prepare_backup') as prepare:
             self.assertFalse(module.apply(True)['firewall_modified'])
             prepare.assert_not_called()
+
+    def test_explicit_vpn_peer_adds_only_its_single_host_and_never_changes_routes(self):
+        with mock.patch.object(module, 'firewall', side_effect=self.firewall), \
+             mock.patch.object(module, 'prepare_backup', side_effect=self.prepared):
+            result = module.apply(True, '10.8.0.2')
+        expected = 'rule family="ipv4" source address="10.8.0.2/32" port port="8787" protocol="tcp" accept'
+        self.assertEqual(result['rules'], [module.RULE, expected])
+        self.assertFalse(result['vpn_route_modified'])
+        self.assertEqual(result['rollback_remove_rules']['runtime'], [module.RULE, expected])
+        self.assertNotIn('10.8.0.0/24', json.dumps(result))
+
+    def test_missing_or_public_vpn_subnet_is_not_guessed_or_opened(self):
+        for peer in ['10.8.0.0/24', '8.8.8.8', '127.0.0.1', '0.0.0.0', '::1']:
+            with mock.patch.object(module, 'firewall') as control:
+                with self.assertRaises(ValueError): module.apply(True, peer)
+                control.assert_not_called()
 
     def test_unverified_backup_or_changed_zone_cannot_add_any_rule(self):
         with mock.patch.object(module, 'firewall', side_effect=self.firewall), \
@@ -108,6 +125,40 @@ class LocalFirewallTests(unittest.TestCase):
             self.assertEqual(result['files'][0]['different_attributes'], ['mtime_ns'])
             self.assertEqual(before, (module.attributes(source), module.attributes(restored)))
             self.assertTrue(result['restore_acceptance_pending'])
+
+    def test_selinux_is_restored_only_from_matching_archived_label_to_the_private_probe(self):
+        member = tarfile.TarInfo('zone.xml')
+        member.pax_headers = {'RHT.security.selinux': 'fixture_context:s0'}
+        target = self.root / 'restore-probe.xml'; target.write_text('<zone/>')
+        with mock.patch.object(module.os, 'setxattr') as set_attribute:
+            module.restore_archived_selinux(member, target, b'fixture_context:s0\0')
+            set_attribute.assert_called_once_with(target, 'security.selinux', b'fixture_context:s0\0')
+        with mock.patch.object(module.os, 'setxattr') as set_attribute:
+            with self.assertRaisesRegex(ValueError, 'archived_selinux_label_disagrees'):
+                module.restore_archived_selinux(member, target, b'different_context:s0')
+            member.pax_headers = {}
+            with self.assertRaisesRegex(ValueError, 'selinux_label_missing_from_archive'):
+                module.restore_archived_selinux(member, target, b'fixture_context:s0')
+            set_attribute.assert_not_called()
+
+    def test_failed_restore_reuses_exact_existing_archive_without_repeating_the_backup(self):
+        source = self.root / 'zone.xml'; source.write_text('<zone/>\n')
+        parent = self.root / 'backup'; parent.mkdir(mode=0o700)
+        real_attributes = module.attributes
+        def mismatched_restore(path):
+            value = real_attributes(path)
+            if 'restore-probe' in path.parts: value['mtime_ns'] -= 1
+            return value
+        with mock.patch.object(module, 'SOURCES', (source,)), \
+             mock.patch.object(module, 'attributes', side_effect=mismatched_restore):
+            with self.assertRaisesRegex(ValueError, 'actual_zone_restore'):
+                module.prepare_backup(parent, self.states)
+        archive = parent / 'local-https-firewall-preflight/zone-files.tar'
+        before = archive.read_bytes(), archive.stat().st_mtime_ns
+        with mock.patch.object(module, 'SOURCES', (source,)):
+            _, manifest = module.prepare_backup(parent, self.states)
+        self.assertTrue(manifest['existing_archive_reused'])
+        self.assertEqual((archive.read_bytes(), archive.stat().st_mtime_ns), before)
 
 
 if __name__ == '__main__':

@@ -4527,3 +4527,61 @@ untersuchen oder VPN neu konfigurieren. Bei transparentem Routing separate
 minimale lokale Quellregel10.8.0.2/32 nötig; bei DS-NAT greift die LAN-Regel.
 Tatsächliche Quell-/Rückroute erst im kontrollierten externen Verbindungsversuch
 nach Restore-Reparatur belegen. Keine pauschale10.8.0.0/24-Freigabe ableiten.
+
+
+### 2026-11-02: Projektkennung durch Hub und bestehenden Recall-Browser erhalten
+
+Neue read-only RPC session.recall.projects verwendet bestehende persönliche
+Authentifizierung. Liste/Inspektion/Restore tragen ausdrücklich projectId; der
+Reader verifiziert tatsächlich vorhandene Kennungen. RPC-Antworten mit anderer
+Projektkennung werden trotz gleicher conversationId verworfen. Wiederherstellung
+bleibt nicht wiederholbar, nimmt nur geprüfte Referenz/Watermark an, startet
+keinen Prozess und vergibt kein Schreibrecht. Native Core-/VS-Code-Adapter und
+bestehender Recall-Browser reichen die Projektkennung durch. Browser sammelt
+bestehende Katalogprojekte, beide IDs gehören zur inspizierten Auswahl; ein
+Projektwechsel in der Restore-Nachricht verweigert die Aktion. Keine neue Ablage.
+
+Shared-Build Exit0(14,0 s), Core-Build/Typen/Build-ID Exit0(40,95 s).
+Neue Core-/echte Socket-Transport-/Reader-Suites 33/33 bestanden; erster Vorlauf
+32bestanden/1fehlgeschlagen wegen falscher Testannahme, dass verweigerte RPCs
+als ok=false statt als HubCommandError zurückgegeben werden. Erwartung am
+belegten Clientvertrag korrigiert, keine Schutzlogik entfernt. VS-Code vier
+gezielte Suites17/17, Typprüfung Exit0(115 s). Transport-/ASGI-Tests enthalten
+Fixture-Recall/Modell und sind keine produktive Anbindung. Paketintegration und
+kanonische projektspezifische Producer-Zuordnung noch offen; kein globaler
+NetAigisOS-Ersatz konfiguriert.
+
+Watchdog fortlaufend lesend beobachtet: Timer active/waiting/enabled,
+LastTrigger11:08:43→11:11:58 CET während anderer Entwicklungsarbeit fortgeschritten;
+Serviceinactive/dead, Resultsuccess, ExecMainStatus0. Keine künstliche sleep-/
+Neustartschleife. Frischer strukturierter Vier-Dienste-Health-Nachweis aus dem
+Root-Aktivierungslauf vorhanden; spätere Journaldetails über unprivilegierten
+Zugang nicht sichtbar. Quittungen p4-watchdog-timer-observation-1/2.json.
+
+
+Firewall-Restoreursache mit Root-diagnose belegt: bei allen drei Dateien gleiche
+Inhalte/UID/GID/Mode/mtime; ausschließlich security.selinux im Restore fehlend.
+Quell-Labelhash/etc27bc2091c4aba3c673576633c4edffc85ed48583479245c78585d34c979f6c10,
+Vendor d2ea40e1dc5369ed94d4943d896d2bfbe3cf46e5bcf7a3b9fb77139e1f8dfb69.
+Keine produktive Regel oder Dateiberechtigung verändert. Korrektur behält das
+bestehende Archiv unverändert bei, prüft dessen genaue Mitglieder/Bytehashes/
+UID/GID/Mode/nanosekundengenaue PAX-mtime gegen Original und Root-Diagnose-Pins.
+Das fehlende Label wird NUR am privaten Restore aus dem passenden archivierten
+RHT.security.selinux/SCHILY.xattr.security.selinux rekonstruiert, einschließlich
+exakt nachgewiesener NUL-Repräsentation. Fehlendes/abweichendes Archivlabel oder
+verweigertes Setzen bleibt ein Blocker. Kein Überspringen von xattrs, kein
+SELinux-/Systemvertrauenswechsel. Anschließend weiterhin vollständiger Vergleich.
+Erfolgreiche alte Sicherungen werden nicht wiederholt; nur gescheiterte Probe
+mit wiederverwendetem bytegleichem Archiv repariert.
+
+Zusätzlich optionale explizite VPN-Peerfreigabe vorbereitet: nur die vom Benutzer
+bestätigte private IPv4 als /32; keine abgeleitete10.8.0.0/24-Regel. Zusammen mit
+LANregel zwei Quellregeln auf ausschließlich TCP8787/public, jeweils permanent+
+runtime ohneReload. Keine VPN- oder DS-Routeänderung. Elf Regressionen bestanden,
+darunter Archivwiederverwendung ohne erneuten Backup, passendes/fehlendes/falsches
+SELinux-PAX-Label und exakte10.8.0.2/32- statt Subnetzfreigabe. Noch nicht angewendet.
+Konkreter lokaler Root-Aufruf nach dieser geprüften Korrektur:
+`sudo env PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-chat-firewall.py apply --permanent-lan-approved --vpn-peer=10.8.0.2`
+Application-Nachweis enthält jede gegebenenfalls neu hinzugefügte Regel je
+runtime/permanent für die gezielte Rücknahme. Externer tatsächlicher VPN-Test
+bleibt offen, weil die DS gegebenenfalls NAT oder Rückrouten verwendet.
