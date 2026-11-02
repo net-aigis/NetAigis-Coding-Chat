@@ -1857,3 +1857,16 @@ prevent a change. The inspected CAS revision is retained across a fresh identity
 read, and an uncertain write is never retried automatically. Server-side process
 and author checks remain authoritative; the client does not relabel old process
 states or modify history to make a handover pass.
+
+The SQLite owning host also lists the existing native file index in the same
+session artifact directory. This is a read-only union of existing IDs: SQLite
+rows take precedence, known SQLite children stay excluded in root-only views,
+and a matching canonical manifest is required for file-only rows. The file
+index is read without reconciliation, so browsing cannot overwrite the new
+owner's manifest with a stale file-owner observation. Neither author metadata
+nor a running/unknown process is relabeled. Empty limits return no sessions.
+On the first acknowledged running transition, the existing manifest adoption
+path inserts a missing index row with insert-if-absent; a concurrent row wins.
+The current process identity is then bound through the existing status revision.
+Canonical messages/checkpoints are not copied, and simply viewing/resuming does
+not index or rewrite the native history.

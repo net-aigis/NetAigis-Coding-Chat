@@ -108,7 +108,9 @@ import {
 	SessionManifestSchema,
 } from "../../session/models/session-manifest";
 import type { SessionRow } from "../../session/models/session-row";
+import { FileSessionService } from "../../session/services/file-session-service";
 import type { RootSessionArtifacts } from "../../session/services/session-service";
+import { CoreSessionService } from "../../session/services/session-service";
 import type { NativeSnapshotImportInput } from "../../session/services/snapshot-import";
 import { createCoreSessionSnapshot } from "../../session/session-snapshot";
 import { SessionVersioningService } from "../../session/session-versioning-service";
@@ -1772,16 +1774,43 @@ export class LocalRuntimeHost implements RuntimeHost {
 		limit = 200,
 		options: ListSessionsOptions = {},
 	): Promise<SessionRecord[]> {
+		if (limit <= 0) return [];
 		const rows = await this.listRows(limit, options);
 		const persisted = rows.map(toSessionRecord);
 		const seen = new Set(persisted.map((row) => row.sessionId));
+		if (this.sessionService instanceof CoreSessionService) {
+			// Reuse the existing native index, not a copied/re-authored chat. SQLite
+			// takes precedence, including children excluded by rootOnly; the old
+			// file index must never reconcile or overwrite the new owner's state.
+			const indexed = options.rootOnly
+				? await this.listRows(MAX_SCAN_LIMIT)
+				: rows;
+			const known = new Set(indexed.map((row) => row.sessionId));
+			const files = new FileSessionService(
+				this.sessionService.ensureSessionsDir(),
+			);
+			for (const row of await files.listPersistedSessions(limit, options)) {
+				if (known.has(row.sessionId)) continue;
+				const manifest = await this.readManifest(row.sessionId);
+				if (!manifest || manifest.session_id !== row.sessionId) continue;
+				persisted.push({
+					...toSessionRecord(row),
+					...manifestToSessionRecord(manifest),
+					isSubagent: row.isSubagent,
+					parentSessionId: row.parentSessionId ?? undefined,
+				});
+				seen.add(row.sessionId);
+			}
+		}
 		for (const active of this.sessions.values()) {
 			if (seen.has(active.sessionId)) {
 				continue;
 			}
 			persisted.unshift(toActiveSessionRecord(active));
 		}
-		return persisted.slice(0, limit);
+		return persisted
+			.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+			.slice(0, limit);
 	}
 
 	async deleteSession(sessionId: string): Promise<boolean> {

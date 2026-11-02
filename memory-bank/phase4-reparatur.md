@@ -4157,3 +4157,27 @@ erhalten. Keine Modellinferenz oder Verlaufsänderung. Quellbefund: LocalRuntime
 listet Backend und residente Sitzungen; dateibasierte Manifeste fehlen beim
 SQLite-Hub. Vorhandene Manifest-Fallback-/Indexadoption reparieren. Kein zweiter
 Chat als Ersatz und keine rückwirkende Umdeutung alter Urheberschaft.
+
+### 2026-11-02: Dateibasierten Verlauf für den SQLite-Hub erhalten
+
+Zwei Regressionen reproduzieren den tatsächlichen Fehler vor dem Patch:
+p4-file-history-handoff-red, 0/2 bestanden. Vorhandene native FileSessionService
+und ihre kanonischen Dateien werden jetzt für die Auflistung wiederverwendet;
+keine neue Speicherarchitektur und kein duplizierter Chat. SQLite gewinnt bei
+gleichen IDs, rootOnly respektiert bekannte SQLite-Kinder. Beim Lesen des alten
+Dateiindexes keine Stale-Reconciliation/Dateiänderung; laufend bleibt laufend.
+Eine passende Manifest-ID ist Voraussetzung. Der erste echte nächste Turn
+übernimmt einen fehlenden SQLite-Eintrag über die vorhandene Manifestadoption,
+jetzt mit insert-if-absent und bestätigtem Readback statt überschreibendem Upsert.
+Erst danach wird über die bestehende Revision die eigene laufende PID gebunden.
+Lesendes Öffnen schreibt weder Verlauf noch Autor-/Prozessdaten um.
+
+p4-file-history-handoff-green: 25/25. Zusätzlicher echter SQLite-Konflikttest
+belegt, dass ein während der Adoption angelegter Eintrag nicht überschrieben
+wird. Außerdem SQL-Vorrang, unveränderte Datei-/Manifest-/Indexbytes, Autoren
+Friseer/jimmi, leerer Limitwert und unveränderter laufender File-Prozesszustand.
+p4-file-history-handoff-conflicts: 149/149 einschließlich bisheriger Host-,
+History-, Resume- und Persistenztests. Core-Build/Build-Typecheck Exit 0.
+Das ist noch keine produktive Abnahme des neuen Patches: der bereits gestartete
+Hub verwendet weiter den vorigen installierten Payload. Seine ursprünglichen
+negativen Nachweise und der funktionierende vorherige VSIX bleiben erhalten.

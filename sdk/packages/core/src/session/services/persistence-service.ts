@@ -347,6 +347,11 @@ export class UnifiedSessionPersistenceService {
 			throw new Error(
 				"Only the running runtime can bind its own process identity",
 			);
+		// A native VS Code host can have used the file backend. Bind a missing
+		// SQLite row only when the new owning runtime actually starts its turn;
+		// merely browsing/resuming history must not rewrite the source artifacts.
+		if (runtimeOwnerPid !== undefined)
+			await this.manifestStore.ensureIndexedSession(sessionId);
 		let endedAt: string | undefined;
 		const result = await withOccRetry(
 			() => this.adapter.getSession(sessionId),
@@ -763,6 +768,18 @@ export class UnifiedSessionPersistenceService {
 				? { ...(meta ?? {}), title: manifestTitle }
 				: meta;
 			return { ...row, metadata: resolved };
+		});
+	}
+
+	/** Read existing index rows without stale-owner reconciliation or artifact writes. */
+	async listPersistedSessions(
+		limit: number,
+		options: { rootOnly?: boolean } = {},
+	): Promise<SessionRow[]> {
+		if (limit <= 0) return [];
+		return this.adapter.listSessions({
+			limit: Math.floor(limit),
+			rootOnly: options.rootOnly,
 		});
 	}
 

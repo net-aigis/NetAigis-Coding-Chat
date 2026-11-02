@@ -252,7 +252,7 @@ export class SessionManifestStore {
 	 * Resolve the session row backing a message write, re-adopting it from the
 	 * on-disk manifest when the index was rebuilt or the artifacts were restored.
 	 */
-	private async resolveSessionRow(sessionId: string): Promise<SessionRow> {
+	async ensureIndexedSession(sessionId: string): Promise<SessionRow> {
 		const indexed = await this.adapter.getSession(sessionId);
 		if (indexed) {
 			return indexed;
@@ -263,9 +263,15 @@ export class SessionManifestStore {
 				`Cannot persist messages for unknown session: ${sessionId}`,
 			);
 		}
-		await this.adapter.upsertSession(adopted);
+		if (!this.adapter.insertSessionIfAbsent)
+			throw new Error(
+				"Session backend cannot adopt without replacing a concurrent owner",
+			);
+		await this.adapter.insertSessionIfAbsent(adopted);
+		const confirmed = await this.adapter.getSession(sessionId);
+		if (!confirmed) throw new Error("Session index adoption was not confirmed");
 		this.logger?.debug("Re-adopted session row from manifest", { sessionId });
-		return adopted;
+		return confirmed;
 	}
 
 	async persistSessionMessages(
@@ -274,7 +280,7 @@ export class SessionManifestStore {
 		systemPrompt?: string,
 		resolveInputDigest?: () => string,
 	): Promise<void> {
-		const row = await this.resolveSessionRow(sessionId);
+		const row = await this.ensureIndexedSession(sessionId);
 		const marker = row.metadata?.[SNAPSHOT_IMPORT_METADATA_KEY] as
 			| Record<string, unknown>
 			| undefined;
