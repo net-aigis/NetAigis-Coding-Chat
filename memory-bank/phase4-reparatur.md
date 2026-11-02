@@ -4674,3 +4674,39 @@ UI-Zuordnung, Paketintegration und tatsächliche Recall-Restore-Abnahme noch off
 Core-Build/Typen/Build-ID Exit0(18,02s). Vollständige Core-Dev-Typprüfung wies
 ein unvollständiges neues Snapshot-Fixture aus; dessen echte Pflichtfelder statt
 zusätzlichem Cast ergänzt. Korrigierte vollständige Dev-Typprüfung Exit0(50,10s).
+
+### Vorbereiteter begrenzter Acer-Schritt: vorhandene Recall-Projektauflistung
+
+Producer-Commit17bd4da49 erhalten. Neuer Helfer
+sdk/scripts/netaigis-recall-projects-activate.py verwendet die bereits geprüften
+Maintenance-Primitiven (exakte Pins) für Stop-/Start-Isolation, Dateiattribute,
+atomaren Austausch, Zustands-/Health-Prüfung. Ausschließlich recall_store.py
+und recall_api.py, bestehende netaigis-coding-agent.service. Store vor API schreiben;
+keine Konfiguration, Datenbank, Modellzugänge oder andere Units verändern.
+Vor jedem Eingriff Root-Archiv/Manifest/SHA256SUMS und tatsächliche Original-
+Restoredateien prüfen, aktuellen Inhalt nur exakt original oder geprüfter Kandidat
+akzeptieren. Fremde Änderungen/abweichende Attribute bleiben ein Blocker.
+Externe geprüfte Kopie und Wiederherstellungsdateien vor Root-Transport prüfen.
+Forward-Repair ist idempotent; keine automatische Altversions-Rücknahme.
+
+Original-/Kandidat-Hashes zusätzlich gegen tatsächlich lesend erfasste Module
+belegt (p4-recall-project-activation-real-source-plan). Neun gezielte Installer-
+Tests bestanden: Freigabe-/Wartungsfensterguard, reine Lesung, abweichende Quelle/
+Sicherung/Attribute, echter Austausch mit erhaltenen Attributen, Wiederanwendung,
+beide persönlichen Authentifizierungen, ausschließlich GET und HTTP401 ohneToken,
+beibehaltene neue Dateien bei verweigerter Abnahme. Keine Produktivdienste in
+diesen Tests gesteuert. Bestehende echte FastAPI-ASGI-Prüfung weiterhin gültig.
+Produktive GET-Prüfung des neuen Endpunkts gehört erst zum folgenden Root-Schritt.
+
+Gesondert freizugebender Acer-Bedieneraufruf bei ruhenden Aufträgen:
+`PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-recall-projects-activate.py apply --remote --installation-approved --maintenance-confirmed`
+Er stoppt/startet ausschließlich Coding-Agent nach bestätigter Isolation und
+prüft danach beide vorhandenen persönlichen Zugänge sowie identischen Katalog.
+Learning-Agent, Modellrouter und Modell müssen dieselben PIDs/InvocationIDs
+behalten, bestehende Konfigurationsbytes unverändert. Keine Modellanforderung.
+Root-Passwort ausschließlich im bereits verwendeten Terminal, nicht im Chat.
+
+Android-Anleitung korrigiert: Benutzer ist Friseer, nicht jimmi. Einladungsdatei
+liegt tatsächlich unter eigenem home/data/settings/shared-runtime-android-invite.txt,
+nicht unmittelbar unter home. Beide tatsächlichen Anmeldedateien stat-geprüft0600.
+Weder falsche Rollenzuweisung noch unvollständigen Pfad weiterverwenden.
