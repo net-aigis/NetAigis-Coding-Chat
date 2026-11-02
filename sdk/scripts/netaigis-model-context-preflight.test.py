@@ -155,6 +155,30 @@ class ModelContextBackup(unittest.TestCase):
         with self.assertRaisesRegex(preflight.Refused, "previously_verified_source_or_restore_changed"):
             preflight.verify_reused_base(**verified)
 
+    def test_recall_delta_is_limited_to_exact_reviewed_pair_and_actually_restored(self):
+        self.assertEqual(len(preflight.RECALL_PROJECTS_FILES), 2)
+        selected = {}
+        for name in ('recall_api.py', 'recall_store.py'):
+            path = self.sources / name; path.write_bytes(b'# explicit fixture\nvalue = 1\n')
+            selected[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
+        with mock.patch.object(preflight, 'RECALL_PROJECTS_FILES', selected):
+            with self.assertRaisesRegex(preflight.Refused, 'recall_project_backup_scope_changed'):
+                self.prepare(name=preflight.RECALL_PROJECTS_NAME)
+            self.assertEqual(list(self.parent.iterdir()), [])
+            result = preflight.prepare(selected, self.parent, self.export, os.getuid(), os.getgid(),
+                                       lambda: {'four_services': 'unchanged'}, name=preflight.RECALL_PROJECTS_NAME)
+        self.assertEqual(result['file_count'], 2)
+        self.assertTrue(result['actual_file_restore_verified'])
+        self.assertFalse(result['source_modified'])
+
+    def test_recall_delta_observes_existing_learning_unit_without_any_control_action(self):
+        with mock.patch.object(preflight.subprocess, 'run') as run:
+            run.return_value.stdout = 'ActiveState=active\nInvocationID=fixture\n'
+            snapshot = preflight.service_state(include_learning=True)
+        self.assertIn('ai-agent.service', snapshot)
+        self.assertEqual(len(snapshot), 4)
+        self.assertTrue(all(call.args[0][:2] == ['systemctl', 'show'] for call in run.call_args_list))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

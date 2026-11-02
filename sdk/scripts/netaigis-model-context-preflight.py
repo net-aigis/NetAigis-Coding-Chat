@@ -1,8 +1,9 @@
-"""Back up newly affected Acer model/context files and actually restore them.
+"""Back up the explicitly selected newly affected Acer files and actually restore them.
 
 Only backup/export artifacts are written, under the existing protected Phase-2
 locations. No source permissions, configurations, services or models are changed.
 This does not authorize productive router/model-context application.
+The Recall-project delta adds only its two reviewed existing modules.
 """
 import argparse
 import ast
@@ -20,6 +21,11 @@ PARENT = Path("/root/netaigis-recall-backups/phase2-20261030T165000Z")
 EXPORT = Path("/home/friseer/recall-phase2-export-20261030T165000Z")
 NAME = "phase4-model-context-preflight"
 DELTA_NAME = "phase4-dynamic-context-delta"
+RECALL_PROJECTS_NAME = "phase4-recall-projects-delta"
+RECALL_PROJECTS_FILES = {
+    "/opt/netaigis-coding-agent/recall_api.py": "76c17214d28422026ff98a461d44884d9330624765d6e878e16cccda2c070d3b",
+    "/opt/netaigis-coding-agent/recall_store.py": "7885856b549d4b6b5cb3af51e6f27b95233db108a0e858c74486354085de960b",
+}
 DELTA_FILES = {
     "/opt/ai-model-router/model_router.py": "948637effe8516d3196b64f332361ed946b245d408c2ca13cbc656f754aeb410",
     "/etc/ai-model-router.json": "eea634e63e3534875123f9b9f1f32ea54351b125636ed91865857ed0670f04fe",
@@ -69,8 +75,10 @@ def write_private(path, data):
 
 
 def prepare(files, parent, export_parent, export_uid, export_gid, state, run=subprocess.run, *, name=NAME):
-    if name not in (NAME, DELTA_NAME):
+    if name not in (NAME, DELTA_NAME, RECALL_PROJECTS_NAME):
         raise Refused("unknown_incremental_backup_name")
+    if name == RECALL_PROJECTS_NAME and files != RECALL_PROJECTS_FILES:
+        raise Refused("recall_project_backup_scope_changed")
     protected_parent(parent, os.geteuid())
     protected_parent(export_parent, export_uid)
     before_state = state()
@@ -176,9 +184,11 @@ def verify_reused_base(parent=PARENT, files=FILES,
     return reused
 
 
-def service_state():
+def service_state(include_learning=False):
     result = {}
-    for unit in ("ai-deepseek.service", "ai-model-router.service", "netaigis-coding-agent.service"):
+    units = ("ai-deepseek.service", "ai-model-router.service", "netaigis-coding-agent.service")
+    if include_learning: units += ("ai-agent.service",)
+    for unit in units:
         completed = subprocess.run(["systemctl", "show", unit,
                                     "--property=User,Group,ActiveState,SubState,MainPID,InvocationID,FragmentPath,CollectMode"],
                                    capture_output=True, text=True, timeout=10, check=True)
@@ -189,7 +199,9 @@ def service_state():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--remote", action="store_true")
-    parser.add_argument("--router-context-delta", action="store_true", help="back up only the two router files changed since the verified seven-file snapshot")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--router-context-delta", action="store_true", help="back up only the two router files changed since the verified seven-file snapshot")
+    group.add_argument("--recall-projects-delta", action="store_true", help="back up only the two newly affected existing Recall modules")
     args = parser.parse_args()
     if args.remote:
         helper = Path(__file__).with_name("netaigis-coding-agent-adapter-remote.py")
@@ -199,7 +211,8 @@ def main():
         source = Path(__file__).read_bytes()
         program = ("import base64,hashlib,sys; s=base64.b64decode(" + repr(base64.b64encode(source).decode())
                    + "); assert hashlib.sha256(s).hexdigest()==" + repr(digest(source))
-                   + "; sys.argv=" + repr(["model-context-file-preflight", *(["--router-context-delta"] if args.router_context_delta else [])]) + "; "
+                   + "; sys.argv=" + repr(["model-context-file-preflight", *(["--router-context-delta"] if args.router_context_delta else []),
+                                            *(["--recall-projects-delta"] if args.recall_projects_delta else [])]) + "; "
                    + "exec(compile(s,'public-model-context-preflight','exec'),{'__name__':'__main__'})")
         with open("/dev/tty") as terminal:
             return subprocess.call(transport.ssh_command(program), stdin=terminal)
@@ -209,8 +222,10 @@ def main():
     account = pwd.getpwnam("friseer")
     try:
         reused = verify_reused_base() if args.router_context_delta else 0
-        report = prepare(DELTA_FILES if args.router_context_delta else FILES, PARENT, EXPORT,
-                         account.pw_uid, account.pw_gid, service_state, name=DELTA_NAME if args.router_context_delta else NAME)
+        selected_files = RECALL_PROJECTS_FILES if args.recall_projects_delta else DELTA_FILES if args.router_context_delta else FILES
+        selected_name = RECALL_PROJECTS_NAME if args.recall_projects_delta else DELTA_NAME if args.router_context_delta else NAME
+        report = prepare(selected_files, PARENT, EXPORT, account.pw_uid, account.pw_gid,
+                         lambda: service_state(include_learning=args.recall_projects_delta), name=selected_name)
         if args.router_context_delta:
             report["previously_verified_files_reused_without_backup"] = reused
     except Refused as error:

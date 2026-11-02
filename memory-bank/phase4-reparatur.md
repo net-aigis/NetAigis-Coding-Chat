@@ -4595,3 +4595,20 @@ vorhandener toSessionRecord-Konverter statt Cast, explizit typisierte reale
 Arbeitskopien statt unzulässiger Literale. Laufzeitimplementierung unverändert.
 Betroffene zwei Suites15/15 erneut bestanden; anschließend vollständige
 Core-Dev-Typprüfung Exit0(104,22 s). Alter negativer Typnachweis erhalten.
+
+
+Vor Acer-Projekt-API-Anwendung tatsächlich bestehende lokale Phase2-Archive
+config.tar, service-addendum.tar und other-data.tar auf betroffene Module geprüft:
+keine recall_api.py/recall_store.py darin. Daher genau diese beiden neu betroffenen
+Module ergänzend sichern, keine früheren unveränderten Sicherungen wiederholen.
+Bestehender geprüfter Preflight-Helfer um expliziten --recall-projects-delta-Modus
+erweitert; alter Router-/Model-Kontextmodus unverändert. Neue Dateiliste exakt
+auf aktuelle oben dokumentierte SHA256-Pins begrenzt; keine frei wählbaren Pfade.
+Acer-Root-Archiv und Export im bestehenden Phase2-Baum, tatsächlicher Restore mit
+allen Attributen und Vergleich der vier existierenden Dienste vor/nach; keine
+Dienste starten/stoppen und keine Quelle verändern. Gezielte Preflight-Tests
+bestanden, einschließlich exaktem Zweier-Scope und rein lesender Learning-Prüfung.
+Nächster Root-Befehl ist NUR Sicherung, noch keine Produktivanwendung:
+`PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-preflight.py --remote --recall-projects-delta`
+Danach externe Kopie und tatsächliche Wiederherstellung prüfen, bevor der konkrete
+Backend-API-Eingriff vorgelegt wird. Alte Acer-Konfiguration/Modellzugänge bleiben.

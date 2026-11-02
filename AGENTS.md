@@ -14,6 +14,28 @@ Continuation 2026-11-01: `be11bad51` fixes concurrent approval intents; `a460bd1
 
 ## Cloud Agent Instructions
 
+Current continuation superseding earlier "in progress" notes: productive metadata
+regression PASSED with actual model/browser: canonical controlled session now
+13 messages; all previous eleven exactly unchanged. Own installed VSIX still
+3e3bc4e9.../309 files. Watchdog fixed Root apply SUCCEEDED, timer enabled/active;
+later read-only LastTrigger advanced 11:08:43 to11:11:58 CET, service Resultsuccess.
+Do not reinstall it. Root firewall diagnosis proved ONLY missing security.selinux
+in private restore, productive bytes/attrs unchanged and no rule mutation.
+b73c44621 reuses the existing archive, restores its verified PAX label only to
+private probe, retains all checks, optionally exact VPN10.8.0.2/32. Eleven tests
+passed; corrected local Root apply requested, result pending. No policy/DS change.
+Recall project RPC/UI in a31c15f27: 33 core/real transport tests and17 UI tests,
+Core build and both Core-dev/VSCode typechecks pass after fixing only fixture
+types. Project catalog exists as tested backend candidate, NOT installed. Current
+productive Recall DB only one test event. Producer per-session project binding
+and productive Recall configuration remain OPEN, never choose a global project.
+Targeted preflight for only current Recall API/store pair prepared via existing
+--recall-projects-delta helper, not yet run. External copy/restore and concrete
+productive API activation must precede installation. Preserve pending old native
+unknown-owner recovery, main-profile shared connection, Android real device and
+full Learning/Recall acceptance. No completed-phase repetitions or new stores.
+
+
 Newest 2026-11-02: history-metadata fix installed as own VSIX SHA3e3bc4e9...,
 309 payload files checked, current own daemon PID2659602/dashboard PID2659673.
 Current delta shared-history-metadata-delta verified actual full restore;
