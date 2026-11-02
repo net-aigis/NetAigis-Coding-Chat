@@ -5404,3 +5404,45 @@ Logout, geschützte Cookies und saubere eigene Prozess-Exits positiv.
 Noch keine physische Geräteabnahme dieser Entwurfs-/Kontraständerung. Minimaler
 Browser-only-Rollout und anschließender tatsächlicher produktiver Reload-/Entwurfs-
 und Layoutnachweis folgen, ohne Neustart/Root-/Modell-/Dienständerung.
+
+
+### Produktivprüfung der Entwurfs-/Kontrastkorrektur
+
+Sourcecommit8c32b66d2. Browser-only-Differenz des tatsächlichen finalen VSIX
+590d7bab234039a1e9b484ac6448f61ebcc54098784dd57e72e4c5729532c94e gegen
+vorherigen produktiven Mobile-Composer-V2 vollständig geprüft: andere Payloads
+bytegleich. Nur bestehende index.html zusätzlich geschützt gesichert und tatsächlich
+mit Eigentümer/Modus/mtime/xattrs wiederhergestellt. Keine erneute Sitzungs-/DB-
+Sicherung, diese Dateien sind keine Schreibziele. Bestehender Sicherungsbaum
+R/browser-draft-contrast-assets-delta,ManifestSHA
+32de145ae6e6fb5bec1cb76a466f35ca1cd119c8035eaeaac54158afd8cf5f30.
+Anwendung erfolgreich:19neue geprüfte Hash-Assets zuerst hinzugefügt, dann eine
+HTML-Einstiegsdatei atomar ersetzt; alte Hash-Assets unverändert erhalten.
+Alle382Payload-Dateien gegen produktive eigene Installation verglichen.
+
+Kein Code-CLI-Installationslauf, kein eigener oder fremder Dienstneustart.
+CorePID2987922,DashboardPID2988057 und beide InvocationIDs identisch vor/nach.
+Anmeldetickets, Launch-/Modellkonfiguration und private Sitzungs-/Secretdaten
+unverändert; keine Acer-/Routing-/Firewall-/Originalbranchänderung. Rückfall über
+geprüftes Original-index.html mit Attributen dokumentiert, keine automatische
+Rücknahme. Privater Anwendungsbeleg R/browser-draft-contrast-assets-delta/application.json.
+
+p4-composer-draft-productive-fixed Exit0(13,70s), echte produktive HTTPS-Seite:
+eingegebener nicht abgesendeter Text nach Reload exakt wieder da; Login, ausgewählte
+ID und tatsächlicher kanonischer Verlauf bleiben. Bewusstes Leeren überlebt einen
+weiteren Reload. Sichtbar beschrifteter Senden-Knopf, gemessener Vordergrund-/
+Hintergrundfarbkontrast17,176:1 in beiden Designs. Frühere Platzhalterzahlen aus
+dem Pakettest beziehen sich auf den jeweiligen Seitenhintergrund; keine pauschale
+Barrierefreiheitsabnahme aus diesen Einzelmessungen ableiten. Keine Inferenz und
+keine Schreibübernahme; kanonische15Nachrichten bytegleich unverändert.
+
+p4-composer-draft-contrast-productive-layout Exit0(11,58s), tatsächlicher Dienst mit
+bereits VOR Update bestehendem persönlichen Browserprofil: Cookie bleibt ohne
+neue Anmeldung gültig. Alle5Viewportgrößen: Eingabefeld/Senden vollständig sichtbar
+und per Hittest erreichbar; echtes Entwurfstippen ohne Absenden positiv.
+
+Benutzer um physischen Android-Nachweis für diese neue Version gebeten: einmal
+neuladen, NEUEN Entwurf tippen, erneut aktualisieren, Text/Lesbarkeit prüfen,
+keine Modellanforderung. Ergebnisse aus Browseremulation nicht als dessen Antwort
+vorwegnehmen. Der weiterhin offene eigentliche geräteübergreifende Modell-/
+Werkzeugturn und die übrigen Originalaufträge bleiben offen, kein Gesamtabschluss.
