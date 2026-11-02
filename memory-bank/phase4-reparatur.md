@@ -4387,3 +4387,38 @@ Erster Plugin-Aufruf hatte falsches Arbeitsverzeichnis und änderte nichts;
 gezielt korrigiert. Erweiterungsbuild in Sandbox: esbuild service stopped;
 gleicher Build außerhalb Sandbox Exit 0 (13,78 s). Kein Systemfix, Ursache der
 Sandbox-Unterprozessbeendigung ungeklärt. Quittungen unverändert aufbewahrt.
+
+
+### 2026-11-02: Root-Nachweis klärt Watchdog und tatsächlichen Recall-Bestand
+
+Bediener führte den geprüften lesenden Root-Helfer aus: ok=true, keine Änderungen.
+Aktuelle produktive events-Tabelle enthält ausschließlich Projektkennung
+`total-recall-production-test` mit EINEM Ereignis. Keine gespeicherte NetAigisOS-
+Zuordnung in dieser DB. recall.env enthält nur RECALL_API_TOKEN/RECALL_DB_PATH,
+keinen Projektwert. Nutzerangabe NetAigisOS bleibt bestehende Projektentscheidung;
+produktive Wissensdaten fehlen aber im benannten tatsächlichen Speicher. Nicht
+als globale ID benutzen und keine bereits vorhandenen produktiven Daten behaupten.
+
+Journal belegt Watchdog-Ausführung 2026-11-02T09:15:46.608998Z, PID2441796,
+Invocation 6f9def2fe33441029d67814d1fbbf809. Alle vier Beobachtungen healthy mit
+HTTP200. Manager protokolliert gleiche Invocation, unit_log_success und
+job_emit_done_message/JOB_RESULT=done. Die vier KI-Invocations entsprechen den
+vorher dokumentierten unveränderten Diensten. Der Watchdog ist nicht abgestürzt;
+der Installationshelfer wertete die nach erfolgreichem Oneshot-Collection leere
+Live-InvocationID fälschlich als fehlgeschlagenen Prozessnachweis.
+
+Gezielter Helper-Fix: Journalcursor VOR Start; danach nur frische JSON-Einträge
+mit vertrauenswürdiger _SYSTEMD_UNIT/_SYSTEMD_INVOCATION_ID sowie abgeschlossener
+Manager-Jobmeldung (_PID=1, UNIT und INVOCATION_ID genau passend). Strukturierte
+Beobachtung allein bestätigt keinen Exit. Start-Rückgabe und Status müssen zur
+Beobachtung passen; vorhandene Live-Invocation darf nicht abweichen. Keine
+Timeraktivierung ohne belastbaren Abschlussnachweis. Verifizierte bereits eigene
+Dateien werden bytegleich wiederverwendet, fremde/anders geschützte Dateien
+weiter verweigert. Gezielte Tests p4-watchdog-collected-invocation-proof bestanden;
+produktive Wiederanwendung innerhalb erteilter Freigabe benötigt Root-Terminal.
+
+Benutzer verlangt dauerhafte Android-Nutzung einschließlich extern über VPN.
+Die vorgeschlagene temporäre Firewallregel wurde NICHT ausgeführt. Vor dauerhaftem
+minimalem Eingriff tatsächliche lokale Zonen-/VPN-Routen prüfen, aktuelle relevante
+Konfiguration sichern/wiederherstellen und eng begrenzte Änderung konkret machen.
+Keine Internet-Portfreigabe, kein Acer-Firewalleingriff, kein Systemvertrauenswechsel.

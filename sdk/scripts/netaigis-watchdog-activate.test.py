@@ -30,7 +30,8 @@ class ActivationTests(unittest.TestCase):
                  mock.patch.object(activation,'check_targets',side_effect=[list(self.targets),[]]),
                  mock.patch.object(activation,'query',side_effect=self.query),
                  mock.patch.object(activation,'control',side_effect=self.control),
-                 mock.patch.object(activation,'read_probe',side_effect=self.probe)]
+                 mock.patch.object(activation,'read_probe',side_effect=self.probe),
+                 mock.patch.object(activation,'journal_cursor',return_value='s=before;i=1')]
         self.mocks=[p.start()for p in patches]
         self.addCleanup(mock.patch.stopall)
 
@@ -44,10 +45,24 @@ class ActivationTests(unittest.TestCase):
         if action=='start':
             self.assertTrue(all(file.read_bytes()==self.assets[name]for name,file in self.targets.items()))
         if action=='enable':self.timer_state.update(ActiveState='active',UnitFileState='enabled')
+        return int(self.service_state['ExecMainStatus']) if action=='start' else 0
 
-    def probe(self,invocation):
+    def probe(self,cursor,invocation):
+        self.assertEqual(cursor,'s=before;i=1')
         self.events.append('probe')
-        return self.observation
+        return 'a'*32,self.observation
+
+    def test_completed_oneshot_with_collected_live_invocation_uses_its_fresh_journal_proof(self):
+        self.service_state['InvocationID']=''
+        result=activation.apply(self.assets,True)
+        self.assertTrue(result['ok'])
+        self.mocks[5].assert_called_once_with('s=before;i=1','')
+
+    def test_mismatching_actual_start_exit_cannot_enable_timer(self):
+        self.mocks[4].side_effect=lambda action,unit=None: 1 if action=='start' else 0
+        with self.assertRaisesRegex(activation.Refused,'watchdog_exit_disagrees_with_observation'):
+            activation.apply(self.assets,True)
+        self.assertNotIn(('enable',activation.TIMER),self.events)
 
     def test_missing_explicit_approval_cannot_write_or_query(self):
         with self.assertRaisesRegex(activation.Refused,'separate_watchdog_installation_approval'):
@@ -116,12 +131,58 @@ class ScopeAndPublicationTests(unittest.TestCase):
 
     def test_a_different_or_incomplete_journal_cannot_confirm_the_service_probe(self):
         with mock.patch.object(activation.subprocess,'run')as run:
-            run.return_value.stdout=json.dumps({'version':1,'component':'netaigis-watchdog','observations':[]})
+            entry={'_SYSTEMD_UNIT':activation.WATCHDOG,'_SYSTEMD_INVOCATION_ID':'a'*32,
+                   'MESSAGE':json.dumps({'version':1,'component':'netaigis-watchdog','observations':[]})}
+            run.return_value.stdout=json.dumps(entry)
             with self.assertRaisesRegex(activation.Refused,'watchdog_observation_incomplete'):
-                activation.read_probe('a'*32)
-            run.return_value.stdout=json.dumps({'version':1,'component':'other-process','observations':[]})
+                activation.read_probe('s=before;i=1','a'*32)
+            entry['MESSAGE']=json.dumps({'version':1,'component':'other-process','observations':[]})
+            run.return_value.stdout=json.dumps(entry)
             with self.assertRaisesRegex(activation.Refused,'structured_watchdog_observation_missing'):
-                activation.read_probe('a'*32)
+                activation.read_probe('s=before;i=1','a'*32)
+
+    def journal_fixture(self):
+        observation={'version':1,'component':'netaigis-watchdog','observations':[
+            {'unit':unit,'state':'healthy'}for unit in activation.MONITORED]}
+        return [{'_SYSTEMD_UNIT':activation.WATCHDOG,'_SYSTEMD_INVOCATION_ID':'a'*32,
+                 'MESSAGE':json.dumps(observation)},
+                {'_PID':'1','UNIT':activation.WATCHDOG,'INVOCATION_ID':'a'*32,'JOB_RESULT':'done'}]
+
+    def test_fresh_journal_confirms_a_completed_collected_invocation(self):
+        with mock.patch.object(activation.subprocess,'run')as run:
+            run.return_value.stdout='\n'.join(map(json.dumps,self.journal_fixture()))
+            invocation,observation=activation.read_probe('s=before;i=1','')
+            self.assertEqual(invocation,'a'*32)
+            self.assertEqual(len(observation['observations']),4)
+            argv=run.call_args.args[0]
+            self.assertIn('--after-cursor=s=before;i=1',argv)
+            self.assertEqual(argv[-2:],['-u',activation.WATCHDOG])
+
+    def test_wrong_invocation_untrusted_unit_or_missing_manager_completion_are_rejected(self):
+        for mutation,reason in [
+            (lambda rows:rows.pop(),'watchdog_journal_completion_not_confirmed'),
+            (lambda rows:rows[1].update(_PID='42'),'watchdog_journal_completion_not_confirmed'),
+            (lambda rows:rows[1].update(INVOCATION_ID='b'*32),'watchdog_journal_completion_not_confirmed'),
+            (lambda rows:rows[1].update(JOB_RESULT='failed'),'watchdog_journal_completion_not_confirmed'),
+            (lambda rows:rows[0].update(_SYSTEMD_UNIT='other.service'),'structured_watchdog_observation_missing'),
+            (lambda rows:rows.append(rows[0].copy()),'structured_watchdog_observation_missing')]:
+            rows=self.journal_fixture();mutation(rows)
+            with mock.patch.object(activation.subprocess,'run')as run:
+                run.return_value.stdout='\n'.join(map(json.dumps,rows))
+                with self.assertRaisesRegex(activation.Refused,reason):
+                    activation.read_probe('s=before;i=1','a'*32)
+        with mock.patch.object(activation.subprocess,'run')as run:
+            run.return_value.stdout='\n'.join(map(json.dumps,self.journal_fixture()))
+            with self.assertRaisesRegex(activation.Refused,'watchdog_invocation_not_confirmed'):
+                activation.read_probe('s=before;i=1','b'*32)
+
+    def test_missing_cursor_prevents_start_and_empty_or_malformed_cursor_is_rejected(self):
+        with mock.patch.object(activation.subprocess,'run')as run:
+            run.return_value.stdout=''
+            with self.assertRaisesRegex(activation.Refused,'watchdog_journal_cursor_not_confirmed'):
+                activation.journal_cursor()
+            with self.assertRaisesRegex(activation.Refused,'watchdog_journal_cursor_not_confirmed'):
+                activation.read_probe('--invalid\nargument')
 
     def test_service_control_rejects_all_model_and_agent_actions(self):
         with mock.patch.object(activation.subprocess,'run')as run:

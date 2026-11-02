@@ -119,23 +119,54 @@ def publish(path, content):
         temporary.unlink()  # Only this invocation's exclusively created staging file.
 
 
-def read_probe(invocation):
-    if not re.fullmatch(r"[0-9a-f]{32}", invocation):
-        raise Refused("watchdog_invocation_not_confirmed")
-    result = subprocess.run(["journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID=" + invocation],
+def journal_cursor():
+    result = subprocess.run(["journalctl", "--no-pager", "-n", "0", "--show-cursor"],
                             capture_output=True, text=True, timeout=10, check=True)
+    cursors = [line.removeprefix("-- cursor: ") for line in result.stdout.splitlines()
+               if line.startswith("-- cursor: ")]
+    if len(cursors) != 1 or not re.fullmatch(r"[A-Za-z0-9;=_-]{1,512}", cursors[0]):
+        raise Refused("watchdog_journal_cursor_not_confirmed")
+    return cursors[0]
+
+
+def read_probe(cursor, expected_invocation=""):
+    if not re.fullmatch(r"[A-Za-z0-9;=_-]{1,512}", cursor):
+        raise Refused("watchdog_journal_cursor_not_confirmed")
+    # Oneshot units may be collected immediately after successful completion.
+    # Their live InvocationID then disappears; the attributed journal survives.
+    result = subprocess.run(["journalctl", "--no-pager", "-o", "json", "--after-cursor=" + cursor,
+                             "-u", WATCHDOG],
+                            capture_output=True, text=True, timeout=10, check=True)
+    entries = []
     values = []
     for line in result.stdout.splitlines():
-        try: value = json.loads(line)
+        try: entry = json.loads(line)
         except ValueError: continue
-        if isinstance(value, dict) and value.get("component") == "netaigis-watchdog": values.append(value)
-    if len(values) != 1 or values[0].get("version") != 1:
+        if not isinstance(entry, dict): continue
+        entries.append(entry)
+        if entry.get("_SYSTEMD_UNIT") != WATCHDOG: continue
+        try: value = json.loads(entry.get("MESSAGE", ""))
+        except (ValueError, TypeError): continue
+        if isinstance(value, dict) and value.get("component") == "netaigis-watchdog":
+            values.append((entry.get("_SYSTEMD_INVOCATION_ID", ""), value))
+    if len(values) != 1 or values[0][1].get("version") != 1:
         raise Refused("structured_watchdog_observation_missing")
-    observations = values[0].get("observations", [])
+    invocation, observation = values[0]
+    if (not re.fullmatch(r"[0-9a-f]{32}", invocation)
+            or expected_invocation and expected_invocation != invocation):
+        raise Refused("watchdog_invocation_not_confirmed")
+    observations = observation.get("observations", [])
     if (len(observations) != len(MONITORED) or {row.get("unit") for row in observations} != set(MONITORED)
             or any(row.get("state") not in ("healthy", "unhealthy", "unknown") for row in observations)):
         raise Refused("watchdog_observation_incomplete")
-    return values[0]
+    healthy = all(row["state"] == "healthy" for row in observations)
+    # A structured stdout line alone cannot confirm exit. Require the manager's
+    # completed start job for the SAME fresh oneshot invocation, not a stale log.
+    if not any(row.get("_PID") == "1" and row.get("UNIT") == WATCHDOG
+               and row.get("INVOCATION_ID") == invocation
+               and row.get("JOB_RESULT") == ("done" if healthy else "failed") for row in entries):
+        raise Refused("watchdog_journal_completion_not_confirmed")
+    return invocation, observation
 
 
 def apply(assets, approved=False):
@@ -167,15 +198,18 @@ def apply(assets, approved=False):
                 written.append(name)
                 record({"stage": "file_written", "asset": name, "sha256": ASSETS[name]})
             control("daemon-reload")
-            control("start", WATCHDOG)
+            cursor = journal_cursor()
+            start_result = control("start", WATCHDOG)
             service = query(WATCHDOG)
             if service.get("ExecMainStatus") not in ("0", "1") or service.get("ActiveState") not in ("inactive", "failed"):
                 raise Refused("watchdog_process_completion_unconfirmed")
-            observation = read_probe(service.get("InvocationID", ""))
+            invocation, observation = read_probe(cursor, service.get("InvocationID", ""))
             healthy = all(row["state"] == "healthy" for row in observation["observations"])
-            if service["ExecMainStatus"] != ("0" if healthy else "1"):
+            if (start_result != (0 if healthy else 1)
+                    or service["ExecMainStatus"] != ("0" if healthy else "1")):
                 raise Refused("watchdog_exit_disagrees_with_observation")
-            record({"stage": "independent_service_probe", "invocation": service["InvocationID"], "observation": observation})
+            record({"stage": "independent_service_probe", "invocation": invocation,
+                    "journal_after_cursor": cursor, "observation": observation})
             control("enable", TIMER)
             timer = query(TIMER)
             if timer.get("ActiveState") != "active" or timer.get("UnitFileState") != "enabled":
