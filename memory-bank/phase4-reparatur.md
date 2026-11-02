@@ -5184,3 +5184,53 @@ lange Auftragshistorie bytegleich unverändert. Sämtliche isolierten Testartefa
 unter bestehendem E/test-data erhalten. Reparatur noch nicht produktiv installiert;
 Android-Menü/Wake-Build bleibt produktiv aktiv. Kein erneuter Modellturn, keine
 wiederholte Projektbindung, keine neue Sicherung oder Acer-Dienständerung.
+
+
+### Ausgelieferter Restore-Fix und erneute Paketprüfung
+
+Commitfadb8b777 enthält Unterprojektkorrektur und automatisierte Sicherheitsfälle.
+Eigenes neues Paket shared-runtime-recall-recovery-candidate.vsix,
+SHA0e06598cc43165846fb3ad10b7e246f8523e72d99cc86d97f84338edbf14c6b3,
+347Payload-Dateien bytegleich zum Build geprüft. Bundle Exit0(5,27s),
+Paketierung Exit0(5,78s). Extrahiertes Paket mit echten isolierten Prozessen,
+HTTPS,Chromium,Auth/Wake/Reload/Logout/Ownerdrain Exit0(21,31s).
+Tatsächliches Acer-Archiv aus EXAKTEM extrahiertem Paket in leeren nativen Store
+wiederhergestellt/kalt neu geöffnet: Exit0(4,77s), keine Fixturearchivdaten,
+keine produktive Historienänderung oder Inferenz. Git-Checkpointobjekt
+4971cc92df547dd67ba5923d369e81a238fc8375 ist im vorhandenen Reparatur-Repository
+lesend als Commit bestätigt; keine neue Objektwiederherstellung ausgeführt.
+
+Nur acht seit der letzten geprüften Sicherung geänderte eigene Dateien zusätzlich
+unter R/shared-recall-recovery-delta gesichert,30unveränderte wiederverwendet.
+Aktive SQLite-Backup-API, Integrität und tatsächlicher Restore mit Attributen
+bestätigt. Archiv4ebdbc0614e712dcb7d0d903720c5548b3f848aef47f61e328247a903a292b31,
+Manifest3247223a4a999de9dd14f7928fc019e1654c0ac4773928517033ddf0aa4cebc6.
+Vor produktiver Übernahme reale Owner-HTTP-Drain-/Ruheprüfung, keine weiteren
+Clients/angenommenen Arbeiten. Bestehende eigene Aktualisierungsfreigabe verwendet.
+Nur eigene Extension und zwei eigene User-Dienste aktualisiert,347installierte
+Dateien verglichen, kanonische Daten/Secrets/Recallkonfiguration unverändert,
+andere registrierte Extensionidentitäten/Versionen/Pfade unverändert.
+Keine Acer-/Modelländerung und Haupt-VS-Code nicht geschlossen. Originalbranch
+coding-agent-v4 weiterhin624c2cd6661e100680d8b61daa3a3447f4708536.
+
+Produktiver CorePID2987922,Dashboard2988057,active/running,Resultsuccess,NRestarts0,
+HTTPS verbunden. Idle-/Historienerhaltung nach tatsächlichem Corestop erneut
+positiv, kein künstlicher Completedstatus. Privater Nachweis
+R/shared-recall-recovery-delta/installation.json. Absichtlicher Dashboardneustart
+verwirft RAM-only Browser-Tickets: einmalige neue persönliche Anmeldung danach
+erwartet, kein Verlust bestehender Sitzung. Normaler physischer Android-Reload/
+Screen-Wake bereits vom Benutzer positiv bestätigt. Mobilfunk/WireGuard-Test
+angefragt, noch keine Antwort; aus LAN-/Desktoptests nicht ableiten.
+
+
+Abschließender INSTALLIERTER-Code-Nachweis für diesen abgegrenzten Fix:
+p4-actual-recall-native-installed-fixed-restore Exit0(5,49s), tatsächliches
+Acer-Archiv mit tatsächlich installierter Core-Implementierung nach denselben
+strikten Restore-/Fehler-/Autoren-/Kaltstart-Prüfungen wiederhergestellt. Ziel
+weiterhin isolierter nativer Testbestand, KEIN Ersatz produktiver Sitzung.
+15Nachrichten vollständig,12GETs,0Recall-Schreibversuche,0Agent-/Runtimeaufrufe,
+produktive kontrollierte UND lange Originalhistorie bytegleich. Das schließt den
+nachgewiesenen Unterprojekt-Restorefehler; keine Gesamtproduktabnahme daraus
+ableiten. Main-VS-Code-Anbindung und echter geräteübergreifender Modell-/Werkzeugturn,
+Learning-Verhaltensabnahme, ursprünglicher unbekannter Besitzerzustand, externes
+VPN und Zertifikatsvertrauen bleiben ausdrücklich offen.
