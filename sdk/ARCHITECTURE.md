@@ -218,6 +218,17 @@ the model turn. This avoids stale-owner reconciliation mistaking the previous
 process's PID for the owner of newly resumed work; it does not clear existing
 unknown-owner evidence or invent an exit result for older interrupted processes.
 
+The own VSIX packages the existing Core daemon exports and the existing Hub
+dashboard through `apps/cline-hub/src/netaigis-runtime.ts`. The launcher sets
+the own extension's isolated storage before importing either process entry.
+It requires operator-supplied protected configuration and credentials; it does
+not install services, create another storage architecture or select a model.
+The dashboard verifies canonical discovery against the live Hub ID and uses
+that one runtime, without fallback spawning. Its HTTPS browser has separate
+invite and personal actor authentication. Browser/dashboard teardown does not
+dispose the canonical runtime. Independent infrastructure monitoring remains
+the separate Acer watchdog; the packaged launcher adds no monitoring agent.
+
 The hub health endpoint includes its `hubId`. Restart callers compare this instance identity while waiting for shutdown, so a replacement started by reconnecting clients at the same address counts as retirement of the original hub. Desktop local activity is recorded only at its local hub observer subscription; cloud session projection does not write to that activity list.
 
 1. Host constructs a `RuntimeHost` through `@cline/core`.

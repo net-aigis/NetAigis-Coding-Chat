@@ -1,5 +1,59 @@
 # Cline Hub
 
+## NetAigis Coding Chat: packaged shared runtime
+
+The own VSIX includes the existing Core daemon and this dashboard under
+`dist/shared-runtime/netaigis-runtime.mjs`. It does not install or start services.
+Run the packaged entry with the already installed Bun runtime:
+
+```sh
+bun --no-env-file /path/to/own-extension/dist/shared-runtime/netaigis-runtime.mjs daemon /existing/private/launch.json
+bun --no-env-file /path/to/own-extension/dist/shared-runtime/netaigis-runtime.mjs dashboard /existing/private/launch.json
+```
+
+`launch.json` must be an existing owner-only regular file (0600), with this shape:
+
+```json
+{
+  "version": 1,
+  "storageRoot": "/existing/own-global-storage/netaigis.netaigis-coding-chat/home",
+  "workspaceRoot": "/existing/authorized/workspace",
+  "actorTokensFile": "/existing/private/actors.json",
+  "hubPort": 25463,
+  "dashboard": {
+    "host": "127.0.0.1",
+    "port": 8787,
+    "publicUrl": "https://127.0.0.1:8787",
+    "roomSecret": "OPERATOR_SUPPLIED_SEPARATE_RANDOM_INVITE_CREDENTIAL",
+    "certFile": "/existing/tls/cert.pem",
+    "keyFile": "/existing/private/key.pem"
+  }
+}
+```
+
+Use the actual existing own extension storage and an explicitly selected
+workspace. The loader refuses the original extension's namespace, missing or
+insecure storage, HTTP browser URLs, conflicting ports and credentials in URLs.
+It does not create secrets, migrate data, select models or alter backend endpoints.
+The actor file uses the existing Core actor-to-token format and protection rules.
+Recall uses the existing explicit `CLINE_HUB_RECALL_*` environment contract;
+the launch configuration does not infer an archive project or reuse login keys.
+
+The daemon listens only on loopback and keeps its discovery under the same own
+storage. Connectors are not started by this entry. The dashboard confirms that
+discovery's live Hub ID before connecting and never spawns a fallback. Its TLS
+files and invite credential are supplied explicitly; the browser additionally
+authenticates each actor with their own runtime credential. Invite credentials
+are not printed by this entry. A LAN deployment needs an explicit LAN bind,
+matching HTTPS URL/certificate and separate deployment approval.
+
+Production extension builds rebuild/package these existing components. The
+native package smoke test is `node scripts/test-shared-runtime.mjs` from
+`apps/vscode`, with an explicitly provided existing private `CLINE_DATA_DIR`.
+It starts only owned loopback fixture processes, verifies mobile browser login,
+dashboard restart and runtime survival, then checks their actual exit codes.
+It performs no inference and is not physical Android or productive acceptance.
+
 A browser dashboard for the local Cline hub. Open it to see who's connected, what sessions are running, drive a session from a chat box, and restart the hub when you need a fresh daemon.
 
 ## Capabilities

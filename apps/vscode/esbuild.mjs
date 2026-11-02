@@ -205,6 +205,7 @@ function copyPluginRuntime() {
 async function main() {
 	const config = standalone ? standaloneConfig : e2eBuild ? e2eBuildConfig : extensionConfig
 	if (!e2eBuild) copyPluginRuntime()
+	if (production && !standalone && !e2eBuild) await import("./scripts/build-shared-runtime.mjs")
 	const extensionCtx = await esbuild.context(config)
 	if (watch) {
 		await extensionCtx.watch()

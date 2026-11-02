@@ -3928,3 +3928,84 @@ Keine produktive Installation, kein Acer-Dienstwechsel und keine neue
 Modellanfrage nach dem bereits angezeigten Browserturn. Physisches Android,
 produktiver gemeinsamer Hub/Recall, unbekannte ältere Besitzerzustände und
 getrennter Watchdog bleiben bis zur echten jeweiligen Abnahme offen.
+
+### 2026-11-02: Vorhandenen Hub/Browser in die eigene VSIX aufgenommen
+
+Auf 7f66a18c1 fortgesetzt. Keine neue Runtime-/Speicherarchitektur: der neue
+Paket-Einstieg `apps/cline-hub/src/netaigis-runtime.ts` verwendet den bestehenden
+Core-Daemon aus dem ohnehin mitgelieferten Plugin-Runtime-SDK und den bestehenden
+Hub-Browser. Die Produktions-Buildkette baut dessen Webview und bündelt diese
+Dateien zusätzlich unter dist/shared-runtime. Keine Installer-/Dienstaktivierung
+beim Build oder bei Extension-Aktivierung.
+
+Explizite vorhandene private JSON-Konfiguration (0600, eigener Eigentümer, kein
+Symlink), geschützter bestehender eigener Datenordner mit Namespace
+netaigis.netaigis-coding-chat/home und vorhandene Akteur-/TLS-Dateien erforderlich.
+Keine automatische Datenanlage, Migration, Modellwahl oder Backend-Umstellung.
+Daemon nur Loopback, fest eigener Produktions-Discovery-Pfad; Browser bestätigt
+die Live-Hub-ID vor Anbindung. Kein Fallback-Hub bei fehlender/falscher Discovery.
+HTTPS mit passendem explizitem Bind/Public-URL, getrenntem Invite und persönlichen
+Akteur-Zugängen; kein Invite im Startprotokoll. Connectors werden über diesen
+Einstieg nicht automatisch gestartet. Recall verwendet weiterhin den bestehenden
+expliziten Umgebungsvertrag, kein Projekt/Schlüssel wird erfunden.
+
+Prüfungen im bestehenden Phase-4-Prüfverzeichnis:
+- `p4-packaged-runtime-configuration`: 18/18 bestanden, einschließlich alter
+  Extension-Namespace, unsicherer URL, Dateiberechtigung/Symlink, fehlender Daten.
+- `p4-runtime-launch-types`: Exit 0.
+- `p4-runtime-production-browser-webview`: Exit 0, tatsächlich ausgeführtes neues
+  Produktions-Teilkommando.
+- `p4-runtime-launch-extension-bundle`: Sandbox-Lauf service stopped, kein
+  genauerer Auslöser belegt; gezielte native Wiederholung Exit 0.
+- `p4-shared-runtime-integrated-bundle`: Exit 0 über die ergänzte reguläre
+  Produktions-Bundlekette.
+- `p4-packaged-runtime-native-smoke`: Exit 0, echter eigenständiger gebündelter
+  Daemon, TLS-Dashboard und vorhandener Chromium mit mobilem Viewport; persönliche
+  Anmeldung bestätigt, Runtime überlebt Browser-/Dashboard-Ende, Dashboard-
+  Neustart bestanden, alle drei eigenen Prozesse tatsächlicher Exit 0.
+- `p4-shared-runtime-vsix-package`: Exit 0; neues separates Artefakt
+  netaigis-coding-chat-0.1.0-shared-runtime-candidate.vsix.
+- `p4-shared-runtime-vsix-integrity.json`: ZIP intakt; Identität/Version korrekt,
+  Extension- und Runtime-Einstieg/Webview stimmen bytegleich mit gebautem Bestand
+  überein; 153 Runtime-Dateien, 16863423 Bytes; SHA256
+  023afbf50437c71201d2d1b7b5be3a947d9e6f511c0cad854409bc852f5d2446.
+- `p4-shared-runtime-vsix-native-smoke`: Exit 0, dieselben Prozess-/Browser-
+  Prüfungen direkt mit extrahierten VSIX-Dateien. Kein Modellaufruf oder
+  produktiver Datenzugriff. Keine physische Android-Abnahme daraus behauptet.
+
+Aktueller gezielter Rollout-Befund: eigener Paketordner UND eigener kompletter
+GlobalStorage-Namespace fehlen; keine Registrierung der eigenen ID vorhanden.
+Auch kein solcher Namespace in bestehenden VS-Code-Profilen gefunden. Ursache
+weiter ungeklärt; keine Löschung durch diese Prüfungen. Ursprünglicher Code-
+Arbeitsstand/Originalbranch nicht angefasst. Beide bisher verwendeten lokalen
+Hub-Standardports 25463/8787 bei lesender Prüfung frei; lokale Route zum Acer
+192.168.178.43 verwendet 192.168.178.25. Kein Listener produktiv geöffnet.
+
+Vor Wiederinstallation gezielt aktualisierter bestehender Phase-6-Preflight:
+Unter dem vorhandenen geschützten Sicherungsbereich ausschließlich neuer
+Kindnachweis productive-rollout/shared-runtime-repair-20261102. Zwölf unveränderte
+Dateien wiederverwendet; drei Delta-Dateien (aktuelle konsistente Session-DB,
+native VS-Code-DB und Extension-Register), tatsächlicher Archiv-Restore und
+SQLite-Integrität erfolgreich. Drei fehlende alte Legacy-Settings aus bestehender
+verifizierter Sicherung erhalten; deren Quellnamespace war schon beim bisherigen
+Rollout entfernt, also kein neu entdeckter Verlust daraus behauptet. Nativer
+Alt-ID-Memento unverändert, keine alten nativen Secret-Zeilen. Neu erzeugter
+Transfer ist byteidentisch zum bisherigen geprüften Transfer:
+cfd28898f4f18b28c88ad0d1b1257d05b7e28271fc4ae0e7b3de4531ebf3b5ea.
+Neuer SHA256-Siegelwert 586d75bf3699be8753f7f3fece77416e35c8dccad54b0db8790c559d8e9f97db.
+Keine produktiven Dateien bisher verändert; alte Sicherungen unverändert.
+
+Produktive eigene Wiederinstallation/Migration ist bereits autorisiert, benötigt
+keine erneute Namens-/Rolloutfrage. Neue LAN-Dienstbereitstellung hat dagegen
+noch keine konkrete Freigabe; zuerst vollständige prüfbare Vorlage und dann
+gezielte Freigabe. Separater Acer-Watchdog weiterhin auf bestehende eigene
+Freigabe-/Root-Ausführung angewiesen. Bereits bestandene Modell-/Native-
+Migrationsfälle wiederverwenden, echte Gesamt-/Android-/Recall-/Learning-
+Abnahme und unbekannte ältere Besitzerzustände weiter offen halten.
+
+Zusätzliche reine Fehlerfallprüfung `p4-shared-runtime-vsix-owner-safety`: Exit 0.
+Eine zweite eigene Daemoninstanz wurde mit tatsächlichem Exit 3 abgewiesen;
+bereits laufender Prozess und kanonische Hub-ID unverändert. Nach dessen
+eigenem sauberen Ende verweigerte das Dashboard den Start mit Exit 1; keine
+Ersatz-Discovery, kein Fallbackprozess. Positive Browserprüfungen nicht erneut
+ausgeführt. Vorhandene temporäre Fixture-Dateien/Protokolle erhalten.
