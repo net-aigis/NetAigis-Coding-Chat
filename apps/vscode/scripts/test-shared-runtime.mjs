@@ -131,6 +131,28 @@ try {
 		)
 		.toBe(`ws://127.0.0.1:${hubPort}/hub`)
 	report.canonicalDiscoveryConfirmed = true
+	if (process.env.NETAIGIS_RUNTIME_OWNER_DRAIN === "1") {
+		const owner = JSON.parse(await fs.readFile(discovery, "utf8"))
+		const endpoint = `http://127.0.0.1:${hubPort}/drain`
+		const drain = (token, suffix = "") => fetch(endpoint + suffix, {
+			method: "POST", redirect: "error", signal: AbortSignal.timeout(5000),
+			headers: token ? { Authorization: `Bearer ${token}` } : {},
+		})
+		assert.equal((await drain()).status, 401)
+		assert.equal((await drain(tokens.Friseer)).status, 401)
+		assert.equal((await drain(tokens.jimmi)).status, 401)
+		const closed = await drain(owner.authToken)
+		assert.equal(closed.status, 200)
+		const status = await closed.json()
+		assert.equal(status.draining, true)
+		assert.equal(status.idle, true)
+		assert.equal(daemon.child.exitCode, null, "Drain must not terminate the runtime")
+		const reopened = await drain(owner.authToken, "?off")
+		assert.equal(reopened.status, 200)
+		assert.equal((await reopened.json()).draining, false)
+		report.existingOwnerHttpDrainConfirmedWithActorAuthentication = true
+		report.personalHttpTokensCannotDrain = true
+	}
 	if (process.platform === "linux") {
 		const directory = `/proc/${daemon.child.pid}/fd`
 		const descriptors = await fs.readdir(directory)

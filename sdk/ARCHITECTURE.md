@@ -907,6 +907,14 @@ refuses new catalog and command requests. CLI and desktop fallbacks treat a
 failed catalog read as "not a plugin command" so skills and workflows still
 work, while errors from a listed plugin's handler remain visible.
 
+The existing HTTP `POST /drain` is an owner-management boundary: it validates
+the private owner bearer before calling the transport's in-process drain setter.
+It does not impersonate a personal actor through the session-command dispatcher.
+With personal actor authentication enabled, personal and observer WebSocket
+clients still cannot request `hub.drain`; personal tokens also cannot authorize
+the HTTP management route. Drain records admission state, never a process exit
+or proof that an in-flight task has completed.
+
 Sandboxed plugin subprocesses and workers are session-local but lazily recreatable. Core
 reclaims a sandbox after 30 minutes without an in-flight RPC call (configurable
 through `PluginSandboxOptions.idleTimeoutMs` or

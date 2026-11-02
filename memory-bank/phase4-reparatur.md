@@ -4853,3 +4853,89 @@ hat weiterhin13Nachrichten; Android-Prüfturn weder gesendet noch beantwortet,
 keine erfundene Modellabnahme. Originalbranch erneut624c2cd6661e100680d8b61daa3a3447f4708536.
 Produktive Aktualisierung des eigenen bereits genehmigten Pakets folgt erst nach
 Quittierungs-/Ruhestandsprüfung, keine Originalerweiterung oder Acer-Dienste ändern.
+
+### Produktive Browserkorrektur ausgeführt; kanonischer Core bewusst weiterlaufend
+
+Aktueller eigener Snapshot vor Eingriff nochmals vollständig verglichen:
+38Records, keine eigene Datei seit verifiziertem Restore verändert. Privilegierter
+Wartungsversuch über Sitzungs-RPC verweigert; anschließender bestehender geschützter
+HTTP-/drain-Endpunkt liefert500. Keine Unit gestoppt oder neue Arbeit als beendet
+ausgegeben. Quellbefund: aktive actorTokens leiten auch den bereits durch privaten
+Owner-Bearer autorisierten HTTP-Drain durch die persönlichen Sitzungs-Schreibregeln;
+dieser Managementaufruf erhält dabei keine Actor-Verbindung. Keine Rechte geöffnet.
+Zusätzliche gezielte Management-Reparatur erforderlich, Originalfehlerlogs erhalten.
+
+Für die isolierte Browserkorrektur kanonischen Core NICHT neu gestartet. Nur eigenen
+Dashboarddienst gestoppt, vorherige installierte309Dateien gegen vorherige eigene
+VSIX3e3bc4e9... bytegeprüft, dann Code-CLI ausschließlich eigene V2-VSIX installiert.
+334neue Payload-Dateien tatsächlich gegen VSIX1b3aa400... geprüft. Alle anderen
+registrierten Erweiterungen nach ID/Version/Pfad unverändert; keine Behauptung
+eines Vergleichs deren sämtlicher Paketbytes. Eigene Sitzungen/Metadaten/Modelle/
+Einstellungen/Secrets/Locks vor und nach unverändert; nur appendende Betriebs-
+ereignisse beim An-/Abmelden dürfen weiterlaufen. Browser wieder gestartet:
+PID2748321,active/running,Resultsuccess,NRestarts0. Core weiterhin PID2659602,
+Hubhub_1793612936189_r2nlz unverändert, active/running,NRestarts0. VS-Code-Fenster
+nicht beendet, kein Acer-Dienst oder Modell verändert, kein Modellrequest.
+Installation mit Quittung in R/shared-recall-browser-auth-delta/installation.json.
+Der bestehende Coreprozess verwendet weiterhin seinen zuvor geladenen Build;
+neue sessionbezogene Recall-Producer-Funktionen werden erst nach gesichertem
+späterem Core-Neustart aktiv. Keine produktive Recall-Konfiguration gesetzt.
+
+Tatsächlich installierte produktive Browseroberfläche zusätzlich mit getrenntem
+Chromium-Profil geprüft: p4-productive-browser-reload-v2,Exit0(3,71s), keine Fixtures/
+Modellanforderung/Writerclaim. Friseer durch echten Runtime-Handshake bestätigt,
+Secure/HttpOnly/Strict-Cookie vorhanden, zweimaliger Reload behält Identität UND
+dieselbe ausgewählte Sitzung1793603066247_pk2cs mit bisheriger Historie. Logout
+widerruft Ticket, nächster Reload anonym. Alle13Nachrichten einschließlich Urheber
+bytegleich, persönliche Hub-Schlüssel nicht im lesbaren Web Storage. Das ist
+produktive Browser-Funktionsprüfung, kein Android-/VPN-/Modellnachweis.
+Bediener zum einmaligen Reload/Login auf Android und anschließendem Reload-Test
+angeleitet. Bisheriger Android-Lesebefund bleibt gültig; neuer Android-Reload-
+Nachweis und angeleiteter tatsächlicher Modellturn noch offen. HTTPS-Vertrauen
+des selbstsignierten Zertifikats weiterhin offen, keine Truststore-Änderung.
+
+### Bestehender Owner-Drain: Ursache reproduziert und gezielt korrigiert
+
+Isolierter echter HTTP-/WebSocket-Rotfall p4-owner-drain-actor-regression-red:
+Legacy ohne Actor-Registry bestanden, mit vorhandener Actor-Registry HTTP500
+statt200. Keine Modelle oder produktiven Prozesse beteiligt. Der bestehende
+Owner-Bearer war gültig; der nachgeschaltete persönliche RPC-Dispatcher verweigerte
+den Managementaufruf ohne Actor-Verbindung. Die Reparatur behält die ursprüngliche
+HTTP-Bearerprüfung vollständig bei und ruft danach ausschließlich den internen
+Drain-Setter auf. Persönliche und Observer-WebSockets erhalten weiterhin keine
+hub.drain-Rechte. Drain bezeichnet nur die Aufnahmesperre, keinen Prozessabschluss.
+
+p4-owner-drain-actor-regression-green: drei Suites,8/8 bestanden,53,22s einschließlich
+Laufhülle. Root-/Fehltoken401, Drain an/aus und Healthzustand tatsächlich über
+lokales HTTP geprüft; persönliche/Observer-RPCs weiterhin abgewiesen, kein Taskstart.
+Core-Build einschließlich Ausgabetypen und Runtime-Build-ID Exit0(46,10s).
+Zusätzliche persönliche HTTP-Token401 explizit ergänzt; abschließender enger
+Test-/Typ-/Pluginruntime-/Bundlelauf noch in Arbeit. Kanonischer produktiver
+Core weiterhin unverändert, daher produktiver alter Drainfehler noch vorhanden.
+
+Abschlussprüfung: persönliche Friseer-/jimmi-HTTP-Token explizit401; enger Folgelauf
+2/2 bestanden(47,84s). Erste Typprüfung versehentlich mit tsconfig.json statt
+vorhandenem tsconfig.dev.json meldete zwei bereits in HEAD unbenutzte Testvariablen
+und vier im neuen Fixture fehlende Runtime-Handler. Fixture vervollständigt;
+korrekte Core-Dev-Typprüfung Exit0(103,27s). Unbeteiligte alte Tests nicht verändert.
+Pluginruntime Exit0(10,92s), Produktionsbundle Exit0(23,07s).
+
+Eigene neue VSIX shared-runtime-recall-owner-drain-candidate.vsix,
+SHA2565c37a998f43c047680f2eb5b0bba2fb7e8db79dd64f489865ac437e31c95c630:
+334Payload-Dateien bytegleich gegen Build geprüft. Tatsächlicher extrahierter
+Pakettest p4-owner-drain-native-package Exit0(19,12s): eigenes Core mit persönlichen
+Actorzugängen, fehlende und persönliche HTTP-Token401, Owner-Drain200/idle,
+Core läuft dabei weiter; Drain wieder öffnen. Doppelowner/Missingruntime ohne
+Fallback geprüft, isolierte Kinder sauber beendet. Keine Modelle/produktiven
+Dateien/Android-Browser beteiligt. Diese Quelle bisher nicht produktiv gestartet.
+
+Notwendige aktuelle Delta-Sicherung R/shared-recall-owner-drain-delta:
+nur drei geänderte Dateien (Betriebsereignis-DB, Extensionregistrierung, VS-Code-
+Globalstate),35unveränderte geprüfte Dateien wiederverwendet. SQLite-Backup-API,
+tatsächliche vollständige Wiederherstellung und Attribute geprüft. Archiv
+407d4442cf88d8b9d268173a70d6d2b02ebaa44bebffdf7f6d878df8a46bae09,
+Manifestad7fc18dad61fa95c5d539e0ad86d8e9c59e2f0d6c5d7137ed3babf033ac294a.
+Produktiver Lesebefund vor Recall-Aktivierung: CorePID2659602, idletrue,
+keine aktiven Turns/Cloud-/Pluginaufrufe/angenommenen Runs; zwei Dashboardclients
+plus eigener lesender Prüfer. Kontrollierte Sitzung idle, ursprüngliche lange
+Sitzung weiterhin failed; kein unbekannter Zustand als beendet umetikettiert.

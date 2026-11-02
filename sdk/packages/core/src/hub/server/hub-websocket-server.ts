@@ -564,28 +564,19 @@ export async function startHubWebSocketServer(
 				return;
 			}
 			const draining = requestUrl.searchParams.get("off") === null;
-			void transport
-				.handleCommand({
-					version: CURRENT_HUB_PROTOCOL_VERSION,
-					command: "hub.drain",
-					payload: {
-						draining,
-						reason:
-							requestUrl.searchParams.get("reason") ??
-							"authenticated HTTP drain request",
-					},
-				})
-				.then(
-					(reply) => {
-						res.statusCode = reply.ok ? 200 : 500;
-						res.setHeader("content-type", "application/json");
-						res.end(JSON.stringify(reply.payload ?? { ok: reply.ok }));
-					},
-					() => {
-						res.statusCode = 500;
-						res.end("Drain failed");
-					},
+			try {
+				const status = transport.setOwnerDraining(
+					draining,
+					requestUrl.searchParams.get("reason") ??
+						"authenticated HTTP drain request",
 				);
+				res.statusCode = 200;
+				res.setHeader("content-type", "application/json");
+				res.end(JSON.stringify(status));
+			} catch {
+				res.statusCode = 500;
+				res.end("Drain failed");
+			}
 			return;
 		}
 		if (requestUrl.pathname === "/shutdown" && req.method === "POST") {

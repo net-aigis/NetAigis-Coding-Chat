@@ -1431,6 +1431,16 @@ export class HubServerTransport implements NativeHubTransport {
 			typeof envelope.payload?.reason === "string"
 				? envelope.payload.reason
 				: undefined;
+		return okReply(envelope, this.setOwnerDraining(requested, reason));
+	}
+
+	/** Owning process only. The HTTP boundary verifies its private owner token first.
+	 * Personal/observer RPCs still pass through the existing session authorization.
+	 */
+	setOwnerDraining(
+		requested: boolean,
+		reason?: string,
+	): Record<string, unknown> {
 		if (this.draining !== requested) {
 			this.draining = requested;
 			this.publish(
@@ -1444,7 +1454,7 @@ export class HubServerTransport implements NativeHubTransport {
 				reason,
 			});
 		}
-		return okReply(envelope, this.describeStatus());
+		return this.describeStatus();
 	}
 
 	private async handlePluginsReload(
