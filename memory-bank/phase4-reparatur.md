@@ -4009,3 +4009,48 @@ bereits laufender Prozess und kanonische Hub-ID unverändert. Nach dessen
 eigenem sauberen Ende verweigerte das Dashboard den Start mit Exit 1; keine
 Ersatz-Discovery, kein Fallbackprozess. Positive Browserprüfungen nicht erneut
 ausgeführt. Vorhandene temporäre Fixture-Dateien/Protokolle erhalten.
+
+### 2026-11-02: Eigene produktive Installation wieder bereitgestellt
+
+Vorhandene Freigabe umgesetzt, ohne neue Dienste zu starten. Neues eigenes
+Paket 023afbf50437c71201d2d1b7b5be3a947d9e6f511c0cad854409bc852f5d2446
+installiert. Strikte erste Registerprüfung zunächst negativ: Code normalisierte
+ausschließlich openai.chatgpt-URI-Darstellung (fsPath/external wurden nicht erneut
+serialisiert) und ergänzte die ID-UUID. Gleiche ID 26.1007.21434, gleicher
+relativeLocation und kanonischer Dateipfad; keine Version oder tatsächliche
+Ablage einer anderen Extension geändert. Keine Wiederherstellung des ganzen
+Registers. Erste Quittung installation.json und fehlgeschlagener strikter
+Vergleich erhalten, zusätzliche installation-normalization-proof.json bestätigt
+den tatsächlichen Vergleich und bytegleichen Bestand aller 299 installierten
+Paketdateien zur VSIX (package.json nur VS-Code-__metadata ausgenommen).
+Keine erneute Installation dafür.
+
+Über dieselben vorhandenen eigenen Migrationsbefehle aus eigenem neuem
+Entwicklungsfenster 16 Dateien übernommen, null native Secrets. Vollständiger
+Migrationsbeleg ok, originale kanonische Nachrichtendateien semantisch identisch,
+aktuelle eigene Einstellungen/Modellverbindung unverändert. Nur das eigene
+Prüffenster wurde nach Erfolg geschlossen; keine produktive Hauptinstanz beendet.
+
+Anschließend neue echte Abnahme des jetzt installierten Pakets über dessen
+Extension-API (kein Fixture-Provider). Genau ein neuer kontrollierter Auftrag
+1793603066247_pk2cs mit aktuellem Coding-Agent/DeepSeek: editor schreibt nur die
+neue Datei productive-netaigis-shared-runtime-proof-20261102.txt im vorhandenen
+Phase-4-Prüfverzeichnis, read_files liest sie, run_commands führt den verlangten
+printf aus. Tatsächliche Datei hat SHA256
+b4fc3046cc38c5daea45d11dc0413daf8fbd5f1a4f0681e2c3d24e7933414b88.
+Echter Werkzeugzustand completed mit bestätigtem Exitcode 0; hierfür wird keine
+Terminal-Kind-PID behauptet, weil diese Quittung keine enthält. Modellantwort
+NETAIGIS_RUNTIME_TOOLS_READY und final idle bestätigt. Manifest-PID 2586156
+entspricht der tatsächlichen eigenen Extension-Host-PID; kein unknown-Owner.
+Eigenes Prüf-Entwicklungsfenster nach belegtem Abschluss geschlossen.
+
+Geschützte Quittungen bleiben im bestehenden produktiven Kindnachweis
+shared-runtime-repair-20261102: installation*.json, migration-result.json,
+productive-functional.json und Fensterprotokolle. Modellkatalog war ready,
+dynamischer request_limit und beobachtete geladene Kapazität jeweils 1000000.
+Kein vollständiger Million-Token-Stresstest daraus abgeleitet. API-Endpunkt,
+Modellwahl und Acer-Dienste nicht verändert. Neue Hub-/LAN-Dienste weiter nicht
+gestartet; eigentliche gemeinsame produktive Runtime, Recall/Learning-, Android-
+und Watchdog-Abnahme bleiben offen. Aktueller nächster Schritt: kontrollierte
+Vorlage für zwei eigene User-Dienste und geschützte Zugänge vorbereiten; vor
+Aktivierung gezielte zusätzliche Freigabe und aktuelles Own-Data-Restore prüfen.
