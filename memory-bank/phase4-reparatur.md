@@ -4368,3 +4368,22 @@ bestanden, insbesondere WAL-Projektlesung bei bytegleicher DB/WAL, keine angeleg
 fehlende DB, keine Tokenausgabe und kein Shell-eval. Kein Dienstaufruf zur Steuerung.
 Benötigt nur den bestehenden Root-Terminaltransport; keine neue Freigabe für
 bereits beauftragte lesende Prüfung. Produktive Daten weiter nicht lesbar als SSH-User.
+
+
+Projektauflistung auf tatsächlichem Acer-Code vorbereitet (noch nicht installiert):
+recall_api.py SHA256 76c17214d28422026ff98a461d44884d9330624765d6e878e16cccda2c070d3b,
+recall_store.py 7885856b549d4b6b5cb3af51e6f27b95233db108a0e858c74486354085de960b.
+Reiner Kandidatenbuilder sdk/scripts/netaigis-recall-projects.py ergänzt nur
+RecallStore.projects und GET /projects mit exakt bestehendem Depends(authorize).
+Gruppierung tatsächlich gespeicherter project_id über beide Urheber; keine
+neue Tabelle/Architektur/Projektkennung und kein veränderter bestehender Endpunkt.
+Vier SQLite-/Strukturtests bestanden, kein FastAPI-HTTP-Nachweis daraus abgeleitet.
+Zusätzlich am tatsächlich gelesenen aktuellen Quelltext alle bisherigen Bytes
+und AST unverändert nachgewiesen; nur zwei Ergänzungen. Produktive HTTP-Abnahme,
+aktuelle Delta-Sicherung und gezielte Backend-Eingriffsfreigabe stehen aus.
+
+Metadatenfix: Core-Build Exit 0 (47,66 s), Plugin-Build Exit 0 (5,76 s).
+Erster Plugin-Aufruf hatte falsches Arbeitsverzeichnis und änderte nichts;
+gezielt korrigiert. Erweiterungsbuild in Sandbox: esbuild service stopped;
+gleicher Build außerhalb Sandbox Exit 0 (13,78 s). Kein Systemfix, Ursache der
+Sandbox-Unterprozessbeendigung ungeklärt. Quittungen unverändert aufbewahrt.
