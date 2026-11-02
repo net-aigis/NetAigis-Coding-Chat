@@ -4710,3 +4710,24 @@ Android-Anleitung korrigiert: Benutzer ist Friseer, nicht jimmi. Einladungsdatei
 liegt tatsächlich unter eigenem home/data/settings/shared-runtime-android-invite.txt,
 nicht unmittelbar unter home. Beide tatsächlichen Anmeldedateien stat-geprüft0600.
 Weder falsche Rollenzuweisung noch unvollständigen Pfad weiterverwenden.
+
+Bediener hat den abgegrenzten Acer-Schritt freigegeben/ausgeführt. Vor jedem
+Dienst- oder Datei-Eingriff verweigert: file_owner_type_or_protection_changed.
+Konkrete Ursache im Helfer: wiederverwendeter Root-regular-Reader wurde auch
+auf das mit ursprünglichem Eigentümer gesicherte Modul angewendet. Gepinntes
+Manifest und frische lesende SSH-stat stimmen überein: recall_api.py0:0/0644,
+recall_store.py460:460/0644, Elternverzeichnis0:0/0755. Kein Produktivrecht ändern.
+Gezielte Korrektur verwendet für exakt diese beiden Manifestdateien/Restorepfade
+deren gespeicherte UID/GID/Mode/xattrs, übrige Backuphüllen bleiben Root-privat.
+Offener regulärer Inode vor/nach Lesung geprüft, Symlinks/races/unbekannte Bytes
+verweigert. Original-mtime bleibt exakt, bereits installierter Kandidat darf seine
+eigene Änderungszeit behalten. Bestehende atomare Replacement-Primitiven verwenden
+denselben gesicherten Reader und erhalten460:460 statt stillschweigend zu chownen.
+Elf gezielte Tests bestanden einschließlich abweichender Ausführer-UID, falscher
+Manifest-UID und Symlink-Verweigerung. Freigabe/Scope unverändert; Root-Wiederaufruf
+ist für den bereits genehmigten Schritt nötig, keine neue Namens-/Modellentscheidung.
+
+Bediener-Screenshot bestätigt Browserseite mit persönlicher Anmeldung Friseer
+und beiden vorhandenen Sitzungen. Noch kein Verlauf-/Android-/VPN-Gesamtnachweis.
+Zum Lesen der kontrollierten bestehenden DeepSeek-Sitzung angeleitet; gespeicherte
+historische Qwen-Zuordnung der anderen Sitzung nicht ungeprüft geändert.

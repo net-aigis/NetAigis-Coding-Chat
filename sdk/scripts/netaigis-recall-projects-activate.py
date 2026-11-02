@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import time
 import urllib.error
@@ -49,6 +50,42 @@ def primitives(assets):
     return result
 
 
+def manifest_owned_read(path, record, allowed_hashes):
+    """Preserve each pinned source owner, including the existing service user's module.
+
+    Root owns the backup envelope, not necessarily the original files inside it.
+    Read the same regular inode before/after; never chown a productive source.
+    """
+    if path.resolve()!=path:raise Refused('recall_owned_input_path_changed')
+    descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    try:
+        before=os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode) or before.st_size>1048576:
+            raise Refused('recall_owned_input_type_or_size_changed')
+        actual={'uid':before.st_uid,'gid':before.st_gid,'mode':stat.S_IMODE(before.st_mode),
+                'mtime_ns':before.st_mtime_ns,
+                'xattrs':{k:base64.b64encode(os.getxattr(descriptor,k)).decode() for k in os.listxattr(descriptor)}}
+        fields=('uid','gid','mode','xattrs')
+        if any(actual[k]!=record['attributes'][k] for k in fields):raise Refused('recall_source_attributes_changed')
+        parts=[];size=0
+        while True:
+            chunk=os.read(descriptor,65536)
+            if not chunk:break
+            size+=len(chunk)
+            if size>1048576:raise Refused('recall_owned_input_type_or_size_changed')
+            parts.append(chunk)
+        after=os.fstat(descriptor);current=path.lstat()
+        stable=('st_dev','st_ino','st_uid','st_gid','st_mode','st_size','st_mtime_ns','st_ctime_ns')
+        if any(getattr(before,k)!=getattr(observed,k) for observed in (after,current) for k in stable):
+            raise Refused('recall_owned_input_changed_during_read')
+        content=b''.join(parts);observed_hash=digest(content)
+        if observed_hash not in allowed_hashes:raise Refused('unreviewed_recall_source_change')
+        if observed_hash==record['sha256'] and actual['mtime_ns']!=record['attributes']['mtime_ns']:
+            raise Refused('recall_source_attributes_changed')
+        return content
+    finally:os.close(descriptor)
+
+
 def verify_plan(assets):
     base = primitives(assets)
     info = BACKUP.lstat()
@@ -61,6 +98,20 @@ def verify_plan(assets):
     if (set(manifest['files']) != {str(p) for p in TARGETS.values()}
             or not manifest['actual_file_restore_verified'] or not manifest['owner_mode_mtime_xattrs_verified']):
         raise Refused('recall_restore_attestation_invalid')
+    root_regular=base['regular']
+    owned={}
+    for key,path in TARGETS.items():
+        record=manifest['files'][str(path)]
+        if record['sha256']!=BEFORE[key]:raise Refused('recall_manifest_source_hash_changed')
+        owned[path]=(record,(BEFORE[key],AFTER[key]))
+        owned[BACKUP/'restore-probe'/path.relative_to('/')]=(record,(BEFORE[key],))
+    def regular(path,private=False):
+        entry=owned.get(path)
+        if entry is None:return root_regular(path,private)
+        if private:raise Refused('recall_source_cannot_replace_private_backup_envelope')
+        return manifest_owned_read(path,*entry)
+    # Existing atomic replacement calls this same checked reader before/after publication.
+    base['regular']=regular
     originals = {}
     for key, path in TARGETS.items():
         restored = BACKUP/'restore-probe'/path.relative_to('/')

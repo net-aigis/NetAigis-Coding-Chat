@@ -87,6 +87,22 @@ class RecallProjectActivationTests(unittest.TestCase):
         self.targets['api'].chmod(0o600)
         with self.assertRaisesRegex(module.Refused,'attributes_changed'):module.verify_plan(self.assets)
 
+    def test_original_module_owner_is_manifest_bound_instead_of_forced_to_the_executor(self):
+        target=self.targets['store']
+        record=json.loads((self.backup/'manifest.json').read_text())['files'][str(target)]
+        with patch.object(module.os,'geteuid',return_value=os.geteuid()+1):
+            self.assertEqual(module.manifest_owned_read(target,record,(module.BEFORE['store'],)),self.originals['store'])
+        changed=json.loads(json.dumps(record));changed['attributes']['uid']+=1
+        with self.assertRaisesRegex(module.Refused,'attributes_changed'):
+            module.manifest_owned_read(target,changed,(module.BEFORE['store'],))
+
+    def test_manifest_owned_source_rejects_symlink_and_preserves_inode_checks(self):
+        target=self.targets['store']
+        record=json.loads((self.backup/'manifest.json').read_text())['files'][str(target)]
+        link=target.parent/'unreviewed-link.py';link.symlink_to(target)
+        with self.assertRaisesRegex(module.Refused,'path_changed'):
+            module.manifest_owned_read(link,record,(module.BEFORE['store'],))
+
     def test_real_replacement_preserves_attributes_and_allows_idempotent_forward_repair(self):
         base,plans=module.verify_plan(self.assets)
         for key in ('store','api'):
