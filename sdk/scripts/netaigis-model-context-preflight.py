@@ -23,7 +23,7 @@ NAME = "phase4-model-context-preflight"
 DELTA_NAME = "phase4-dynamic-context-delta"
 RECALL_PROJECTS_NAME = "phase4-recall-projects-delta"
 RECALL_PROJECTS_FILES = {
-    "/opt/netaigis-coding-agent/recall_api.py": "76c17214d28422026ff98a461d44884d9330624765d6e878e16cccda2c070d3b",
+    "/opt/netaigis-coding-agent/recall_api.py": "76c17214d28422026ff98a461d44884d9330624765d6e878e16cccda2c070d3b",  # gitleaks:allow -- Public source SHA256, not a credential.
     "/opt/netaigis-coding-agent/recall_store.py": "7885856b549d4b6b5cb3af51e6f27b95233db108a0e858c74486354085de960b",
 }
 DELTA_FILES = {

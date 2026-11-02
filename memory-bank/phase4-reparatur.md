@@ -4612,3 +4612,12 @@ Nächster Root-Befehl ist NUR Sicherung, noch keine Produktivanwendung:
 `PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-preflight.py --remote --recall-projects-delta`
 Danach externe Kopie und tatsächliche Wiederherstellung prüfen, bevor der konkrete
 Backend-API-Eingriff vorgelegt wird. Alte Acer-Konfiguration/Modellzugänge bleiben.
+
+
+Scan-Nachweis4960e5a84: gitleaks meldete generic-api-key auf dem öffentlichen
+recall_api.py-Quell-SHA25676c17214...070d3b. Gegen lesend erfasste tatsächliche
+Quelldatei/Quittung bestätigt: reiner SHA256, keine Zugangsdaten. Der verkettete
+Shell-Aufruf setzte den Commit trotz Scan-Exit1 fort; Fehler im Arbeitsablauf,
+kein Push/Secret-Export. Genau diese Hashzeile mit gitleaks:allow kommentiert,
+keine globale Ausnahme und keine Historienumschreibung. Negativreport erhalten;
+abhängige Scans/Commits künftig getrennt und Exitcode prüfen.
