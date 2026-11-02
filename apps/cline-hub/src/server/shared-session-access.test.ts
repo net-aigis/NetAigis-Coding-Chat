@@ -9,6 +9,7 @@ import {
 	authenticateBrowserActor,
 	disposeBrowserActor,
 	updateBrowserSessionControl,
+	verifyBrowserActorCredential,
 } from "./shared-session-access";
 import type { HubContext } from "./state";
 import type { BrowserPeer } from "./types";
@@ -78,6 +79,60 @@ function fixture() {
 }
 beforeEach(() => create.mockReset());
 describe("separate actor connections for the existing shared browser session", () => {
+	it("refuses a remembered login if the selected Hub now attributes its key to another actor", async () => {
+		const f = fixture();
+		await expect(
+			authenticateBrowserActor(
+				f.ctx,
+				f.peer,
+				"fixture-key",
+				undefined,
+				"Friseer",
+			),
+		).rejects.toThrow("authentication was not confirmed");
+		expect(f.peer.actorRuntime).toBeUndefined();
+		expect(f.ctx.send).not.toHaveBeenCalledWith(
+			f.peer,
+			expect.objectContaining({ actorId: "jimmi" }),
+		);
+	});
+	it("binds a persistence claim before publishing its matching authentication acknowledgement", async () => {
+		const f = fixture();
+		vi.mocked(f.ctx.send).mockImplementation((_peer, message) => {
+			if (message && typeof message === "object" && "type" in message && message.type === "shared_actor" && "actorId" in message && message.actorId)
+				expect(f.peer.browserAuthRequestId).toBe("fixture-request");
+		});
+		await authenticateBrowserActor(
+			f.ctx,
+			f.peer,
+			"fixture-key",
+			"fixture-request",
+		);
+		expect(f.peer.browserAuthRequestId).toBe("fixture-request");
+	});
+	it("revalidates browser persistence through a separate read-only personal connection without claiming or starting", async () => {
+		const f = fixture();
+		expect(
+			await verifyBrowserActorCredential(f.ctx, "fixture-jimmi-token"),
+		).toBe("jimmi");
+		expect(f.runtime.list).toHaveBeenCalledExactlyOnceWith(1);
+		expect(f.runtime.dispose).toHaveBeenCalledOnce();
+		expect(f.runtime.start).not.toHaveBeenCalled();
+		expect(f.runtime.send).not.toHaveBeenCalled();
+		expect(f.runtime.sessionControl.claim).not.toHaveBeenCalled();
+		expect(f.peer.actorRuntime).toBeUndefined();
+	});
+	it("never confirms a browser ticket after an unverified personal identity", async () => {
+		const f = fixture();
+		f.runtime.list.mockRejectedValueOnce(
+			new Error("fixture-private-credential"),
+		);
+		await expect(
+			verifyBrowserActorCredential(f.ctx, "fixture-private-credential"),
+		).rejects.toThrow("authentication was not confirmed");
+		expect(f.runtime.dispose).toHaveBeenCalledOnce();
+		expect(f.runtime.sessionControl.claim).not.toHaveBeenCalled();
+	});
 	it("never falls back to the dashboard credential for a browser write", async () => {
 		const f = fixture();
 		await expect(sendMessage(f.ctx, f.peer, "correction")).rejects.toThrow(

@@ -6,6 +6,10 @@ import {
 } from "./server/approvals";
 import { isAuthorizedBrowserToDesktopRequest } from "./server/browser-auth";
 import {
+	BrowserActorSessions,
+	readActorCredential,
+} from "./server/browser-actor-sessions";
+import {
 	browserConfig,
 	host,
 	inviteUrl,
@@ -52,6 +56,7 @@ import {
 	disposeBrowserActor,
 	runtimeForPeer,
 	updateBrowserSessionControl,
+	verifyBrowserActorCredential,
 } from "./server/shared-session-access";
 import { HubContext } from "./server/state";
 import { broadcastHubState, hubStatusPayload } from "./server/state-payloads";
@@ -95,6 +100,7 @@ export async function startClineHubDashboardServer(): Promise<ClineHubDashboardS
 	const syncClientsAndSessions = () => syncHubClientsAndSessions(ctx);
 	let stopped = false;
 	const tls = await loadDashboardTls(options.tls);
+	const browserSessions = new BrowserActorSessions();
 
 	await attachHub(ctx);
 	const healthInterval = setInterval(() => {
@@ -129,6 +135,66 @@ export async function startClineHubDashboardServer(): Promise<ClineHubDashboardS
 				if (url.pathname === "/version") {
 					return createJsonResponse({ coreVersion: CORE_BUILD_VERSION });
 				}
+				if (url.pathname === "/actor-session") {
+					const headers = {
+						"Cache-Control": "no-store",
+						"Content-Type": "application/json",
+					};
+					if (!tls || url.protocol !== "https:")
+						return new Response('{"error":"https_required"}', {
+							status: 403,
+							headers,
+						});
+					if (req.method === "DELETE") {
+						const previous = browserSessions.read(req);
+						const cookie = browserSessions.remove(req);
+						for (const peer of ctx.peers)
+							if (previous && peer.browserSessionId === previous.id)
+								peer.socket.close(1000, "Signed out");
+						return new Response('{"ok":true}', {
+							headers: { ...headers, "Set-Cookie": cookie },
+						});
+					}
+					if (req.method !== "POST")
+						return new Response('{"error":"method_not_allowed"}', {
+							status: 405,
+							headers,
+						});
+					try {
+						const claim = req.headers.get("x-netaigis-auth-request");
+						if (!claim || !/^[a-zA-Z0-9-]{1,64}$/.test(claim))
+							throw new Error();
+						const peer = [...ctx.peers].find(
+							(peer) =>
+								!peer.closed &&
+								peer.browserAuthRequestId === claim &&
+								peer.actorRuntime,
+						);
+						if (!peer) throw new Error();
+						const generation = peer.actorGeneration;
+						const runtime = peer.actorRuntime;
+						const credential = await readActorCredential(req);
+						const actorId = await verifyBrowserActorCredential(ctx, credential);
+						if (
+							peer.closed ||
+							peer.actorGeneration !== generation ||
+							peer.actorRuntime !== runtime ||
+							peer.browserAuthRequestId !== claim ||
+							runtime?.sessionControl.actorId() !== actorId
+						)
+							throw new Error();
+						const cookie = browserSessions.issue(req, actorId, credential);
+						peer.browserSessionId = cookie.split(/[=;]/)[1];
+						return new Response(JSON.stringify({ ok: true, actorId }), {
+							headers: { ...headers, "Set-Cookie": cookie },
+						});
+					} catch {
+						return new Response(
+							'{"error":"personal_authentication_not_confirmed"}',
+							{ status: 401, headers },
+						);
+					}
+				}
 				if (url.pathname === "/health") {
 					await syncHubHealth(ctx);
 					return createJsonResponse(hubStatusPayload(ctx));
@@ -136,6 +202,7 @@ export async function startClineHubDashboardServer(): Promise<ClineHubDashboardS
 				if (url.pathname === "/browser") {
 					const displayName = `Browser ${Math.random().toString(36).slice(2, 6)}`;
 					const data = {
+						browserSessionId: tls ? browserSessions.read(req)?.id : undefined,
 						secureTransport:
 							url.protocol === "https:" ||
 							["127.0.0.1", "localhost", "[::1]"].includes(url.hostname),
@@ -171,14 +238,45 @@ export async function startClineHubDashboardServer(): Promise<ClineHubDashboardS
 					const peer = socket.data;
 					peer.socket = socket;
 					ctx.peers.add(peer);
+					const saved = peer.browserSessionId
+						? browserSessions.lookup(peer.browserSessionId)
+						: undefined;
+					if (saved) {
+						peer.restoringActor = authenticateBrowserActor(
+							ctx,
+							peer,
+							saved.credential,
+							undefined,
+							saved.actorId,
+						)
+							.catch(() => {
+								if (peer.browserSessionId)
+									browserSessions.revoke(peer.browserSessionId);
+								ctx.send(peer, { type: "shared_actor" });
+							})
+							.finally(() => {
+								peer.restoringActor = undefined;
+							});
+						await peer.restoringActor;
+					}
 				},
 				async message(socket, raw) {
 					const peer = socket.data;
 					try {
+						await peer.restoringActor;
 						const frame = JSON.parse(String(raw)) as BrowserFrame;
 						assertSharedBrowserFrame(ctx, frame.type);
 						if (frame.type === "authenticateActor") {
-							await authenticateBrowserActor(ctx, peer, frame.credential);
+							if (peer.browserSessionId)
+								browserSessions.revoke(peer.browserSessionId);
+							peer.browserSessionId = undefined;
+							peer.browserAuthRequestId = undefined;
+							await authenticateBrowserActor(
+								ctx,
+								peer,
+								frame.credential,
+								frame.authRequestId,
+							);
 							return;
 						}
 						if (frame.type === "sessionControl") {
@@ -317,6 +415,7 @@ export async function startClineHubDashboardServer(): Promise<ClineHubDashboardS
 			if (stopped) return;
 			stopped = true;
 			clearInterval(healthInterval);
+			browserSessions.clear();
 			try {
 				server.stop(true);
 			} finally {

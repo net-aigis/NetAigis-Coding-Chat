@@ -19,8 +19,77 @@ let cachedApi: VsCodeApi | undefined;
 let browserSocket: WebSocket | undefined;
 const pendingMessages: WebviewInboundMessage[] = [];
 const stateKey = "cline-hub-webview-state";
+let pendingActorCredential:
+	| { credential: string; authRequestId: string }
+	| undefined;
+let actorPersistence: Promise<void> = Promise.resolve();
+let actorPersistenceGeneration = 0;
+let confirmedBrowserActorId: string | undefined;
+
+/** Display state only, from this socket's server acknowledgements; never a credential or writer grant. */
+export function getConfirmedBrowserActorId(): string | undefined {
+	return confirmedBrowserActorId;
+}
+
+function actorSessionUrl(): string {
+	const url = new URL("/actor-session", window.location.origin);
+	const invite = readBrowserRoomSecret();
+	if (invite) url.searchParams.set("roomSecret", invite);
+	return url.toString();
+}
+
+function rememberConfirmedActor(actorId: string, authRequestId?: string): void {
+	if (!authRequestId || pendingActorCredential?.authRequestId !== authRequestId)
+		return;
+	const credential = pendingActorCredential.credential;
+	pendingActorCredential = undefined;
+	if (!credential || window.location.protocol !== "https:") return;
+	const generation = actorPersistenceGeneration;
+	actorPersistence = actorPersistence
+		.catch(() => {})
+		.then(async () => {
+			if (generation !== actorPersistenceGeneration) return;
+			const response = await fetch(actorSessionUrl(), {
+				method: "POST",
+				credentials: "same-origin",
+				redirect: "error",
+				cache: "no-store",
+				headers: {
+					"Content-Type": "application/json",
+					"X-NetAigis-Auth-Request": authRequestId,
+				},
+				body: JSON.stringify({ credential }),
+			});
+			if (!response.ok || (await response.json()).actorId !== actorId)
+				throw new Error();
+		})
+		.catch(() => {
+			dispatchHostMessage({
+				type: "error",
+				text: "Die persönliche Verbindung funktioniert, konnte aber nicht für das Neuladen gespeichert werden. Erneut anmelden.",
+			});
+		});
+}
+
+export async function forgetBrowserActor(): Promise<void> {
+	++actorPersistenceGeneration;
+	pendingActorCredential = undefined;
+	await actorPersistence;
+	const response = await fetch(actorSessionUrl(), {
+		method: "DELETE",
+		credentials: "same-origin",
+		redirect: "error",
+		cache: "no-store",
+	});
+	if (!response.ok)
+		throw new Error("Die Browser-Anmeldung konnte nicht gelöscht werden.");
+	browserSocket?.close();
+	dispatchHostMessage({ type: "shared_actor" });
+}
 
 function dispatchHostMessage(message: WebviewOutboundMessage): void {
+	if (message.type === "shared_actor")
+		confirmedBrowserActorId = message.actorId;
 	window.dispatchEvent(new MessageEvent("message", { data: message }));
 }
 
@@ -48,15 +117,21 @@ function createBrowserSocket(): WebSocket {
 	}
 	const query = params.toString();
 	const socketUrl = `${protocol}//${window.location.host}/browser${query ? `?${query}` : ""}`;
-	browserSocket = new WebSocket(socketUrl);
-	browserSocket.addEventListener("open", () => {
+	const socket = new WebSocket(socketUrl);
+	browserSocket = socket;
+	socket.addEventListener("open", () => {
+		if (browserSocket !== socket) return;
 		for (const message of pendingMessages.splice(0)) {
-			browserSocket?.send(JSON.stringify(message));
+			socket.send(JSON.stringify(message));
 		}
 	});
-	browserSocket.addEventListener("message", (event) => {
+	socket.addEventListener("message", (event) => {
+		if (browserSocket !== socket) return;
 		try {
 			const message = JSON.parse(String(event.data)) as WebviewOutboundMessage;
+			if (message.type === "shared_actor" && message.actorId)
+				rememberConfirmedActor(message.actorId, message.authRequestId);
+			if (message.type === "error") pendingActorCredential = undefined;
 			dispatchHostMessage(message);
 		} catch {
 			pendingMessages.splice(0);
@@ -66,7 +141,9 @@ function createBrowserSocket(): WebSocket {
 			});
 		}
 	});
-	browserSocket.addEventListener("close", () => {
+	socket.addEventListener("close", () => {
+		if (browserSocket !== socket) return;
+		pendingActorCredential = undefined;
 		pendingMessages.splice(0);
 		dispatchHostMessage({ type: "shared_actor" });
 		dispatchHostMessage({
@@ -74,7 +151,8 @@ function createBrowserSocket(): WebSocket {
 			text: "Disconnected from the Cline Hub server.",
 		});
 	});
-	browserSocket.addEventListener("error", () => {
+	socket.addEventListener("error", () => {
+		if (browserSocket !== socket) return;
 		pendingMessages.splice(0);
 		dispatchHostMessage({
 			type: "error",
@@ -87,6 +165,15 @@ function createBrowserSocket(): WebSocket {
 function createBrowserApi(): VsCodeApi {
 	return {
 		postMessage(message) {
+			if (message.type === "authenticateActor") {
+				const authRequestId = crypto.randomUUID();
+				pendingActorCredential = {
+					credential: message.credential,
+					authRequestId,
+				};
+				message = { ...message, authRequestId };
+				++actorPersistenceGeneration;
+			}
 			const socket = createBrowserSocket();
 			if (socket.readyState === WebSocket.OPEN) {
 				socket.send(JSON.stringify(message));

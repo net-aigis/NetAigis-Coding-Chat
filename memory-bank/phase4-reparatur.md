@@ -4731,3 +4731,125 @@ Bediener-Screenshot bestätigt Browserseite mit persönlicher Anmeldung Friseer
 und beiden vorhandenen Sitzungen. Noch kein Verlauf-/Android-/VPN-Gesamtnachweis.
 Zum Lesen der kontrollierten bestehenden DeepSeek-Sitzung angeleitet; gespeicherte
 historische Qwen-Zuordnung der anderen Sitzung nicht ungeprüft geändert.
+
+
+### 2026-11-02: Projekt-API produktiv bestätigt, Android-Verlauf belegt
+
+Bediener-Wiederanwendung4841aad05 erfolgreich: beide Kandidaten exakt installiert,
+UID/GID/Mode/xattrs erhalten; Coding-Agent PID2493266, Invocation
+c2762e4a0a854a80a81448284bdcdb37, active/running, Resultsuccess,NRestarts0.
+HTTP401 ohneToken, HTTP200 für Friseer und jimmi mit identischem tatsächlichem
+Katalog: ausschließlich total-recall-production-test,1Event/1Conversation/last_seq1.
+Learning-/Router-/Modellprozesse und Konfigurationsbytes unverändert.
+Root-Journal im bestehenden phase4-recall-projects-delta:
+recall-projects-activation-f3812b65b042458ca68dfa4885742c20.jsonl.
+Anschließende unabhängige lesende Netzwerkprüfung von440 bestätigt beide HTTP200-
+Kataloge mit vorhandenen geschützten persönlichen Recall-Zugängen, ohne
+Schreib-/Modellanforderung (p4-live-recall-project-catalog-readonly.json).
+Nicht erneut anwenden; projektbezogene produktive Archivierung bleibt zu prüfen.
+
+Bediener unterscheidet ausdrücklich ersten lokalen Browsernachweis von Android.
+Nachfolgender Screenshot mit Angabe „handy“ belegt nun den echten Androidbrowser:
+HTTPS192.168.178.25:8787, bestätigter AkteurFriseer, kontrollierte gleiche Sitzung,
+zuvor gemeinsam erzeugter VSCode-Verlauf und Original-Metadaten-Prüfauftrag.
+Schreibrecht zuletztjimmi/Revision4 separat dargestellt. Genau ein gezielter
+Friseer-Androidturn ANDROID_SITZUNG_BESTAETIGT angeleitet, Antwortnachweis noch offen.
+Externer Mobilfunk-/VPN-Nachweis weiterhin offen. Nicht als vollständige Abnahme
+oder simuliertes Mobilgerät ausgeben.
+
+Native explizite Projektwahl über bestehenden Recall-Konfigurationsbefehl ergänzt:
+vorhandener authentifizierter Katalog oder vom Benutzer genau eingegebene eigene
+Projektkennung, ausdrückliche Bestätigung nur der aktuell inspizierten Session-ID.
+Kein globaler/default/Workspace-Ersatz, keine Tokenumschaltung. Derselbe Client
+liest Kontrolle und schreibt Metadatum, Server prüft persönliche Verbindung/
+Schreibzuständigkeit; anschließend gespeicherte Kennung erneut lesen. Aktive
+Auswahlwechsel, fehlendes Schreibrecht, unklare Bestätigung und Neuzuordnung
+verweigern ohne automatischen Retry. Vier neue rote Vertragsfälle, danach10/10;
+mit bestehenden Command-/Reader-Suites34/34, VS-Code-Typprüfung Exit0(63,56s).
+
+Weiterer echter Rotfall: erste Projektzuordnung einer bereits ruhenden Sitzung
+publizierte keinen Core-Snapshot, sodass ohne neue Modellnachricht keine Archivierung
+begann (3bestanden/1rot). Jetzt nach dem erfolgreichen Metadaten-Durability-Gate
+den tatsächlichen Snapshot publizieren; kein neuer Turn/Statuswechsel/Urheber.
+Betroffene Host-/Archive-Suites12/12, Core-Build/Typen/Build-ID Exit0(16,64s).
+Browser-Recall reicht ebenfalls Projektkennung durch Liste/Inspektion/Restore;
+gleiche Conversation-ID in anderem Projekt darf keinen inspizierten Scope wechseln.
+Standalone-Konfiguration erweitert um sessionbezogene Recall-Zugänge im bestehenden
+geschützten JSON; separater Archive-Signierschlüssel, keine Wiederverwendung von
+Hub-Logins/API-Keys und keine neue Modell- oder globale Projektentscheidung.
+21Konfigurationsprüfungen und5Browser-Projektprüfungen bestanden.
+
+### Gemeldeter Browser-Neuladefehler und HTTPS-Vertrauen
+
+Bediener meldet persönliche Neuanmeldung nach Seitenaktualisierung und rote
+HTTPS-Anzeige am Handy. Verbindung ist HTTPS mit eigenem selbstsignierten
+Zertifikat; geprüftes SAN192.168.178.25/127.0.0.1/localhost, gültig02.11.2026 bis
+02.11.2027. Browser vertraut dieser Ausstelleridentität bisher nicht. Fingerprint
+SHA256E8:AB:A4:B0:1A:1A:40:C0:82:83:DA:22:AE:89:08:8E:9F:BE:C7:98:33:09:3D:31:0D:75:07:81:91:CE:98:5B.
+Keine System-/Android-Vertrauensänderung oder Zertifikatsinstallation durchgeführt.
+Die rote Warnung nicht als fehlende Verschlüsselung oder gelöstes Vertrauen ausgeben.
+
+Neuladeursache: persönliche Browserauthentifizierung blieb bisher nur im Speicher
+der einzelnen WebSocket-Verbindung. Tatsächlicher neuer Chromium-Rotlauf gegen
+unverändert extrahierte vorherige VSIX bestätigt fehlende Browserpersistenz,
+p4-browser-reload-native-red,Exit1(24,55s); isolierte Prozesse danach beide Exit0,
+keine produktiven Profile/Dienste oder Modelle benutzt.
+
+Reparatur ergänzt befristete opaque Browser-Tickets: bestehende persönliche Hub-
+Anmeldung plus rein lesende Neuvalidierung, an bestätigte Auth-Anfrage und Actor-
+Generation gebunden. Cookie __Host-netaigis_actor,Secure,HttpOnly,SameSiteStrict,
+maximal12h, keine persönlichen Schlüssel im Web Storage. BoundedserverCache256,
+keine neue persistente Wissens-/Sitzungsablage. Logout löscht Ticket; Reload prüft
+Identität erneut ohne Writerclaim/Taskstart. Nach Dashboard-Neustart ist einmalige
+persönliche Neuanmeldung nötig, da dessen Cache absichtlich flüchtig bleibt.
+POST/DELETE unter bereits vorhandener Host-/Origin-/Invite-Sperre, nur HTTPS,
+JSON begrenzt8KiB. Persönliche Anmeldedaten/Fehlerkörper werden nicht protokolliert.
+Neue Abmeldenfunktion, Fehler sichtbar. Keine zusätzliche Cline-KI-Überwachung.
+
+Gezielte fünf Browser-/Konfigurationssuites77/77 bestanden. Eigener Web-Build
+fand optionales Legacy-projectId im Snapshot; UI verlangt jetzt vor Restore
+die ausdrücklich vorhandene Kennung. Korrigierter Web-Build Exit0(57,97s).
+Core-Pluginruntime Exit0(6,99s); Produktionsbundle in Sandbox sofort mit bekanntem
+esbuild-Servicefehler abgebrochen, identischer Build außerhalb Exit0(14,74s).
+Zwei reine Test-Request-URL-Typstellen auf explizite URL-Strings korrigiert,
+abschließende Typprüfung/Paket-/echte Reload-/Logoutprüfung laufen.
+Noch keine Installation dieses Pakets und keine produktive Recall-Konfiguration.
+
+Erste neue VSIX fd9344dba071d13e5c79bce6dec10ff04c25123ef240a5a0947b66ad44a40027
+hat den echten Reload-Test NICHT bestanden, nicht installiert. Opaques Secure/
+HttpOnly/Strict-Cookie war im isolierten Chromium tatsächlich vorhanden; die
+Anmeldeanzeige verlor die frühere Serverbestätigung, weil SharedSessionAccess
+erst nach initialem Hub-State gemountet wird. Anzeige speichert nun ausschließlich
+die bestätigte nichtgeheime Actor-ID im RAM dieses Socket-Adapters; Mount liest
+den aktuellen Wert, Disconnect/Logout löscht ihn. Ein verspätetes Close eines
+alten Sockets kann keine neue Verbindung oder ausstehende Nachrichten leeren.
+Zwei neue UI-Adaptertests und ergänzende Request-/Actor-Fences bestanden, insgesamt
+22/22 im gezielten Folgelauf. Keine automatische Writerübernahme oder neue Session.
+Gespeicherte Browseridentität muss bei Reauth weiterhin exakt demselben persönlichen
+Akteur entsprechen; Umzuordnung eines Tokens darf keine andere Identität anmelden.
+
+Neue eigene VSIX shared-runtime-recall-browser-auth-v2-candidate.vsix:
+SHA2561b3aa40038459d36cb695f704266f3f84bf614ac84b294554356f56dff6d91e9,
+334Payload-Dateien gegen tatsächlichen Build bytegleich geprüft, Identität0.1.0.
+V2-Pakettest mit echtem HTTPS/Chromium Exit0(22,92s): Cookieflags geprüft,
+persönliche Identität nach Reload bestätigt ohne Schlüsseleingabe, Logout plus
+Reload anonym bestätigt, kein persönlicher Schlüssel oder HttpOnly-Cookie für
+Seitenskripte im Web Storage lesbar. Eigene tatsächliche DB-Dateideskriptoren,
+unabhängiger Core trotz Browser-/Dashboardclose und Dashboard-Neustart bestätigt;
+alle drei isolierten Prozesse Exit0 ohne SIGKILL/closedDatabaseError.
+Das ist keine physische Android-/Modell-/produktive Recall-Abnahme.
+Letzte korrigierte Hub-Typprüfung Exit0(30,57s); zusätzliche Fehlermeldung vorher
+betraf ausschließlich ungenügend eingegrenztes unknown im neuen Testcallback.
+Vorherige fehlgeschlagene Artefakte/Prüfungen bleiben unverändert erhalten.
+
+Vor produktiver Eigenpaket-Reparatur neue notwendige Delta-Sicherung im vorhandenen
+R/shared-recall-browser-auth-delta erstellt:10geänderte eigene Dateien,28bereits
+geprüfte unveränderte Dateien wiederverwendet. Aktive SQLite-Snapshots über
+Backup-API, vollständige tatsächliche Wiederherstellung einschließlich Attribute
+geprüft. Archiv19b5a8c020cd4d01dff82ebd3cf270da84ad566394f7233b6abd2c7477a1118c,
+Manifest0c4267bf3dd8f739701277990be569e0bca108b3769a29dfbfdb376ac263a7f3.
+Produktive Dateien/Dienste dabei unverändert. Gesicherte kontrollierte Historie
+hat weiterhin13Nachrichten; Android-Prüfturn weder gesendet noch beantwortet,
+keine erfundene Modellabnahme. Originalbranch erneut624c2cd6661e100680d8b61daa3a3447f4708536.
+Produktive Aktualisierung des eigenen bereits genehmigten Pakets folgt erst nach
+Quittierungs-/Ruhestandsprüfung, keine Originalerweiterung oder Acer-Dienste ändern.

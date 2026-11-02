@@ -184,6 +184,24 @@ try {
 		await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.Friseer)
 		await page.getByRole("button", { name: "Verbinden", exact: true }).click()
 		await expect(page.getByText("Bestätigter Akteur: Friseer", { exact: true })).toBeVisible({ timeout: 15000 })
+		if (process.env.NETAIGIS_RUNTIME_BROWSER_RELOAD === "1") {
+			await expect.poll(async () => (await browser.cookies()).some(cookie => cookie.name === "__Host-netaigis_actor" && cookie.httpOnly && cookie.secure && cookie.sameSite === "Strict"), { timeout: 10000 }).toBe(true)
+			const storageValues = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage }, readableCookie: document.cookie }))
+			assert(!storageValues.includes(tokens.Friseer) && !storageValues.includes(tokens.jimmi) && !storageValues.includes("__Host-netaigis_actor"), "Personal browser credential or private cookie is script-readable")
+			await page.reload({ waitUntil: "domcontentloaded" })
+			await expect(page.getByText("Bestätigter Akteur: Friseer", { exact: true })).toBeVisible({ timeout: 15000 })
+			await page.getByRole("button", { name: "Abmelden", exact: true }).click()
+			await expect(page.getByText("Lesender Zugang", { exact: true })).toBeVisible()
+			await page.reload({ waitUntil: "domcontentloaded" })
+			await expect(page.getByText("Lesender Zugang", { exact: true })).toBeVisible()
+			assert(!(await browser.cookies()).some(cookie => cookie.name === "__Host-netaigis_actor"))
+			await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.Friseer)
+			await page.getByRole("button", { name: "Verbinden", exact: true }).click()
+			await expect(page.getByText("Bestätigter Akteur: Friseer", { exact: true })).toBeVisible({ timeout: 15000 })
+			report.browserReloadReauthenticatesSamePersonalActor = true
+			report.browserCookieHttpOnlySecureStrictWithoutPersonalKeyStorage = true
+			report.browserLogoutRevokedAndRemainsSignedOutAfterReload = true
+		}
 		report.packagedAssetsAndPersonalAuthenticationConfirmed = true
 		await expect(page).toHaveTitle(identity.displayName)
 		await page.getByRole("button", { name: "Home", exact: true }).click()

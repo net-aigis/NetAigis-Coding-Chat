@@ -53,6 +53,9 @@ export type SessionContext = {
 };
 
 export type BrowserPeer = {
+	browserSessionId?: string;
+	browserAuthRequestId?: string;
+	restoringActor?: Promise<void>;
 	/** Private, connection-scoped actor client; never the dashboard's observer credential. */
 	actorRuntime?: ClineCore;
 	actorGeneration?: number;

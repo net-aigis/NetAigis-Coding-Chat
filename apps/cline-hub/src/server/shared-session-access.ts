@@ -15,10 +15,52 @@ export function runtimeForPeer(ctx: HubContext, peer: BrowserPeer): ClineCore {
 	return runtime;
 }
 
+/** Read-only revalidation before issuing a private HTTPS browser cookie. No writer claim. */
+export async function verifyBrowserActorCredential(
+	ctx: HubContext,
+	credential: string,
+): Promise<string> {
+	let runtime: ClineCore | undefined;
+	try {
+		if (
+			!ctx.externalHub ||
+			typeof credential !== "string" ||
+			!credential.trim() ||
+			credential.length > 4096
+		)
+			throw new Error();
+		const endpoint = new URL(ctx.hubUrl);
+		if (
+			endpoint.protocol !== "wss:" &&
+			!["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname)
+		)
+			throw new Error();
+		runtime = await ClineCore.create({
+			backendMode: "remote",
+			clientName: "netaigis-browser-authentication",
+			remote: {
+				endpoint: ctx.hubUrl,
+				authToken: credential,
+				clientType: "cline-hub-browser",
+			},
+		});
+		await runtime.list(1);
+		const actorId = runtime.sessionControl.actorId();
+		if (!actorId) throw new Error();
+		return actorId;
+	} catch {
+		throw new Error("Personal browser authentication was not confirmed");
+	} finally {
+		await runtime?.dispose().catch(() => {});
+	}
+}
+
 export async function authenticateBrowserActor(
 	ctx: HubContext,
 	peer: BrowserPeer,
 	credential: string,
+	authRequestId?: string,
+	expectedActorId?: string,
 ): Promise<void> {
 	if (!ctx.externalHub)
 		throw new Error(
@@ -42,6 +84,7 @@ export async function authenticateBrowserActor(
 		);
 	const generation = (peer.actorGeneration ?? 0) + 1;
 	peer.actorGeneration = generation;
+	peer.browserAuthRequestId = undefined;
 	peer.selectionGeneration = (peer.selectionGeneration ?? 0) + 1;
 	peer.recallSelection = undefined;
 	const previous = peer.actorRuntime;
@@ -66,13 +109,29 @@ export async function authenticateBrowserActor(
 		});
 		await runtime.list(1);
 		const actorId = runtime.sessionControl.actorId();
-		if (!actorId) throw new Error();
+		if (
+			!actorId ||
+			(expectedActorId !== undefined && actorId !== expectedActorId)
+		)
+			throw new Error();
 		if (peer.closed || peer.actorGeneration !== generation) {
 			await runtime.dispose();
 			return;
 		}
 		peer.actorRuntime = runtime;
-		ctx.send(peer, { type: "shared_actor", actorId });
+		peer.browserAuthRequestId =
+			typeof authRequestId === "string" &&
+			/^[a-zA-Z0-9-]{1,64}$/.test(authRequestId)
+				? authRequestId
+				: undefined;
+		ctx.send(peer, {
+			type: "shared_actor",
+			actorId,
+			...(typeof authRequestId === "string" &&
+			/^[a-zA-Z0-9-]{1,64}$/.test(authRequestId)
+				? { authRequestId }
+				: {}),
+		});
 	} catch {
 		if (peer.actorRuntime === runtime) peer.actorRuntime = undefined;
 		await runtime?.dispose().catch(() => {});

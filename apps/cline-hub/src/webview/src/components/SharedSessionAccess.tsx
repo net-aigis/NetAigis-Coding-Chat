@@ -1,10 +1,14 @@
 import type { SessionWriterControl } from "@cline/core";
 import { useEffect, useState } from "react";
 import type { WebviewOutboundMessage } from "../../../webview-protocol";
-import { postToHost } from "../vscode";
+import {
+	forgetBrowserActor,
+	getConfirmedBrowserActorId,
+	postToHost,
+} from "../vscode";
 import { RecallSessions } from "./RecallSessions";
 
-/** Actor credentials stay in this connection's memory, outside URLs and persisted UI state. */
+/** Personal keys never enter persisted UI state; HTTPS can retain an opaque HttpOnly browser ticket. */
 export function SharedSessionAccess({
 	sessionId,
 	onOpenSession,
@@ -13,9 +17,12 @@ export function SharedSessionAccess({
 	onOpenSession?: (id: string) => void;
 }) {
 	const [credential, setCredential] = useState("");
-	const [actorId, setActorId] = useState<string>();
+	const [actorId, setActorId] = useState<string | undefined>(
+		getConfirmedBrowserActorId,
+	);
 	const [control, setControl] = useState<SessionWriterControl>();
 	const [pending, setPending] = useState(false);
+	const [authenticationError, setAuthenticationError] = useState("");
 	const secure = window.isSecureContext;
 	useEffect(() => {
 		setControl(undefined);
@@ -26,6 +33,7 @@ export function SharedSessionAccess({
 		const onMessage = (event: MessageEvent<WebviewOutboundMessage>) => {
 			const message = event.data;
 			if (message?.type === "shared_actor") {
+				setAuthenticationError("");
 				setActorId(message.actorId);
 				setCredential("");
 				setControl(undefined);
@@ -39,6 +47,9 @@ export function SharedSessionAccess({
 			} else if (message?.type === "error") setPending(false);
 		};
 		window.addEventListener("message", onMessage);
+		// The shared-runtime header mounts only after the initial Hub state arrives.
+		// A cookie-authenticated actor can have been confirmed before that render.
+		setActorId(getConfirmedBrowserActorId());
 		return () => window.removeEventListener("message", onMessage);
 	}, [sessionId]);
 	function request(action: "get" | "claim" | "release") {
@@ -86,7 +97,25 @@ export function SharedSessionAccess({
 			<span>
 				{actorId ? `Bestätigter Akteur: ${actorId}` : "Lesender Zugang"}
 			</span>
+			{actorId && (
+				<button
+					type="button"
+					disabled={pending}
+					onClick={() => {
+						setPending(true);
+						void forgetBrowserActor().catch(() => {
+							setAuthenticationError(
+								"Abmeldung nicht bestätigt. Verbindung prüfen und erneut abmelden.",
+							);
+							setPending(false);
+						});
+					}}
+				>
+					Abmelden
+				</button>
+			)}
 			{!secure && <span>Für die Anmeldung ist HTTPS erforderlich.</span>}
+			{authenticationError && <span role="alert">{authenticationError}</span>}
 			{actorId && <RecallSessions onOpenSession={onOpenSession} />}
 			{sessionId && actorId && (
 				<>

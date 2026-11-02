@@ -254,7 +254,7 @@ export type WebviewInboundMessage =
 			conversationId: string;
 			projectId: string;
 	  }
-	| { type: "authenticateActor"; credential: string }
+	| { type: "authenticateActor"; credential: string; authRequestId?: string }
 	| {
 			type: "sessionControl";
 			action: "get" | "claim" | "release";
@@ -308,7 +308,7 @@ export type WebviewOutboundMessage =
 	| { type: "recall_snapshot"; snapshot: TotalRecallSessionSnapshot }
 	| { type: "recall_restored"; sessionId: string }
 	| { type: "command_observations"; sessionId: string; journal: unknown }
-	| { type: "shared_actor"; actorId?: string }
+	| { type: "shared_actor"; actorId?: string; authRequestId?: string }
 	| {
 			type: "session_control";
 			sessionId: string;

@@ -1946,3 +1946,15 @@ ID and the inspected watermark. A matching conversation ID in another project is
 insufficient for restoration. The private standalone launch JSON can supply the
 existing Recall actor keys and a separate archive-signing key in session mode;
 these never become model defaults or browser credentials.
+
+HTTPS dashboard persistence uses bounded in-memory, twelve-hour opaque browser
+tickets, issued only after personal Hub authentication and read-only revalidation.
+The host-only cookie is Secure, HttpOnly and SameSite=Strict. Ticket issuance is
+fenced to that confirmed WebSocket authentication request and actor generation;
+concurrent/obsolete authentication cannot persist a different identity. The browser
+stores neither the personal Hub key nor Recall credentials in local/session storage.
+Reloading reauthenticates against the same selected Hub and never claims a writer
+or starts a task. Logout revokes the ticket; dashboard shutdown clears the volatile
+ticket cache, requiring a new personal login after that server restart. Existing
+same-origin Host/invite checks also protect ticket POST/DELETE. No new persistent
+session/history/knowledge database or Cline self-monitoring service is introduced.
