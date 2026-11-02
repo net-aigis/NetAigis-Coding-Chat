@@ -2,7 +2,7 @@
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import { isIP } from "node:net";
-import { basename, dirname, isAbsolute, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 export interface RuntimeLaunchConfiguration {
 	version: 1;
@@ -17,6 +17,33 @@ export interface RuntimeLaunchConfiguration {
 		roomSecret: string;
 		certFile: string;
 		keyFile: string;
+	};
+}
+
+/** Only for the standalone own process, never VS Code's shared extension host.
+ * Packaged SDK export bundles can hold distinct module-local storage overrides.
+ * Bind their lazy path readers to the same selected root before importing them.
+ */
+export function ownRuntimeStorageEnvironment(
+	storageRoot: string,
+): Record<string, string> {
+	const data = join(storageRoot, "data");
+	const db = join(data, "db");
+	const settings = join(data, "settings");
+	return {
+		CLINE_DIR: storageRoot,
+		CLINE_DATA_DIR: data,
+		CLINE_DB_DATA_DIR: db,
+		CLINE_SESSION_DATA_DIR: join(data, "sessions"),
+		CLINE_TEAM_DATA_DIR: join(data, "teams"),
+		CLINE_CONNECTOR_DATA_DIR: join(data, "connectors"),
+		CLINE_CONNECTOR_SETTINGS_PATH: join(data, "connectors", "settings.json"),
+		CLINE_CONNECTORS_DB_PATH: join(db, "connectors.db"),
+		CLINE_CRON_DB_PATH: join(db, "cron.db"),
+		CLINE_TASKS_DB_PATH: join(db, "tasks.db"),
+		CLINE_PROVIDER_SETTINGS_PATH: join(settings, "providers.json"),
+		CLINE_GLOBAL_SETTINGS_PATH: join(settings, "global-settings.json"),
+		CLINE_MCP_SETTINGS_PATH: join(settings, "cline_mcp_settings.json"),
 	};
 }
 

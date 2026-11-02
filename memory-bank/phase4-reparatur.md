@@ -4181,3 +4181,66 @@ History-, Resume- und Persistenztests. Core-Build/Build-Typecheck Exit 0.
 Das ist noch keine produktive Abnahme des neuen Patches: der bereits gestartete
 Hub verwendet weiter den vorigen installierten Payload. Seine ursprünglichen
 negativen Nachweise und der funktionierende vorherige VSIX bleiben erhalten.
+
+### 2026-11-02: Korrektur der Erstdiagnose – gepackter Hub bindet falsche Pfade
+
+Die frühere Zuordnung der produktiven fehlenden ID zum Datei-Backend war falsch.
+Gezieltes Lesen von /proc/2595926/fd bestätigt tatsächliche offene SQLite-Dateien
+des neuen Daemons unter /home/friseer/.cline/data/db: sessions.db, cron.db,
+tasks.db, hub-events-hub-production.db, hub-runs-hub-production.db und
+session-search.db samt WAL/SHM. Gezielte lesende SQL-Abfrage beider bekannten IDs
+zeigt: aktuelle ID 1793603066247_pk2cs ist im eigenen Namespace-SQLite vorhanden,
+idle/PID 2586156. Im Originalpfad fehlt sie. Keine Dateisitzungs-Herkunft dafür
+behaupten. ee60dca49 bleibt ein eigenständig getesteter Kompatibilitätspatch für
+tatsächlich dateibasierte Bestände, kein Nachweis der produktiven Fehlerursache.
+
+Ursache im Launcher: nur modul-lokales setIsolatedStorageRoot gesetzt; separat
+gepackte SDK-Exporte verwenden andere Modulinstanzen und ihre Umgebungsresolver.
+Bisherige Pakettests erbten CLINE_DATA_DIR/DB_DIR aus dem Prüfbefehl und prüften
+nur Discovery/HTTP, wodurch der Fehler verdeckt wurde. Neue native Paketprüfung
+entfernt diese Vorgaben, setzt einen absichtlich anderen CLINE_DIR innerhalb des
+isolierten Prüfbereichs und liest echte SQLite-Dateideskriptoren des Kindprozesses.
+p4-packaged-storage-isolation-red scheitert mit tatsächlichem Befund
+"Packaged runtime opened an unselected storage root"; kontrollierter Exit 0 des
+eigenen Testkindes, keine produktiven Dateien verändert.
+
+Die beiden von uns neu gestarteten produktiven eigenen User-Dienste wurden nach
+Prüfung ihrer konkreten PIDs ausschließlich für diese Reparatur angehalten.
+Keine Acer-Dienste, produktiven VS-Code-Fenster, Daten oder Berechtigungen geändert.
+Keine automatische Entfernung der im Originalpfad liegenden Datenbanken oder
+Arbeitsartefakte. Welche dieser Dateien bereits vorher existierten und welche
+genauen logischen Änderungen die neue Runtime erzeugt hat, ist damit noch nicht
+vollständig belegt; keine Unverändertheit des Original-Datenbestands behaupten.
+
+Gezielter Fix bindet ausschließlich im eigenständigen Launcher-Prozess alle
+dreizehn vorhandenen CLINE-Speicherpfade explizit an den freigegebenen eigenen
+Namespace, bevor Daemon/Dashboard importiert werden. SDK-Speicheroverride bleibt
+zusätzlich aktiv. Keine Modell-/Token-/Endpoint-Auswahl und keine Veränderung der
+gemeinsamen VS-Code-Prozessumgebung. Produktive neue Paketprüfung/Installation
+und kontrollierter Neustart der beiden eigenen User-Dienste stehen noch aus.
+
+Pfadkorrektur geprüft: p4-packaged-storage-environment-unit 19/19, Hub-Typecheck
+Exit 0; p4-packaged-storage-isolation-green Exit 0 mit tatsächlichen SQLite-FDs
+nur unter ausgewähltem eigenem Root, kein angelegter unselected-storage-Pfad,
+echter Chromium-Login, eigene Identität und kontrollierter Kindprozessabschluss.
+Gleiche neue Prüfung aus extrahierter tatsächlicher VSIX:
+p4-shared-storage-vsix-native-smoke, Exit 0 (14,85 s). Keine Modellinferenz.
+
+Neue eigene VSIX im bestehenden Prüfbereich:
+netaigis-coding-chat-0.1.0-shared-runtime-storage-candidate.vsix
+SHA256 b98f4674e3ef9d64ed3e092b9d880d1d148ec6efd3c20d0213b5cff3d1cc2d17.
+ZIP-Integrität und 307 Paketdateien gegen den Build geprüft. Erste Prüfskript-
+Annahme über Lizenz-/Readme-Namen falsch; VSCE benennt LICENSE zu LICENSE.txt
+und README.md zu readme.md um. Diese beiden Quellzuordnungen explizit geprüft,
+kein pauschales Überspringen. Alter Extraktionsversuch unverändert erhalten.
+
+Notwendige inkrementelle Sicherung vor eigener Paketaktualisierung unter dem
+bestehenden produktiven Nachweis shared-runtime-repair-20261102/
+shared-storage-fix-delta: acht neue/geänderte Dateien (fünf private Runtime-/TLS-
+Dateien, eigener Lock, aktueller Registry- und nativer SQLite-Zustand), 23 bereits
+geprüfte unveränderte Dateien referenziert weiterverwendet. SQLite-Backup-API,
+Prüfsummen und tatsächlicher vollständiger Restore aus Basis plus Delta geprüft,
+einschließlich UID/GID/Mode/mtime/xattrs. Delta-Archiv-SHA256
+904ea9678da6e7f683c6545e3810082032a0e5ff22a8320582538e46cdbd9342;
+Manifest 12681c2abb43bab9657620ce6f489eb8abe4ff68fb6f9c621ac15609237f7766.
+Keine Phase-2-Wiederholung. Altes VSIX und alle Negativnachweise bleiben erhalten.

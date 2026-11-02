@@ -82,9 +82,14 @@ const report = {
 const children = []
 let browser
 function start(mode) {
+	const env = { ...process.env, OTEL_SDK_DISABLED: "true", CLINE_DIR: path.join(root, "unselected-storage") }
+	for (const key of ["CLINE_DATA_DIR", "CLINE_DB_DATA_DIR", "CLINE_SESSION_DATA_DIR", "CLINE_TEAM_DATA_DIR",
+		"CLINE_CONNECTOR_DATA_DIR", "CLINE_CONNECTOR_SETTINGS_PATH", "CLINE_CONNECTORS_DB_PATH", "CLINE_CRON_DB_PATH",
+		"CLINE_TASKS_DB_PATH", "CLINE_PROVIDER_SETTINGS_PATH", "CLINE_GLOBAL_SETTINGS_PATH", "CLINE_MCP_SETTINGS_PATH"])
+		delete env[key]
 	const child = spawn("bun", ["--no-env-file", path.join(extension, "dist/shared-runtime/netaigis-runtime.mjs"), mode, file], {
 		cwd: root,
-		env: { ...process.env, OTEL_SDK_DISABLED: "true" },
+		env,
 		stdio: ["ignore", "pipe", "pipe"],
 	})
 	const state = { mode, child, stdout: "", stderr: "" }
@@ -126,6 +131,16 @@ try {
 		)
 		.toBe(`ws://127.0.0.1:${hubPort}/hub`)
 	report.canonicalDiscoveryConfirmed = true
+	if (process.platform === "linux") {
+		const directory = `/proc/${daemon.child.pid}/fd`
+		const descriptors = await fs.readdir(directory)
+		const targets = await Promise.all(descriptors.map((name) => fs.readlink(path.join(directory, name)).catch(() => "")))
+		const databases = targets.filter((file) => /\.db(?:-wal|-shm)?$/.test(file))
+		assert(databases.length > 0, "No actual database descriptor was observed")
+		assert(databases.every((file) => file.startsWith(`${storage}/data/`)), "Packaged runtime opened an unselected storage root")
+		report.actualDatabasePathsBoundToSelectedOwnStorage = true
+	}
+	await assert.rejects(fs.stat(path.join(root, "unselected-storage")), { code: "ENOENT" })
 	if (ownershipOnly) {
 		const before = JSON.parse(await fs.readFile(discovery, "utf8"))
 		const duplicate = start("daemon")

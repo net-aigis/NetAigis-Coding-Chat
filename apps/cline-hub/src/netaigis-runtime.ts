@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { setIsolatedStorageRoot } from "@cline/shared/storage";
 import {
 	loadRuntimeLaunchConfiguration,
+	ownRuntimeStorageEnvironment,
 	readPrivateRuntimeJson,
 } from "./runtime-launch-configuration";
 
@@ -15,6 +16,7 @@ export async function launchOwnSharedRuntime(
 		throw new Error("Select daemon or dashboard");
 	const config = await loadRuntimeLaunchConfiguration(configurationFile);
 	process.umask(0o077);
+	Object.assign(process.env, ownRuntimeStorageEnvironment(config.storageRoot));
 	setIsolatedStorageRoot(config.storageRoot);
 	process.env.NODE_ENV = "production";
 	process.env.CLINE_BUILD_ENV = "production";

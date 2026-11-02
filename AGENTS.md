@@ -14,6 +14,21 @@ Continuation 2026-11-01: `be11bad51` fixes concurrent approval intents; `a460bd1
 
 ## Cloud Agent Instructions
 
+IMPORTANT correction to the following first diagnosis: /proc/2595926/fd PROVED
+the newly packaged daemon opened ~/.cline/data/db/*.db instead of its configured
+own storage. Read-only SQL confirms current session 1793603066247_pk2cs IS in the
+own SQLite database, idle/PID 2586156; it is NOT proved file-backed. ee60dca49 is
+a separately regression-tested compatibility fix, not the productive cause.
+Only our two newly created own User-units were stopped for forward repair;
+no Acer or productive VS Code was stopped, no data deleted. New package smoke
+explicitly removes inherited CLINE_* overrides, supplies an isolated unselected
+CLINE_DIR, inspects actual Linux FD database paths, and fails with the old bundle.
+Bind standalone process env paths to the approved own root before daemon import;
+never mutate VS Code's shared host env. Complete this fix, package validation,
+necessary incremental current-state restore and own service forward repair before
+claiming shared-runtime operation. Retain original negative receipts and all
+original-path database artifacts; no cleanup without separate authorization.
+
 Latest local-service continuation 2026-11-02: the user explicitly approved the
 seven-file/two-User-service activation with "ok, mach weiter". Apply from
 3e9a2bc5e SUCCEEDED; do not repeat it. Both own runtime (127.0.0.1:25463,

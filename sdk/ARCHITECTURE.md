@@ -1870,3 +1870,14 @@ path inserts a missing index row with insert-if-absent; a concurrent row wins.
 The current process identity is then bound through the existing status revision.
 Canonical messages/checkpoints are not copied, and simply viewing/resuming does
 not index or rewrite the native history.
+
+The own packaged daemon/dashboard launcher additionally binds all thirteen
+existing CLINE storage environment paths to its explicitly approved own storage
+before importing either standalone process. Packaged SDK export entrypoints may
+contain separate module-local path state; setting only one storage module's
+override is insufficient. This process-local environment binding is exclusive to
+the standalone launcher and must never run inside VS Code's shared extension
+host. Provider/model credentials, selection and endpoint settings are unchanged.
+Native package smoke removes inherited path overrides, supplies an unselected
+isolated CLINE_DIR and verifies actual Linux database file descriptors remain
+within the selected own root; discovery/HTTP alone is not sufficient evidence.

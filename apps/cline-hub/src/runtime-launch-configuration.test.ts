@@ -11,11 +11,32 @@ import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import {
 	loadRuntimeLaunchConfiguration,
+	ownRuntimeStorageEnvironment,
 	parseRuntimeLaunchConfiguration,
 	readPrivateRuntimeJson,
 } from "./runtime-launch-configuration";
 
 const roots: string[] = [];
+it("binds every standalone SDK path to the selected own root without changing the caller environment or model routing", () => {
+	const before = { ...process.env };
+	const root = "/fixture/netaigis.netaigis-coding-chat/home";
+	const environment = ownRuntimeStorageEnvironment(root);
+	expect(Object.keys(environment)).toHaveLength(13);
+	expect(environment.CLINE_DIR).toBe(root);
+	expect(environment.CLINE_DB_DATA_DIR).toBe(join(root, "data/db"));
+	expect(environment.CLINE_PROVIDER_SETTINGS_PATH).toBe(
+		join(root, "data/settings/providers.json"),
+	);
+	expect(
+		Object.values(environment).every(
+			(value) => value === root || value.startsWith(`${root}/data`),
+		),
+	).toBe(true);
+	expect(
+		Object.keys(environment).some((key) => /MODEL|TOKEN|KEY|URL/.test(key)),
+	).toBe(false);
+	expect(process.env).toEqual(before);
+});
 afterEach(async () => {
 	await Promise.all(
 		roots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
