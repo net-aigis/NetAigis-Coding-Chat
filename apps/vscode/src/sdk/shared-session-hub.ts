@@ -12,6 +12,11 @@ export interface SharedSessionWriterSnapshot {
 	actorId: string
 	control: SessionWriterControl
 }
+export interface SharedSessionRecallProjectSnapshot {
+	sessionId: string
+	actorId: string
+	projectId?: string
+}
 
 /** Only these fixed, credential-free messages may be displayed by the setup command. */
 export class SharedRuntimeConfigurationError extends Error {}

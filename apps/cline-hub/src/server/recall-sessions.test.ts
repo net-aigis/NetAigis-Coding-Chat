@@ -6,14 +6,20 @@ import type { BrowserPeer } from "./types";
 function fixture() {
 	const runtime = {
 		recall: {
-			list: vi.fn(async () => [{ conversationId: "original" }]),
-			read: vi.fn(async (id: string) => ({
+			projects: vi.fn(async () => [{ projectId: "project" }]),
+			list: vi.fn(async () => [
+				{ projectId: "project", conversationId: "original" },
+			]),
+			read: vi.fn(async (id: string, _projectId?: string) => ({
+				projectId: "project",
 				conversationId: id,
 				journalSeq: 19,
 				sourceVerified: true,
 				restoration: { available: true },
 			})),
-			restore: vi.fn(async (id: string, _seq: number) => id),
+			restore: vi.fn(
+				async (id: string, _seq: number, _projectId?: string) => id,
+			),
 		},
 	};
 	const observer = {
@@ -31,6 +37,28 @@ function fixture() {
 	} as unknown as HubContext;
 	return { runtime, observer, peer, ctx };
 }
+it("keeps the inspected project's identity when another project contains the same conversation ID", async () => {
+	const f = fixture();
+	await handleBrowserRecall(f.ctx, f.peer, {
+		type: "recallSessions",
+		action: "inspect",
+		conversationId: "original",
+		projectId: "project",
+	});
+	await expect(
+		handleBrowserRecall(f.ctx, f.peer, {
+			type: "recallSessions",
+			action: "restore",
+			conversationId: "original",
+			projectId: "OtherProject",
+		}),
+	).rejects.toThrow("Read a verified");
+	expect(f.runtime.recall.restore).not.toHaveBeenCalled();
+	expect(f.runtime.recall.read).toHaveBeenCalledExactlyOnceWith(
+		"original",
+		"project",
+	);
+});
 it("uses the authenticated actor and the inspected server watermark without starting a second conversation", async () => {
 	const f = fixture();
 	await handleBrowserRecall(f.ctx, f.peer, {
@@ -40,16 +68,19 @@ it("uses the authenticated actor and the inspected server watermark without star
 	await handleBrowserRecall(f.ctx, f.peer, {
 		type: "recallSessions",
 		action: "inspect",
+		projectId: "project",
 		conversationId: "original",
 	});
 	await handleBrowserRecall(f.ctx, f.peer, {
 		type: "recallSessions",
 		action: "restore",
+		projectId: "project",
 		conversationId: "original",
 	});
 	expect(f.runtime.recall.restore).toHaveBeenCalledExactlyOnceWith(
 		"original",
 		19,
+		"project",
 	);
 	expect(f.ctx.send).toHaveBeenLastCalledWith(f.peer, {
 		type: "recall_restored",
@@ -65,6 +96,7 @@ it("does not fall back to the observer and refuses restoration before a verified
 		handleBrowserRecall(f.ctx, f.peer, {
 			type: "recallSessions",
 			action: "restore",
+			projectId: "project",
 			conversationId: "original",
 		}),
 	).rejects.toThrow("Read a verified");
@@ -91,10 +123,12 @@ it("does not publish or admit an archive read after an actor switch", async () =
 	const pending = handleBrowserRecall(f.ctx, f.peer, {
 		type: "recallSessions",
 		action: "inspect",
+		projectId: "project",
 		conversationId: "original",
 	});
 	f.peer.actorGeneration = 2;
 	resolve({
+		projectId: "project",
 		conversationId: "original",
 		journalSeq: 19,
 		sourceVerified: true,
@@ -118,14 +152,17 @@ it("keeps the latest selected inspection when older reads arrive later", async (
 	const older = handleBrowserRecall(f.ctx, f.peer, {
 		type: "recallSessions",
 		action: "inspect",
+		projectId: "project",
 		conversationId: "older",
 	});
 	await handleBrowserRecall(f.ctx, f.peer, {
 		type: "recallSessions",
 		action: "inspect",
+		projectId: "project",
 		conversationId: "newer",
 	});
 	resolve({
+		projectId: "project",
 		conversationId: "older",
 		journalSeq: 18,
 		sourceVerified: true,

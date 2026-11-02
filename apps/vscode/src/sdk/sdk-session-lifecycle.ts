@@ -6,6 +6,7 @@ import type {
 	RestoreResult,
 	StartSessionResult,
 } from "@cline/core"
+import { readSessionRecallProject } from "@cline/core"
 import { formatModeSwitchNotice, type ModeSwitchNotice } from "@cline/shared"
 import type { Mode } from "@shared/storage/types"
 import { StateManager } from "@/core/storage/StateManager"
@@ -19,6 +20,7 @@ import type { SdkSessionHost } from "./session-host"
 import {
 	getSharedSessionHubConnection,
 	SharedRuntimeConfigurationError,
+	type SharedSessionRecallProjectSnapshot,
 	type SharedSessionWriterSnapshot,
 } from "./shared-session-hub"
 import { VscodeSessionHost } from "./vscode-session-host"
@@ -212,6 +214,62 @@ export class SdkSessionLifecycle {
 			control = await change.call(host, input.sessionId, input.expectedRevision as number)
 		}
 		return { sessionId: input.sessionId, actorId, control }
+	}
+
+	/** Explicit binding in the existing canonical session, using its writer connection. */
+	async configureSharedSessionRecallProject(input: {
+		sessionId: string
+		projectId?: string
+		isCurrent: () => boolean
+	}): Promise<SharedSessionRecallProjectSnapshot> {
+		const assertCurrent = () => {
+			this.assertRuntimeSelectionIdle()
+			if (
+				!input.sessionId ||
+				!input.isCurrent() ||
+				this.pendingStarts.size ||
+				this.pendingStops.size ||
+				(this.activeSession && this.activeSession.sessionId !== input.sessionId)
+			)
+				throw new SharedRuntimeConfigurationError(
+					"Die ausgewählte Sitzung ist nicht stabil; keine Projektzuordnung bestätigt.",
+				)
+		}
+		assertCurrent()
+		if (!getSharedSessionHubConnection())
+			throw new SharedRuntimeConfigurationError("Für die Projektzuordnung zuerst die gemeinsame Runtime verbinden.")
+		if (input.projectId !== undefined && (typeof input.projectId !== "string" || !input.projectId.trim()))
+			throw new SharedRuntimeConfigurationError("Eine ausdrückliche gültige Projektkennung ist erforderlich.")
+		const host = this.activeSession?.sdkHost ?? (await this.getOrCreateSharedHost())
+		assertCurrent()
+		if (!host.getSessionControl || !host.getAuthenticatedActorId)
+			throw new SharedRuntimeConfigurationError("Keine persönliche Runtime-Anmeldung bestätigt.")
+		const control = await host.getSessionControl(input.sessionId)
+		const actorId = host.getAuthenticatedActorId()
+		if (!actorId) throw new SharedRuntimeConfigurationError("Keine persönliche Runtime-Anmeldung bestätigt.")
+		const session = await host.get(input.sessionId)
+		assertCurrent()
+		if (!session) throw new SharedRuntimeConfigurationError("Die ausgewählte Sitzung ist nicht vorhanden.")
+		const existing = readSessionRecallProject(session.metadata)
+		if (input.projectId === undefined) return { sessionId: input.sessionId, actorId, projectId: existing }
+		if (existing && existing !== input.projectId)
+			throw new SharedRuntimeConfigurationError("Diese Sitzung ist bereits einem anderen Recall-Projekt zugeordnet.")
+		if (existing) return { sessionId: input.sessionId, actorId, projectId: existing }
+		if (control.writer?.actorId !== actorId)
+			throw new SharedRuntimeConfigurationError(
+				"Vor der Projektzuordnung das persönliche Schreibrecht dieser Sitzung übernehmen.",
+			)
+		// The same client carries its inspected control revision; the server owns the
+		// final writer/connection fence and preserves unrelated canonical metadata.
+		const result = await host.update(input.sessionId, { metadata: { recallProjectId: input.projectId } })
+		if (!result.updated) throw new SharedRuntimeConfigurationError("Die Projektzuordnung wurde nicht bestätigt.")
+		const confirmed = await host.get(input.sessionId)
+		assertCurrent()
+		if (!confirmed || readSessionRecallProject(confirmed.metadata) !== input.projectId)
+			throw new SharedRuntimeConfigurationError(
+				"Die gespeicherte Projektzuordnung konnte nicht bestätigt werden; nicht automatisch wiederholen.",
+			)
+		return { sessionId: input.sessionId, actorId, projectId: input.projectId }
 	}
 
 	/** Resolves once no tracked session start is in flight. */

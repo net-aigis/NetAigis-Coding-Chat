@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { setIsolatedStorageRoot } from "@cline/shared/storage";
 import {
 	loadRuntimeLaunchConfiguration,
+	ownRuntimeRecallEnvironment,
 	ownRuntimeStorageEnvironment,
 	readPrivateRuntimeJson,
 } from "./runtime-launch-configuration";
@@ -21,6 +22,13 @@ export async function launchOwnSharedRuntime(
 	process.env.NODE_ENV = "production";
 	process.env.CLINE_BUILD_ENV = "production";
 	if (mode === "daemon") {
+		if (config.recall) {
+			const actors = await readPrivateRuntimeJson(config.actorTokensFile);
+			const environment = ownRuntimeRecallEnvironment(config.recall, actors);
+			// Explicit session mode cannot inherit a former fixed project from a login shell.
+			delete process.env.CLINE_HUB_RECALL_PROJECT;
+			Object.assign(process.env, environment);
+		}
 		process.env.CLINE_HUB_ACTOR_TOKENS_FILE = config.actorTokensFile;
 		process.env.CLINE_HUB_DISCOVERY_PATH = join(
 			config.storageRoot,

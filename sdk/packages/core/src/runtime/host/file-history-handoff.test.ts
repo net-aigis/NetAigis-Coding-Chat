@@ -29,12 +29,29 @@ it("keeps the canonical Recall project through ordinary metadata updates and ref
 			enableTools: true,
 			enableSpawn: false,
 			enableTeams: false,
-			metadata: { recallProjectId: "NetAigisOS" },
+			metadata: {},
 		});
 		await service.persistSessionMessages("project-bound-history", [
 			{ role: "user", content: "Original project order" },
 		]);
 		const before = await readFile(artifacts.messagesPath);
+		const snapshots: unknown[] = [];
+		host.subscribe((event) => {
+			if (event.type === "session_snapshot")
+				snapshots.push(event.payload.snapshot);
+		});
+		expect(
+			await host.updateSession("project-bound-history", {
+				metadata: { recallProjectId: "NetAigisOS" },
+			}),
+		).toEqual({ updated: true });
+		expect(snapshots).toEqual([
+			expect.objectContaining({
+				sessionId: "project-bound-history",
+				status: "idle",
+				metadata: { recallProjectId: "NetAigisOS" },
+			}),
+		]);
 		expect(
 			await host.updateSession("project-bound-history", {
 				metadata: { title: "New title" },

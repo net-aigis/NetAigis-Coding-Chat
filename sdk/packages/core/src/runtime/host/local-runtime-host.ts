@@ -147,7 +147,10 @@ import {
 import type { RuntimeBuilder } from "../orchestration/session-runtime";
 import { SessionRuntime } from "../orchestration/session-runtime-orchestrator";
 import { PendingPromptsController } from "../turn-queue/pending-prompt-service";
-import { preserveSessionRecallProject } from "../../services/recall-project";
+import {
+	preserveSessionRecallProject,
+	readSessionRecallProject,
+} from "../../services/recall-project";
 import {
 	assertRuntimeOwnerConfirmed,
 	hasUnresolvedCommandObservation,
@@ -1855,13 +1858,17 @@ export class LocalRuntimeHost implements RuntimeHost {
 			// session otherwise remains lazy until its first user turn.
 			await this.ensureSessionPersisted(resident);
 		}
-		return this.queueManifestMutation(sessionId, async () => {
+		let recallProjectAdded = false;
+		const outcome = await this.queueManifestMutation(sessionId, async () => {
 			const currentMetadata =
 				resident?.sessionMetadata ?? (await this.getRow(sessionId))?.metadata;
 			if (updates.metadata !== undefined) {
 				const metadata = preserveSessionRecallProject(currentMetadata, {
 					...updates.metadata,
 				});
+				recallProjectAdded =
+					!readSessionRecallProject(currentMetadata) &&
+					!!readSessionRecallProject(metadata);
 				for (const field of RUNTIME_OWNER_METADATA_FIELDS)
 					if (currentMetadata && Object.hasOwn(currentMetadata, field))
 						metadata[field] = currentMetadata[field];
@@ -1900,6 +1907,11 @@ export class LocalRuntimeHost implements RuntimeHost {
 			}
 			return { updated };
 		});
+		// Read after the durability gate, so an idle historical task can archive its
+		// actual current transcript without a synthetic new turn or process status.
+		if (outcome.updated && recallProjectAdded)
+			await this.emitSessionSnapshot(sessionId);
+		return outcome;
 	}
 
 	async updateSessionCompactionState(

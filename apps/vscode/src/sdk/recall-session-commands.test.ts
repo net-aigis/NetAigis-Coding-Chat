@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
 	input: vi.fn(),
 	quickPick: vi.fn(),
 	error: vi.fn(async () => {}),
+	info: vi.fn(),
 	shared: undefined as undefined | { endpoint: string; authToken: string },
 	sharedRestore: vi.fn(async (id: string, _seq: number) => id),
 	sharedSnapshot: vi.fn(async (id: string, projectId = "project") => ({
@@ -79,7 +80,7 @@ vi.mock("vscode", () => ({
 		showInputBox: (...args: unknown[]) => mocks.input(...args),
 		showQuickPick: (...args: unknown[]) => mocks.quickPick(...args),
 		showErrorMessage: mocks.error,
-		showInformationMessage: vi.fn(async () => {}),
+		showInformationMessage: mocks.info,
 	},
 }))
 vi.mock("@/sdk/recall-config-manager", () => ({
@@ -105,7 +106,9 @@ beforeEach(() => {
 	vi.clearAllMocks()
 	mocks.commands.clear()
 	mocks.input.mockReset()
+	mocks.info.mockReset()
 	mocks.shared = undefined
+	registerTotalRecallCommands({} as vscode.ExtensionContext)
 })
 afterEach(() => {
 	mocks.dispose?.()
@@ -113,6 +116,70 @@ afterEach(() => {
 	mocks.receive = undefined
 })
 describe("TOTAL RECALL command wiring", () => {
+	it("binds only the inspected native session to a selected stored project without changing credentials", async () => {
+		mocks.shared = { endpoint: "wss://fixture.invalid/hub", authToken: "fixture-personal" }
+		const control = vi.fn(async (projectId?: string, _sessionId?: string) => ({
+			sessionId: "canonical-native",
+			actorId: "Friseer",
+			projectId,
+		}))
+		registerTotalRecallCommands({} as vscode.ExtensionContext, control)
+		mocks.quickPick.mockImplementationOnce(async (items: { projectId?: string }[]) => items[0])
+		mocks.info.mockResolvedValueOnce("Dieser Sitzung zuordnen")
+		await configureTotalRecall()
+		expect(control.mock.calls).toEqual([[], ["project", "canonical-native"]])
+		expect(mocks.configure).not.toHaveBeenCalled()
+		expect(mocks.input).not.toHaveBeenCalled()
+	})
+	it("does not assign a project after cancellation or a changed runtime connection", async () => {
+		mocks.shared = { endpoint: "wss://fixture.invalid/hub", authToken: "fixture-personal" }
+		const control = vi.fn(async (projectId?: string, _sessionId?: string) => ({
+			sessionId: "canonical-native",
+			actorId: "Friseer",
+			projectId,
+		}))
+		registerTotalRecallCommands({} as vscode.ExtensionContext, control)
+		mocks.quickPick.mockImplementationOnce(async (items: unknown[]) => items[0])
+		await configureTotalRecall()
+		expect(control).toHaveBeenCalledOnce()
+		mocks.quickPick.mockImplementationOnce(async (items: unknown[]) => {
+			mocks.shared!.authToken = "fixture-other-personal"
+			return items[0]
+		})
+		mocks.info.mockResolvedValueOnce("Dieser Sitzung zuordnen")
+		await configureTotalRecall()
+		expect(control.mock.calls).toEqual([[], []])
+		expect(mocks.error).toHaveBeenCalled()
+	})
+	it("retains an existing per-session assignment and never offers an automatic reassignment", async () => {
+		mocks.shared = { endpoint: "wss://fixture.invalid/hub", authToken: "fixture-personal" }
+		const control = vi.fn(async () => ({
+			sessionId: "canonical-native",
+			actorId: "Friseer",
+			projectId: "OtherExistingProject",
+		}))
+		registerTotalRecallCommands({} as vscode.ExtensionContext, control)
+		await configureTotalRecall()
+		expect(control).toHaveBeenCalledOnce()
+		expect(mocks.projects).not.toHaveBeenCalled()
+		expect(mocks.quickPick).not.toHaveBeenCalled()
+	})
+	it("uses a manually confirmed exact business project only for the inspected session", async () => {
+		mocks.shared = { endpoint: "wss://fixture.invalid/hub", authToken: "fixture-personal" }
+		const control = vi.fn(async (projectId?: string, _sessionId?: string) => ({
+			sessionId: "canonical-native",
+			actorId: "Friseer",
+			projectId,
+		}))
+		registerTotalRecallCommands({} as vscode.ExtensionContext, control)
+		mocks.quickPick.mockImplementationOnce(async (items: unknown[]) => items.at(-1))
+		mocks.input.mockResolvedValueOnce("NetAigisOS")
+		mocks.info.mockResolvedValueOnce("Dieser Sitzung zuordnen")
+		await configureTotalRecall()
+		expect(control.mock.calls).toEqual([[], ["NetAigisOS", "canonical-native"]])
+		expect(mocks.configure).not.toHaveBeenCalled()
+		expect(mocks.input.mock.calls[0][0]).not.toHaveProperty("value")
+	})
 	it("keeps project identity when two projects contain the same conversation ID", async () => {
 		mocks.shared = { endpoint: "wss://fixture.invalid/transport", authToken: "fixture-login" }
 		mocks.projects.mockResolvedValueOnce([{ projectId: "one" }, { projectId: "two" }])

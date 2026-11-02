@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import {
 	loadRuntimeLaunchConfiguration,
+	ownRuntimeRecallEnvironment,
 	ownRuntimeStorageEnvironment,
 	parseRuntimeLaunchConfiguration,
 	readPrivateRuntimeJson,
@@ -64,6 +65,68 @@ it("retains explicit endpoints/storage and never selects a model or creates a cr
 	const input = configuration();
 	expect(parseRuntimeLaunchConfiguration(input)).toEqual(input);
 	expect(input).not.toHaveProperty("model");
+});
+
+it("retains an explicit project-independent Recall connection in the existing private launch configuration", () => {
+	const recall = {
+		baseUrl: "http://fixture-recall.invalid:11436",
+		actor: "Friseer",
+		actorTokens: { Friseer: "fixture-recall-one", jimmi: "fixture-recall-two" },
+		archiveSigningKey: Buffer.alloc(32, 15).toString("base64url"),
+		projectMode: "session" as const,
+	};
+	const before = { ...process.env };
+	expect(
+		parseRuntimeLaunchConfiguration({ ...configuration(), recall }).recall,
+	).toEqual(recall);
+	const environment = ownRuntimeRecallEnvironment(recall, {
+		Friseer: "fixture-hub-one",
+		jimmi: "fixture-hub-two",
+	});
+	expect(environment.CLINE_HUB_RECALL_PROJECT_MODE).toBe("session");
+	expect(environment).not.toHaveProperty("CLINE_HUB_RECALL_PROJECT");
+	expect(environment.CLINE_HUB_RECALL_URL).toBe(recall.baseUrl);
+	expect(JSON.parse(environment.RECALL_ACTOR_TOKENS_JSON)).toEqual(
+		recall.actorTokens,
+	);
+	expect(
+		Object.keys(environment).some((key) => /MODEL|PROVIDER|OPENAI/.test(key)),
+	).toBe(false);
+	expect(process.env).toEqual(before);
+});
+
+it("refuses invented global scopes, credential reuse and insecure Recall URL credentials without disclosing secrets", () => {
+	const recall = {
+		baseUrl: "http://fixture-recall.invalid:11436",
+		actor: "Friseer",
+		actorTokens: { Friseer: "fixture-hidden", jimmi: "fixture-two" },
+		archiveSigningKey: Buffer.alloc(32, 15).toString("base64url"),
+		projectMode: "session" as const,
+	};
+	for (const changed of [
+		{ project: "invented" },
+		{ projectMode: "fixed" },
+		{ baseUrl: "http://user:fixture-hidden@fixture.invalid" },
+		{ archiveSigningKey: "short-fixture-hidden" },
+		{ actor: "unknown" },
+	]) {
+		try {
+			parseRuntimeLaunchConfiguration({
+				...configuration(),
+				recall: { ...recall, ...changed },
+			});
+			throw new Error("Unexpected success");
+		} catch (error) {
+			expect(String(error)).toContain("credentials withheld");
+			expect(String(error)).not.toContain("fixture-hidden");
+		}
+	}
+	expect(() =>
+		ownRuntimeRecallEnvironment(recall, { Friseer: "fixture-hidden" }),
+	).toThrow("credentials withheld");
+	expect(() =>
+		ownRuntimeRecallEnvironment(recall, { Friseer: recall.archiveSigningKey }),
+	).toThrow("credentials withheld");
 });
 
 it.each([

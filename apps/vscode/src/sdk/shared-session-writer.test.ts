@@ -1,3 +1,4 @@
+import type { SessionWriterControl } from "@cline/core/hub"
 import { beforeEach, expect, it, vi } from "vitest"
 import { SdkSessionLifecycle } from "./sdk-session-lifecycle"
 
@@ -20,8 +21,10 @@ beforeEach(() => {
 })
 
 function fixture() {
-	const control = { version: 1 as const, revision: 4 }
+	const control: SessionWriterControl = { version: 1, revision: 4 }
 	const host = {
+		get: vi.fn(async () => ({ metadata: { title: "Existing", recallProjectId: undefined as string | undefined } })),
+		update: vi.fn(async (_id: string, _updates: unknown) => ({ updated: true })),
 		getSessionControl: vi.fn(async () => control),
 		getAuthenticatedActorId: vi.fn((): string | undefined => "Friseer"),
 		claimSessionControl: vi.fn(async (_id: string, _revision: number) => ({
@@ -60,6 +63,69 @@ it("claims on the same Runtime client later used for the existing canonical sess
 	expect(lifecycle.getActiveSession()?.sdkHost).toBe(host)
 	expect(host.claimSessionControl).toHaveBeenCalledExactlyOnceWith(input.sessionId, 4)
 	expect(host.stop).not.toHaveBeenCalled()
+})
+it("binds an explicit Recall project through the owning authenticated client without replaying history", async () => {
+	const { host, lifecycle, input } = fixture()
+	host.getSessionControl.mockResolvedValue({
+		version: 1,
+		revision: 4,
+		writer: { actorId: "Friseer", clientId: "same", connectionId: "same" },
+	})
+	host.get
+		.mockResolvedValueOnce({ metadata: { title: "Existing", recallProjectId: undefined } })
+		.mockResolvedValueOnce({ metadata: { title: "Existing", recallProjectId: "NetAigisOS" } })
+	expect(await lifecycle.configureSharedSessionRecallProject({ ...input, projectId: "NetAigisOS" })).toEqual({
+		sessionId: input.sessionId,
+		actorId: "Friseer",
+		projectId: "NetAigisOS",
+	})
+	expect(host.update).toHaveBeenCalledExactlyOnceWith(input.sessionId, { metadata: { recallProjectId: "NetAigisOS" } })
+	expect(host.start).not.toHaveBeenCalled()
+	expect(host.claimSessionControl).not.toHaveBeenCalled()
+	expect(host.stop).not.toHaveBeenCalled()
+})
+it("reads current Recall binding without assigning a global default", async () => {
+	const { host, lifecycle, input } = fixture()
+	expect(await lifecycle.configureSharedSessionRecallProject(input)).toEqual({
+		sessionId: input.sessionId,
+		actorId: "Friseer",
+		projectId: undefined,
+	})
+	expect(host.update).not.toHaveBeenCalled()
+})
+it("refuses Recall reassignment or missing writer authority without mutating the session", async () => {
+	const { host, lifecycle, input } = fixture()
+	host.get.mockResolvedValue({ metadata: { title: "Existing", recallProjectId: "NetAigisOS" } })
+	await expect(lifecycle.configureSharedSessionRecallProject({ ...input, projectId: "Different" })).rejects.toThrow("bereits")
+	host.get.mockResolvedValue({ metadata: { title: "Existing", recallProjectId: undefined } })
+	await expect(lifecycle.configureSharedSessionRecallProject({ ...input, projectId: "NetAigisOS" })).rejects.toThrow(
+		"Schreibrecht",
+	)
+	expect(host.update).not.toHaveBeenCalled()
+	expect(host.claimSessionControl).not.toHaveBeenCalled()
+})
+it("does not bind after selection changes or report success after uncertain acknowledgement", async () => {
+	const { host, lifecycle, input } = fixture()
+	let current = true
+	host.get.mockImplementationOnce(async () => {
+		current = false
+		return { metadata: { title: "Existing", recallProjectId: undefined } }
+	})
+	await expect(
+		lifecycle.configureSharedSessionRecallProject({ ...input, projectId: "NetAigisOS", isCurrent: () => current }),
+	).rejects.toThrow("stabil")
+	expect(host.update).not.toHaveBeenCalled()
+	current = true
+	host.getSessionControl.mockResolvedValue({
+		version: 1,
+		revision: 4,
+		writer: { actorId: "Friseer", clientId: "same", connectionId: "same" },
+	})
+	host.update.mockRejectedValue(new Error("fixture uncertain acknowledgement"))
+	await expect(lifecycle.configureSharedSessionRecallProject({ ...input, projectId: "NetAigisOS" })).rejects.toThrow(
+		"uncertain",
+	)
+	expect(host.update).toHaveBeenCalledOnce()
 })
 it("reads and releases without starting, stopping, aborting or replaying a turn", async () => {
 	const { host, lifecycle, input } = fixture()

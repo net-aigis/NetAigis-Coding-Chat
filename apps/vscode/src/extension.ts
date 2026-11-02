@@ -150,7 +150,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand(commands.HistoryButton, () => sendHistoryButtonClickedEvent()))
 	context.subscriptions.push(vscode.commands.registerCommand(commands.AccountButton, () => sendAccountButtonClickedEvent()))
 	context.subscriptions.push(vscode.commands.registerCommand(commands.WorktreesButton, () => sendWorktreesButtonClickedEvent()))
-	context.subscriptions.push(...registerTotalRecallCommands(context))
+	context.subscriptions.push(
+		...registerTotalRecallCommands(context, (projectId, sessionId) =>
+			webview.controller.sharedSessionRecallProject(projectId, sessionId),
+		),
+	)
 	context.subscriptions.push(
 		registerSharedRuntimeCommand((connection) => webview.controller.configureSharedRuntime(connection)),
 	)

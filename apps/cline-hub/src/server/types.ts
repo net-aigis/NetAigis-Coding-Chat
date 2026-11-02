@@ -59,6 +59,7 @@ export type BrowserPeer = {
 	recallGeneration?: number;
 	recallSelection?: {
 		conversationId: string;
+		projectId: string;
 		journalSeq: number;
 		eligible: boolean;
 	};

@@ -2264,6 +2264,18 @@ export class Controller {
 		})
 	}
 
+	async sharedSessionRecallProject(projectId?: string, expectedSessionId?: string) {
+		const task = this.task
+		if (!task) throw new SharedRuntimeConfigurationError("Für die Projektzuordnung eine bestehende Sitzung auswählen.")
+		if (projectId !== undefined && task.taskId !== expectedSessionId)
+			throw new SharedRuntimeConfigurationError("Die Sitzungsauswahl hat sich geändert; keine Projektzuordnung ausgeführt.")
+		return this.sessions.configureSharedSessionRecallProject({
+			sessionId: task.taskId,
+			projectId,
+			isCurrent: () => this.task === task,
+		})
+	}
+
 	// ---- Mode switching ----
 
 	async togglePlanActMode(modeToSwitchTo: Mode, chatContent?: ChatContent): Promise<boolean> {

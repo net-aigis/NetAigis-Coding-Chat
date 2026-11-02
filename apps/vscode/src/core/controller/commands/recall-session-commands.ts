@@ -7,10 +7,12 @@ import { drainRecallOutbox } from "@/sdk/recall-outbox"
 import { RecallRuntimeClient } from "@/sdk/recall-runtime-client"
 import { renderRecallSessionBrowser } from "@/sdk/recall-session-browser"
 import { TotalRecallSessionHost } from "@/sdk/recall-session-host"
-import { getSharedSessionHubConnection } from "@/sdk/shared-session-hub"
+import { getSharedSessionHubConnection, type SharedSessionRecallProjectSnapshot } from "@/sdk/shared-session-hub"
 import { Logger } from "@/shared/services/Logger"
 
 let recallPanel: vscode.WebviewPanel | undefined
+type SharedProjectControl = (projectId?: string, expectedSessionId?: string) => Promise<SharedSessionRecallProjectSnapshot>
+let sharedProjectControl: SharedProjectControl | undefined
 let selectedSnapshot:
 	| { conversationId: string; projectId: string; journalSeq: number; eligible: boolean; runtime?: RecallRuntimeClient }
 	| undefined
@@ -30,7 +32,11 @@ async function showError(): Promise<void> {
 	await recallPanel?.webview.postMessage({ cmd: "msg", msg: message })
 	await vscode.window.showErrorMessage(message)
 }
-export function registerTotalRecallCommands(_context: vscode.ExtensionContext): vscode.Disposable[] {
+export function registerTotalRecallCommands(
+	_context: vscode.ExtensionContext,
+	projectControl?: SharedProjectControl,
+): vscode.Disposable[] {
+	sharedProjectControl = projectControl
 	const disposables = [
 		vscode.commands.registerCommand("netaigis-coding-chat.recall.listSessions", openRecallSessionView),
 		vscode.commands.registerCommand("netaigis-coding-chat.recall.quickPick", quickPickRecallSession),
@@ -158,7 +164,62 @@ async function quickPickRecallSession(): Promise<void> {
 	}
 }
 export async function configureTotalRecall(): Promise<void> {
-	if (getSharedSessionHubConnection()) {
+	const shared = getSharedSessionHubConnection()
+	if (shared && sharedProjectControl) {
+		try {
+			const control = sharedProjectControl
+			const inspected = await control()
+			if (inspected.projectId) {
+				await vscode.window.showInformationMessage(
+					`Sitzung ${inspected.sessionId} ist dem Recall-Projekt ${inspected.projectId} zugeordnet.`,
+				)
+				return
+			}
+			const runtime = new RecallRuntimeClient(shared)
+			const projects = await runtime.listProjects()
+			const choices = projects.map((project) => ({
+				label: project.projectId,
+				projectId: project.projectId as string | undefined,
+			}))
+			choices.push({ label: "Eigene Projektkennung ausdrücklich eingeben…", projectId: undefined })
+			const selection = await vscode.window.showQuickPick(choices, {
+				title: `TOTAL RECALL – Projekt für Sitzung ${inspected.sessionId}`,
+			})
+			if (!selection) return
+			const projectId =
+				selection.projectId ??
+				(await vscode.window.showInputBox({
+					title: "TOTAL RECALL – genaue Projektkennung dieser Sitzung",
+					prompt: "Deine bestehende Projektkennung eingeben. Keine globale Kennung oder automatische Zuordnung anderer Sitzungen.",
+					ignoreFocusOut: true,
+					validateInput: (value) =>
+						!value.trim() || value !== value.trim()
+							? "Eine genaue, nicht leere Projektkennung ohne äußere Leerzeichen eingeben."
+							: undefined,
+				}))
+			if (!projectId) return
+			const button = "Dieser Sitzung zuordnen"
+			const confirmed = await vscode.window.showInformationMessage(
+				`Sitzung ${inspected.sessionId} als ${inspected.actorId} dauerhaft dem Recall-Projekt ${projectId} zuordnen?`,
+				{ modal: true },
+				button,
+			)
+			if (confirmed !== button) return
+			if (!runtime.matchesConnection(getSharedSessionHubConnection())) throw new Error("Runtime connection changed")
+			const result = await control(projectId, inspected.sessionId)
+			if (
+				result.sessionId !== inspected.sessionId ||
+				result.actorId !== inspected.actorId ||
+				result.projectId !== projectId
+			)
+				throw new Error("Canonical project assignment was not confirmed")
+			await vscode.window.showInformationMessage(`Recall-Projekt bestätigt: ${projectId} (${result.sessionId}).`)
+		} catch {
+			await showError()
+		}
+		return
+	}
+	if (shared) {
 		await vscode.window.showInformationMessage(
 			"TOTAL RECALL wird für diese Verbindung durch die gemeinsame Runtime verwaltet.",
 		)

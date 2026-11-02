@@ -10,6 +10,13 @@ export interface RuntimeLaunchConfiguration {
 	workspaceRoot: string;
 	actorTokensFile: string;
 	hubPort: number;
+	recall?: {
+		baseUrl: string;
+		actor: string;
+		actorTokens: Record<string, string>;
+		archiveSigningKey: string;
+		projectMode: "session";
+	};
 	dashboard: {
 		host: string;
 		port: number;
@@ -73,6 +80,104 @@ function port(value: unknown): number {
 	return Number(value);
 }
 
+function recallConfiguration(
+	value: unknown,
+): RuntimeLaunchConfiguration["recall"] {
+	if (value === undefined) return undefined;
+	if (!value || typeof value !== "object" || Array.isArray(value)) invalid();
+	const v = value as Record<string, unknown>;
+	if (
+		Object.keys(v).some(
+			(key) =>
+				![
+					"baseUrl",
+					"actor",
+					"actorTokens",
+					"archiveSigningKey",
+					"projectMode",
+				].includes(key),
+		)
+	)
+		invalid();
+	if (
+		v.projectMode !== "session" ||
+		typeof v.baseUrl !== "string" ||
+		typeof v.actor !== "string" ||
+		!v.actor.trim()
+	)
+		invalid();
+	const url = new URL(v.baseUrl);
+	if (
+		!["http:", "https:"].includes(url.protocol) ||
+		url.username ||
+		url.password ||
+		url.search ||
+		url.hash
+	)
+		invalid();
+	if (
+		!v.actorTokens ||
+		typeof v.actorTokens !== "object" ||
+		Array.isArray(v.actorTokens)
+	)
+		invalid();
+	const tokens = v.actorTokens as Record<string, unknown>;
+	if (
+		!Object.keys(tokens).length ||
+		Object.entries(tokens).some(
+			([actor, token]) =>
+				!actor.trim() || typeof token !== "string" || !token.trim(),
+		) ||
+		!Object.hasOwn(tokens, v.actor)
+	)
+		invalid();
+	if (
+		typeof v.archiveSigningKey !== "string" ||
+		!/^[A-Za-z0-9_-]{43}$/.test(v.archiveSigningKey) ||
+		Buffer.from(v.archiveSigningKey, "base64url").toString("base64url") !==
+			v.archiveSigningKey ||
+		Object.values(tokens).includes(v.archiveSigningKey)
+	)
+		invalid();
+	return {
+		baseUrl: url.toString().replace(/\/+$/, ""),
+		actor: v.actor,
+		actorTokens: { ...tokens } as Record<string, string>,
+		archiveSigningKey: v.archiveSigningKey,
+		projectMode: "session",
+	};
+}
+
+/** Standalone daemon only. Personal Hub login, Recall API and archive signing remain distinct. */
+export function ownRuntimeRecallEnvironment(
+	recall: NonNullable<RuntimeLaunchConfiguration["recall"]>,
+	hubActors: unknown,
+): Record<string, string> {
+	try {
+		const selected = recallConfiguration(recall)!;
+		if (!hubActors || typeof hubActors !== "object" || Array.isArray(hubActors))
+			invalid();
+		const hubTokens = Object.values(hubActors);
+		if (
+			hubTokens.some((value) => typeof value !== "string" || !value) ||
+			Object.values(selected.actorTokens).some((value) =>
+				hubTokens.includes(value),
+			) ||
+			hubTokens.includes(selected.archiveSigningKey)
+		)
+			invalid();
+		return {
+			CLINE_HUB_RECALL_URL: selected.baseUrl,
+			CLINE_HUB_RECALL_ACTOR: selected.actor,
+			CLINE_HUB_RECALL_PROJECT_MODE: "session",
+			CLINE_HUB_RECALL_ARCHIVE_KEY: selected.archiveSigningKey,
+			RECALL_ACTOR_TOKENS_JSON: JSON.stringify(selected.actorTokens),
+		};
+	} catch {
+		return invalid();
+	}
+}
+
 export function parseRuntimeLaunchConfiguration(
 	value: unknown,
 ): RuntimeLaunchConfiguration {
@@ -88,6 +193,7 @@ export function parseRuntimeLaunchConfiguration(
 			invalid();
 		const d = v.dashboard as Record<string, unknown>;
 		const storageRoot = absolute(v.storageRoot);
+		const recall = recallConfiguration(v.recall);
 		if (
 			basename(storageRoot) !== "home" ||
 			basename(dirname(storageRoot)) !== "netaigis.netaigis-coding-chat"
@@ -126,6 +232,7 @@ export function parseRuntimeLaunchConfiguration(
 			workspaceRoot: absolute(v.workspaceRoot),
 			actorTokensFile: absolute(v.actorTokensFile),
 			hubPort,
+			...(recall ? { recall } : {}),
 			dashboard: {
 				host: d.host,
 				port: dashboardPort,

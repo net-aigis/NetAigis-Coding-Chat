@@ -71,9 +71,10 @@ export function RecallSessions({
 			</button>
 			<ul>
 				{conversations?.map((item) => (
-					<li key={item.conversationId}>
+					<li key={JSON.stringify([item.projectId, item.conversationId])}>
 						<span>
-							{item.title || item.conversationId} · {item.eventCount} Ereignisse{" "}
+							{item.projectId} · {item.title || item.conversationId} ·{" "}
+							{item.eventCount} Ereignisse{" "}
 						</span>
 						<button
 							type="button"
@@ -85,6 +86,7 @@ export function RecallSessions({
 									type: "recallSessions",
 									action: "inspect",
 									conversationId: item.conversationId,
+									projectId: item.projectId,
 								});
 							}}
 						>
@@ -96,7 +98,9 @@ export function RecallSessions({
 			{snapshot && (
 				<section>
 					<p>
-						{snapshot.sourceVerified && snapshot.restoration.available
+						{snapshot.projectId &&
+						snapshot.sourceVerified &&
+						snapshot.restoration.available
 							? "Geprüfter gespeicherter Verlauf verfügbar."
 							: "Dieser Archivstand kann gelesen, aber noch nicht sicher wiederaufgenommen werden."}
 					</p>
@@ -104,15 +108,18 @@ export function RecallSessions({
 						type="button"
 						disabled={
 							pending ||
+							!snapshot.projectId ||
 							!snapshot.sourceVerified ||
 							!snapshot.restoration.available
 						}
 						onClick={() => {
+							if (!snapshot.projectId) return;
 							setPending(true);
 							postToHost({
 								type: "recallSessions",
 								action: "restore",
 								conversationId: snapshot.conversationId,
+								projectId: snapshot.projectId,
 							});
 						}}
 					>

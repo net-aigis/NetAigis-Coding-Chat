@@ -1935,3 +1935,14 @@ credentials without retagging. Already queued events survive deletion of the
 native session. A contradictory surviving binding retains the record. Backoff
 preserves order inside a failed project while allowing unrelated projects to
 sync; this remains one outbox and one canonical session store.
+
+The first explicit native project binding publishes an actual session snapshot
+after its metadata durability gate. Existing idle history can thus enter Recall
+without fabricating a new model turn, author or completed process. Native setup
+uses the selected session's same authenticated writer connection, keeps the ID
+across dialogs and verifies the persisted binding. Browser Recall listing first
+discovers real projects; inspection and restoration carry project plus conversation
+ID and the inspected watermark. A matching conversation ID in another project is
+insufficient for restoration. The private standalone launch JSON can supply the
+existing Recall actor keys and a separate archive-signing key in session mode;
+these never become model defaults or browser credentials.

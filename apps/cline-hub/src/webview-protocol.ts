@@ -252,6 +252,7 @@ export type WebviewInboundMessage =
 			type: "recallSessions";
 			action: "inspect" | "restore";
 			conversationId: string;
+			projectId: string;
 	  }
 	| { type: "authenticateActor"; credential: string }
 	| {

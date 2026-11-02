@@ -24,18 +24,36 @@ export async function handleBrowserRecall(
 		peer.recallGeneration === readGeneration;
 	if (frame.action === "list") {
 		peer.recallSelection = undefined;
-		const conversations = await runtime.recall.list();
+		const projects = await runtime.recall.projects();
+		const conversations = [];
+		for (const project of projects) {
+			if (!current()) return;
+			conversations.push(...(await runtime.recall.list(project.projectId)));
+		}
 		if (current()) ctx.send(peer, { type: "recall_sessions", conversations });
 		return;
 	}
 	if (typeof frame.conversationId !== "string" || !frame.conversationId)
 		throw new Error("Select a Recall conversation first");
+	if (typeof frame.projectId !== "string" || !frame.projectId.trim())
+		throw new Error("Select the exact Recall project first");
 	if (frame.action === "inspect") {
 		peer.recallSelection = undefined;
-		const snapshot = await runtime.recall.read(frame.conversationId);
+		const snapshot = await runtime.recall.read(
+			frame.conversationId,
+			frame.projectId,
+		);
 		if (!current()) return;
+		if (
+			snapshot.projectId !== frame.projectId ||
+			snapshot.conversationId !== frame.conversationId
+		)
+			throw new Error(
+				"Recall snapshot did not confirm the selected project and conversation",
+			);
 		peer.recallSelection = {
 			conversationId: snapshot.conversationId,
+			projectId: snapshot.projectId,
 			journalSeq: snapshot.journalSeq,
 			eligible:
 				snapshot.sourceVerified === true &&
@@ -50,7 +68,11 @@ export async function handleBrowserRecall(
 			"Finish the current request before recovering another session",
 		);
 	const selection = peer.recallSelection;
-	if (!selection?.eligible || selection.conversationId !== frame.conversationId)
+	if (
+		!selection?.eligible ||
+		selection.conversationId !== frame.conversationId ||
+		selection.projectId !== frame.projectId
+	)
 		throw new Error(
 			"Read a verified recoverable archive before requesting recovery",
 		);
@@ -58,6 +80,7 @@ export async function handleBrowserRecall(
 	const id = await runtime.recall.restore(
 		selection.conversationId,
 		selection.journalSeq,
+		selection.projectId,
 	);
 	if (current()) ctx.send(peer, { type: "recall_restored", sessionId: id });
 	// The existing UI opens/attaches this same ID. No second chat or implicit writer claim.

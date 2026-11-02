@@ -553,3 +553,4 @@ export { DurableRecallOutbox, getRecallSessionId } from "../../../../sdk/package
 // Use the shared real journal reader for the Recall adapter contract tests.
 export { TotalRecallSessionHost } from "../../../../sdk/packages/core/src/services/recall-session-reader"
 export { resolveMessageDisplayRole } from "../../../../sdk/packages/core/src/session/user-run-messages"
+export { readSessionRecallProject } from "../../../../sdk/packages/core/src/services/recall-project"
