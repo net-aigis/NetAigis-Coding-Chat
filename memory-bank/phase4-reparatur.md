@@ -4469,3 +4469,32 @@ Rücknahme nur der neu ergänzten Regel über firewall-cmd --zone=public
 --remove-rich-rule=<exakt obige Regel>, zusätzlich --permanent ausschließlich
 wenn application.json diese Zustandsart als ursprünglich nicht vorhanden belegt.
 Kein Internetforward, Zertifikatsvertrauenswechsel oder geratenes VPN-Netz.
+
+
+Gezielte produktive Metadatenabnahme abgeschlossen:
+p4-productive-history-metadata-fixed Exit 0,114,97 s. Genau ein neuer echter
+Browser-/Modellturn als jimmi in kanonischer ID1793603066247_pk2cs, elf→dreizehn
+Nachrichten. Vollständiger vorher dauerhaft gesicherter Elf-Nachrichten-Präfix
+unverändert einschließlich historischer Metadaten. Danach idle und weiter in
+Runtime resident trotz Browserdisconnect. Tatsächliche Prüfung, keine Fixtures;
+weiter kein physischer Androidnachweis und keine Recall-Produktivabnahme.
+
+Vorbereiteter Projekte-Endpunkt zusätzlich im TATSÄCHLICH vorhandenen Backend-
+Interpreter (/opt/ai-agent/venv/bin/uvicorn-Shebang) gegen echtes FastAPI-ASGI
+geprüft, vollständig neuer Unterprozess/in-memory SQLite und Fixture-Tokens.
+Keine gestarteten Listener, Dateien oder produktiven Dienste verändert.
+Nicht authentifiziert/falscher Token401, Friseer/jimmi identischer Projektkatalog,
+leerer Store keine erfundene ID, gefälschte Urheberschaft403, Projektlesung null
+DB-Schreiboperationen. Exit0,p4-recall-project-discovery-existing-fastapi.jsonl.
+Das ist eine Backend-Regressionsprüfung und KEINE produktive HTTP-Abnahme.
+
+Core-Reader unterstützt ergänzend listProjects und ausdrücklich gewählte vorhandene
+Projekte für Lesen/Verlauf. API-Katalog authentifiziert und strikt validiert;
+kein project_id-Parameter beim Katalog, keine neue globale Kennung und kein
+stilles Ausweichen auf den bisherigen Scope bei404/unbekannter Kennung. Auswahl
+ändert nicht die gespeicherte Konfiguration oder historische Urheber. Bestehender
+zweiter Snapshot-Parameter (Actor) bleibt kompatibel; Projekt als dritter Parameter.
+37/37 gezielte Reader-/Konfigurations-/Producer-Proof-Tests bestanden. Hub-/UI-
+Projektweitergabe und kanonische projektspezifische Producer-Zuordnung noch offen.
+
+Projekt-Reader Core-Build/Typen/Build-ID ebenfalls Exit0 (41,36 s).

@@ -1160,6 +1160,7 @@ export {
 	type SessionTakeoverResult,
 	type TotalRecallConversation,
 	type TotalRecallJournalEvent,
+	type TotalRecallProject,
 	TotalRecallSessionHost,
 	type TotalRecallSessionSnapshot,
 } from "./services/recall-session-reader";

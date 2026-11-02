@@ -3,6 +3,171 @@ import { expect, it, vi } from "vitest";
 import { createCoreSessionSnapshot } from "../session/session-snapshot";
 import { TotalRecallSessionHost } from "./recall-session-reader";
 
+it("discovers only stored exact project IDs through personal authentication without a global scope", async () => {
+	const fetch = vi.fn(
+		async () =>
+			new Response(
+				JSON.stringify({
+					projects: [
+						{
+							project_id: "NetAigisOS",
+							event_count: 2,
+							conversation_count: 1,
+							last_seq: 2,
+						},
+						{
+							project_id: "OtherProject",
+							event_count: 3,
+							conversation_count: 2,
+							last_seq: 9,
+						},
+					],
+				}),
+			),
+	);
+	const host = new TotalRecallSessionHost(async () => config, undefined, fetch);
+	await host.initialize(config);
+	expect(await host.listProjects()).toEqual([
+		{
+			projectId: "NetAigisOS",
+			eventCount: 2,
+			conversationCount: 1,
+			lastSeq: 2,
+		},
+		{
+			projectId: "OtherProject",
+			eventCount: 3,
+			conversationCount: 2,
+			lastSeq: 9,
+		},
+	]);
+	const [url, options] = fetch.mock.calls[0] as unknown as [
+		string,
+		RequestInit,
+	];
+	expect(new URL(url).pathname).toBe("/internal/recall/projects");
+	expect(new URL(url).search).toBe("");
+	expect(options.headers).toEqual({ Authorization: "Bearer fixture-token" });
+});
+
+it("reads a selected project's canonical conversation without changing the configured project or authors", async () => {
+	const calls: URL[] = [];
+	const fetch = vi.fn(async (input: Parameters<typeof globalThis.fetch>[0]) => {
+		const url = new URL(String(input));
+		calls.push(url);
+		const value = url.pathname.endsWith("/projects")
+			? {
+					projects: [
+						{
+							project_id: "OtherProject",
+							event_count: 1,
+							conversation_count: 1,
+							last_seq: 7,
+						},
+					],
+				}
+			: url.pathname.endsWith("/conversations")
+				? {
+						conversations: [
+							{ conversation_id: "session", event_count: 1, last_seq: 7 },
+						],
+					}
+				: { events: [{ ...event(7), project_id: "OtherProject" }] };
+		return new Response(JSON.stringify(value));
+	});
+	const host = new TotalRecallSessionHost(
+		async () => config,
+		undefined,
+		fetch,
+		{ requireVerifiedSource: false },
+	);
+	await host.initialize(config);
+	const saved = await host.getSessionSnapshot(
+		"session",
+		undefined,
+		"OtherProject",
+	);
+	expect(saved.projectId).toBe("OtherProject");
+	expect(saved.messages[0].actor_id).toBe("Friseer");
+	expect(saved.recordedSnapshot?.messages).toEqual(snapshot().messages);
+	expect(
+		calls
+			.filter((url) => !url.pathname.endsWith("/projects"))
+			.every((url) => url.searchParams.get("project_id") === "OtherProject"),
+	).toBe(true);
+	expect(config.project).toBe("project");
+});
+
+it("does not substitute another project after missing discovery or an unknown ID", async () => {
+	for (const status of [200, 404]) {
+		const fetch = vi.fn(
+			async () => new Response(JSON.stringify({ projects: [] }), { status }),
+		);
+		const host = new TotalRecallSessionHost(
+			async () => config,
+			undefined,
+			fetch,
+		);
+		await host.initialize(config);
+		await expect(host.listConversations("UnknownProject")).rejects.toThrow();
+		expect(fetch).toHaveBeenCalledTimes(1);
+	}
+});
+
+it("keeps an empty discovered store empty without inventing default, local or global IDs", async () => {
+	const host = new TotalRecallSessionHost(
+		async () => config,
+		undefined,
+		async () => new Response(JSON.stringify({ projects: [] })),
+	);
+	await host.initialize(config);
+	expect(await host.listProjects()).toEqual([]);
+});
+
+it.each([
+	[
+		{
+			project_id: "NetAigisOS",
+			event_count: 1,
+			conversation_count: 1,
+			last_seq: 1,
+		},
+		{
+			project_id: "NetAigisOS",
+			event_count: 1,
+			conversation_count: 1,
+			last_seq: 1,
+		},
+	],
+	[{ project_id: "", event_count: 1, conversation_count: 1, last_seq: 1 }],
+	[
+		{
+			project_id: "OtherProject",
+			event_count: 1,
+			conversation_count: 2,
+			last_seq: 1,
+		},
+	],
+	[
+		{
+			project_id: "OtherProject",
+			event_count: "1",
+			conversation_count: 1,
+			last_seq: 1,
+		},
+	],
+])("rejects ambiguous or malformed project catalog %#", async (...projects) => {
+	const host = new TotalRecallSessionHost(
+		async () => config,
+		undefined,
+		async () => new Response(JSON.stringify({ projects })),
+	);
+	await host.initialize(config);
+	await expect(host.listProjects()).rejects.toThrow(
+		"Invalid TOTAL RECALL project record",
+	);
+});
+
 const config = {
 	enabled: true,
 	baseUrl: "http://recall-fixture.invalid:11436",

@@ -1897,3 +1897,14 @@ undefined. Agent cloning explicitly materializes absent metrics/model metadata;
 those absent fields are not deletion instructions. Defined working-copy changes
 still win. This preserves persisted author/turn context without synthesizing
 missing historical observations or copying a separate conversation.
+
+
+Recall project discovery reads authenticated `/internal/recall/projects` from the
+existing event store; it does not derive a universal scope from a workspace name.
+The reader validates exact project IDs and count/watermark metadata. An explicit
+cross-project read first verifies the requested stored ID, then carries that scope
+through both conversation and event reads without mutating configured credentials,
+authorship or the legacy project's selection. A missing catalog or unknown ID
+fails instead of silently reading a different project. Snapshot results retain
+the selected project ID; actor and project arguments remain distinct. This reader
+capability alone does not configure productive producer/session project bindings.

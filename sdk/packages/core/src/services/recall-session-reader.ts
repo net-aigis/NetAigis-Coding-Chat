@@ -1,4 +1,4 @@
-/** Reads the existing append-only TOTAL RECALL journal. No invented server routes. */
+/** Reads the existing append-only TOTAL RECALL store and authenticated project catalog. */
 import type { ITelemetryService } from "@cline/shared";
 import {
 	hasUnconfirmedRuntimeOwner,
@@ -12,6 +12,12 @@ import {
 } from "./recall-archive-proof";
 import type { RecallConfiguration, RecallFetch } from "./recall-outbox";
 
+export interface TotalRecallProject {
+	projectId: string;
+	eventCount: number;
+	conversationCount: number;
+	lastSeq: number;
+}
 export interface TotalRecallConversation {
 	conversationId: string;
 	title?: string;
@@ -34,6 +40,7 @@ export interface TotalRecallJournalEvent {
 }
 export interface TotalRecallSessionSnapshot {
 	conversationId: string;
+	projectId?: string;
 	sessionId?: string;
 	/** Original server events with immutable authorship, not reconstructed chat turns. */
 	messages: TotalRecallJournalEvent[];
@@ -175,7 +182,7 @@ export class TotalRecallSessionHost {
 		return { ...config };
 	}
 	private async request(
-		route: "events" | "conversations",
+		route: "events" | "conversations" | "projects",
 		parameters: Record<string, string>,
 		config: RecallConfiguration,
 		signal?: AbortSignal,
@@ -193,6 +200,51 @@ export class TotalRecallSessionHost {
 		});
 		if (!response.ok) throw new Error("TOTAL RECALL HTTP " + response.status);
 		return object(await response.json());
+	}
+	private async readProjects(
+		config: RecallConfiguration,
+	): Promise<TotalRecallProject[]> {
+		const data = await this.request("projects", {}, config);
+		if (!Array.isArray(data.projects))
+			throw new Error("Invalid TOTAL RECALL project list");
+		const seen = new Set<string>();
+		return data.projects.map((raw): TotalRecallProject => {
+			const item = object(raw);
+			if (
+				!nonEmpty(item.project_id) ||
+				!item.project_id.trim() ||
+				seen.has(item.project_id) ||
+				![item.event_count, item.conversation_count, item.last_seq].every(
+					(value) => Number.isSafeInteger(value) && Number(value) >= 1,
+				) ||
+				Number(item.conversation_count) > Number(item.event_count) ||
+				Number(item.event_count) > Number(item.last_seq)
+			)
+				throw new Error("Invalid TOTAL RECALL project record");
+			seen.add(item.project_id);
+			return {
+				projectId: item.project_id,
+				eventCount: Number(item.event_count),
+				conversationCount: Number(item.conversation_count),
+				lastSeq: Number(item.last_seq),
+			};
+		});
+	}
+	async listProjects(): Promise<TotalRecallProject[]> {
+		return this.readProjects(await this.configuration());
+	}
+	private async projectConfiguration(
+		projectId?: string,
+	): Promise<RecallConfiguration> {
+		const config = await this.configuration();
+		if (projectId === undefined || projectId === config.project) return config;
+		// Discover real IDs through the authenticated existing store. A failed
+		// catalog must never silently fall back to the configured legacy project.
+		if (
+			!(await this.readProjects(config)).some((p) => p.projectId === projectId)
+		)
+			throw new Error("TOTAL RECALL project was not found in the shared store");
+		return { ...config, project: projectId };
 	}
 	private async readConversations(
 		config: RecallConfiguration,
@@ -229,9 +281,7 @@ export class TotalRecallSessionHost {
 		projectId?: string,
 		actorId?: string,
 	): Promise<TotalRecallConversation[]> {
-		const config = await this.configuration();
-		if (projectId !== undefined && projectId !== config.project)
-			throw new Error("TOTAL RECALL project differs from configured project");
+		const config = await this.projectConfiguration(projectId);
 		const conversations = await this.readConversations(config);
 		if (actorId === undefined) return conversations;
 		const selected: TotalRecallConversation[] = [];
@@ -304,10 +354,11 @@ export class TotalRecallSessionHost {
 	async getSessionSnapshot(
 		conversationId: string,
 		_actorId?: string,
+		projectId?: string,
 	): Promise<TotalRecallSessionSnapshot> {
 		if (!nonEmpty(conversationId))
 			throw new Error("TOTAL RECALL conversation ID required");
-		const config = await this.configuration();
+		const config = await this.projectConfiguration(projectId);
 		const conversation = (await this.readConversations(config)).find(
 			(item) => item.conversationId === conversationId,
 		);
@@ -357,6 +408,7 @@ export class TotalRecallSessionHost {
 		else reason = sessionSnapshotRecoveryProblem(recordedSnapshot);
 		return {
 			conversationId,
+			projectId: config.project,
 			journalSeq: conversation.lastSeq,
 			sourceVerified,
 			...(sourceVerified
