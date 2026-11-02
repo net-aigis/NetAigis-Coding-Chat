@@ -4355,3 +4355,16 @@ Acer-Ausgabe mit br0/eth0/wlan0 ist separat und wird nicht verändert. Port 8787
 lokal erreichbar; vom Acer errno113 bei vorhandener Route. Noch KEINE Freigabe
 für Firewalländerung; eng begrenzte lokale LAN-Regel gesondert vorbereiten.
 Android-Gerätetest durch Benutzer bleibt nach tatsächlicher LAN-Freigabe offen.
+
+
+Begrenzter Root-Lesebefehl für den nächsten tatsächlichen Nachweis:
+`PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-recall-project-inspect.py --remote`
+Liest produktive SQLite einschließlich committed WAL im read-only-Modus,
+Gruppierung vorhandener project_id je Tabelle; keine Ereignisinhalte. recall.env
+nur Schlüsselnamen und explizite bekannte nichtgeheime Projektfelder. Zusätzlich
+attributierte Watchdog-Journalbelege und ausgewählte Manager-Lifecycle-Felder,
+keine beliebigen Journaltexte. Vier gezielte tatsächliche Datei-/SQLite-Tests
+bestanden, insbesondere WAL-Projektlesung bei bytegleicher DB/WAL, keine angelegte
+fehlende DB, keine Tokenausgabe und kein Shell-eval. Kein Dienstaufruf zur Steuerung.
+Benötigt nur den bestehenden Root-Terminaltransport; keine neue Freigabe für
+bereits beauftragte lesende Prüfung. Produktive Daten weiter nicht lesbar als SSH-User.
