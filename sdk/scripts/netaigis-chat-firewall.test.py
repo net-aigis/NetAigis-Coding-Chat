@@ -92,6 +92,23 @@ class LocalFirewallTests(unittest.TestCase):
                 module.prepare_backup(self.root, self.states)
         self.assertEqual(other.read_text(), 'keep')
 
+    def test_restore_diagnosis_reports_exact_metadata_difference_without_mutating_any_file_or_rule(self):
+        source = self.root / 'public.xml'; source.write_text('<zone/>\n')
+        parent = self.root / 'protected-backup'; parent.mkdir(mode=0o700)
+        with mock.patch.object(module, 'SOURCES', (source,)), mock.patch.object(module, 'PARENT', parent):
+            out, _ = module.prepare_backup(parent, self.states)
+            restored = out / 'restore-probe' / str(source).lstrip('/')
+            info = restored.stat()
+            os.utime(restored, ns=(info.st_atime_ns, info.st_mtime_ns - 1))
+            before = module.attributes(source), module.attributes(restored)
+            with mock.patch.object(module, 'firewall') as control:
+                result = module.diagnose()
+                control.assert_not_called()
+            self.assertTrue(result['files'][0]['same_content'])
+            self.assertEqual(result['files'][0]['different_attributes'], ['mtime_ns'])
+            self.assertEqual(before, (module.attributes(source), module.attributes(restored)))
+            self.assertTrue(result['restore_acceptance_pending'])
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

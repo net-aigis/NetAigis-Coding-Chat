@@ -94,6 +94,32 @@ def prepare_backup(parent, before):
     return out, manifest
 
 
+def diagnose():
+    out = PARENT / 'local-https-firewall-preflight'
+    rows = []
+    with tarfile.open(out / 'zone-files.tar') as archive:
+        members = {entry.name: entry for entry in archive if entry.isfile()}
+        for source in SOURCES:
+            row = {'source': str(source), 'source_exists': source.exists()}
+            restored = out / 'restore-probe' / str(source).lstrip('/')
+            row['restored_exists'] = restored.exists()
+            if source.is_file() and restored.is_file():
+                original, copy = attributes(source), attributes(restored)
+                row['same_content'] = digest(source.read_bytes()) == digest(restored.read_bytes())
+                row['different_attributes'] = [key for key in original if original[key] != copy[key]]
+                row['source_attributes'] = {key: value for key, value in original.items() if key != 'xattrs'}
+                row['restored_attributes'] = {key: value for key, value in copy.items() if key != 'xattrs'}
+                row['source_xattr_hashes'] = {key: digest(base64.b64decode(value)) for key, value in original['xattrs'].items()}
+                row['restored_xattr_hashes'] = {key: digest(base64.b64decode(value)) for key, value in copy['xattrs'].items()}
+            member = members.get(str(source).lstrip('/'))
+            if member is not None:
+                row['archive_mtime'] = member.pax_headers.get('mtime', str(member.mtime))
+                row['archive_content_sha256'] = digest(archive.extractfile(member).read())
+            rows.append(row)
+    return {'ok': True, 'inspection_only': True, 'files': rows, 'firewall_modified': False,
+            'restore_acceptance_pending': True}
+
+
 def apply(approved=False):
     if not approved: raise ValueError('permanent_lan_rule_approval_required')
     if firewall('--get-zone-of-interface=wlp3s0') != 'public':
@@ -128,14 +154,14 @@ def apply(approved=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('apply',))
+    parser.add_argument('action', choices=('apply', 'diagnose'))
     parser.add_argument('--permanent-lan-approved', action='store_true')
     args = parser.parse_args()
     if os.geteuid() != 0:
         raise SystemExit('Run only in the existing local Root terminal; no password in chat')
     os.umask(0o077)
     try:
-        report = apply(args.permanent_lan_approved)
+        report = diagnose() if args.action == 'diagnose' else apply(args.permanent_lan_approved)
     except Exception as error:
         report = {'ok': False, 'failure_class': type(error).__name__, 'repair_required': True,
                   'automatic_rollback': False}

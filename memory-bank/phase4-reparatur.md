@@ -4498,3 +4498,32 @@ zweiter Snapshot-Parameter (Actor) bleibt kompatibel; Projekt als dritter Parame
 Projektweitergabe und kanonische projektspezifische Producer-Zuordnung noch offen.
 
 Projekt-Reader Core-Build/Typen/Build-ID ebenfalls Exit0 (41,36 s).
+
+
+### 2026-11-02: Watchdog tatsächlich aktiv; LAN-Restore verweigert, VPN konkretisiert
+
+Bediener-Root-Wiederanwendung a52cccfba erfolgreich: absent_targets=[], alle drei
+zuvor geschriebenen eigenen Assets bytegleich wiederverwendet; frischer Probe-
+Lauf e66e1bc6f5514428991b657fd6b7d4e4 um09:45:20.692690Z healthy für alle vier
+Dienste. Danach Timer active/enabled, monitored_services_unchanged=true.
+Root-Quittung watchdog-activation-fbd9e716ae46444a943895d10f827fbc.jsonl unter
+bestehendem Phase4-dynamic-context-delta. Dauerbeobachtung über Timer muss noch
+separat lesend bestätigt werden; Installation nicht erneut ausführen.
+
+Lokaler Firewall-apply hat actual_zone_restore_or_source_verification_failed
+verweigert, bevor irgendeine Rich-Regel verändert wurde. Teilnachweis/Archiv und
+Restore-Probe unter existing-R/local-https-firewall-preflight beibehalten, kein
+ungeprüftes Weitergehen und keine gelockerten Integritätsanforderungen. Neuer
+rein lesender diagnose-Modus meldet genaue Unterschiede von Inhalts-Hash,
+UID/GID/Mode/mtime/xattr-Hashes zwischen Original/Restore und Archiv-Zeitwert,
+keine Zoneninhalte. Sieben Tests bestanden einschließlich absichtlich abweichender
+Restore-mtime mit unverändertem Original, ohne Firewallaufruf.
+Benötigter lokaler Root-Aufruf:
+`sudo env PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-chat-firewall.py diagnose`
+
+Benutzer bestätigt Android-WireGuard direkt zur bestehenden DS, interne Adresse
+10.8.0.2, LAN192.168.178.0/24 im VPN erlaubt. Keine DS/anderen Projektdateien
+untersuchen oder VPN neu konfigurieren. Bei transparentem Routing separate
+minimale lokale Quellregel10.8.0.2/32 nötig; bei DS-NAT greift die LAN-Regel.
+Tatsächliche Quell-/Rückroute erst im kontrollierten externen Verbindungsversuch
+nach Restore-Reparatur belegen. Keine pauschale10.8.0.0/24-Freigabe ableiten.
