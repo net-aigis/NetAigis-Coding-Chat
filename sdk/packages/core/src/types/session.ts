@@ -103,6 +103,8 @@ export type PreparedTurnInput = {
 
 export interface PersistedSessionUpdateInput {
 	sessionId: string;
+	/** Owning runtime PID, committed atomically with an accepted turn's running status. */
+	pid?: number;
 	provider?: string;
 	model?: string;
 	expectedStatusLock?: number;

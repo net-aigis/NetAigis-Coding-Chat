@@ -1292,6 +1292,7 @@ describe("LocalRuntimeHost", () => {
 			sessionId,
 			"running",
 			null,
+			process.pid,
 		);
 		expect(updateSessionStatus).toHaveBeenNthCalledWith(
 			3,
@@ -4657,6 +4658,7 @@ describe("LocalRuntimeHost", () => {
 			sessionId,
 			"running",
 			null,
+			process.pid,
 		);
 		expect(sessionService.updateSessionStatus).toHaveBeenNthCalledWith(
 			2,
@@ -4669,6 +4671,7 @@ describe("LocalRuntimeHost", () => {
 			sessionId,
 			"running",
 			null,
+			process.pid,
 		);
 		expect(sessionService.updateSessionStatus).toHaveBeenNthCalledWith(
 			4,
@@ -5506,6 +5509,7 @@ describe("LocalRuntimeHost", () => {
 			sessionId,
 			"running",
 			null,
+			process.pid,
 		);
 		expect(updateSessionStatus).toHaveBeenNthCalledWith(
 			2,

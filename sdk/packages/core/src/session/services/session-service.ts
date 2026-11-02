@@ -155,6 +155,10 @@ class LocalSessionPersistenceAdapter implements SessionPersistenceAdapter {
 
 		const fields: string[] = [];
 		const params: unknown[] = [];
+		if (input.pid !== undefined) {
+			fields.push("pid = ?");
+			params.push(input.pid);
+		}
 		if (input.provider !== undefined) {
 			fields.push("provider = ?");
 			params.push(input.provider);

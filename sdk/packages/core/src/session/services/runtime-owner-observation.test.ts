@@ -2,13 +2,145 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentConfig } from "@cline/shared";
+import type { AgentConfig, AgentResult } from "@cline/shared";
 import { expect, it, vi } from "vitest";
 import { LocalRuntimeHost } from "../../runtime/host/local-runtime-host";
 import { SqliteSessionStore } from "../../services/storage/sqlite-session-store";
 import { FileSessionService } from "./file-session-service";
 import type { SessionPersistenceAdapter } from "./persistence-service";
 import { CoreSessionService } from "./session-service";
+
+it.each([
+	["files", true],
+	["sqlite", true],
+	["files", false],
+	["sqlite", false],
+] as const)("binds a resumed %s turn to its actual runtime only with persisted running state (%s)", async (kind, persisted) => {
+	const root = await mkdtemp(
+		join(process.env.CLINE_DATA_DIR || tmpdir(), "resumed-owner-"),
+	);
+	const db =
+		kind === "sqlite"
+			? new SqliteSessionStore({ sessionsDir: join(root, "db") })
+			: undefined;
+	const service = db
+		? new CoreSessionService(db, {
+				sessionArtifactsDir: join(root, "sessions"),
+			})
+		: new FileSessionService(join(root, "sessions"));
+	let enter!: () => void, release!: () => void;
+	const entered = new Promise<void>((resolve) => {
+		enter = resolve;
+	});
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	let messages: AgentConfig["initialMessages"] = [];
+	const run = vi.fn(async (): Promise<AgentResult> => {
+		enter();
+		await gate;
+		return {
+			text: "new turn",
+			iterations: 1,
+			finishReason: "completed",
+			usage: { inputTokens: 1, outputTokens: 1, totalCost: 0 },
+			messages: messages ?? [],
+			toolCalls: [],
+			durationMs: 1,
+			model: { id: "interchangeable-model", provider: "configured-provider" },
+			startedAt: new Date(),
+			endedAt: new Date(),
+		};
+	});
+	const host = new LocalRuntimeHost({
+		sessionService: service,
+		distinctId: "fixture-resumed-owner",
+		createAgent: (config) => {
+			messages = structuredClone(config.initialMessages ?? []);
+			return {
+				getAgentId: () => "fixture",
+				getConversationId: () => config.sessionId,
+				getMessages: () => messages,
+				canStartRun: () => true,
+				subscribeEvents: () => () => {},
+				continue: run,
+				shutdown: async () => {},
+			} as never;
+		},
+		runtimeBuilder: {
+			build: async () => ({ tools: [], shutdown: async () => {} }),
+		} as never,
+	});
+	let turn: Promise<unknown> | undefined;
+	try {
+		const artifacts = await service.createRootSessionWithArtifacts({
+			sessionId: "resumed",
+			source: "vscode",
+			pid: 999_999_999,
+			status: "idle",
+			interactive: true,
+			provider: "configured-provider",
+			model: "interchangeable-model",
+			cwd: root,
+			workspaceRoot: root,
+			enableTools: false,
+			enableSpawn: false,
+			enableTeams: false,
+		});
+		await service.persistSessionMessages("resumed", [
+			{
+				role: "user",
+				content: "Original order",
+				metadata: { author: { actorId: "Friseer" } },
+			},
+		] as never);
+		const original = await readFile(artifacts.messagesPath);
+		const manifestBefore = await readFile(artifacts.manifestPath);
+		await host.resumeSession({
+			config: { sessionId: "resumed", systemPrompt: "fixture" } as never,
+			interactive: true,
+		});
+		// Merely selecting saved history must stay read-only.
+		expect(await readFile(artifacts.manifestPath)).toEqual(manifestBefore);
+		if (!persisted) {
+			const writeStatus = service.updateSessionStatus.bind(service);
+			vi.spyOn(service, "updateSessionStatus").mockImplementation(
+				async (id, status, ...rest) =>
+					status === "running"
+						? { updated: false }
+						: writeStatus(id, status, ...rest),
+			);
+			await expect(
+				host.runTurn({ sessionId: "resumed", prompt: "Continue" }),
+			).rejects.toThrow("Running state was not persisted");
+			expect(run).not.toHaveBeenCalled();
+			expect(service.readSessionManifest("resumed")).toMatchObject({
+				pid: 999_999_999,
+				status: "failed",
+			});
+			expect(await readFile(artifacts.messagesPath)).toEqual(original);
+			return;
+		}
+		turn = host.runTurn({ sessionId: "resumed", prompt: "Continue" });
+		await entered;
+		expect(await service.reconcileDeadSessions()).toBe(0);
+		const current = (await service.listSessions(10))[0];
+		expect(current.pid).toBe(process.pid);
+		expect(current.status).toBe("running");
+		expect(current.metadata?.runtimeOwnerObservation).toBeUndefined();
+		expect(service.readSessionManifest("resumed")?.pid).toBe(process.pid);
+		expect(await readFile(artifacts.messagesPath)).toEqual(original);
+		release();
+		await turn;
+		expect((await host.getSession("resumed"))?.status).toBe("idle");
+	} finally {
+		release();
+		await turn?.catch(() => {});
+		await host.dispose();
+		db?.close();
+		await rm(root, { recursive: true, force: true });
+	}
+});
 
 it.each([
 	"files",

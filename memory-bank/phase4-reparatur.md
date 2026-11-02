@@ -3861,3 +3861,70 @@ produktive gemeinsame Runtime und Recall vorbereiten/abnehmen, physischer
 Android-Test durch den Nutzer, getrennten Watchdog nach ausstehender Freigabe
 aktivieren und abschließenden eigenen Rollout belegen. Keine Gesamtabnahme
 aus den Einzeltests abgeleitet.
+
+### 2026-11-02: Browser mit echtem Modell; falsche Besitzer-PID bei Wiederaufnahme
+
+Auf 6976549cc fortgesetzt. Gezielte lesende Acer-Prüfung bestätigt die ASGI-
+Anwendung `app` unter `/opt/ai-agent/app.py`, Unit ai-agent.service unverändert
+active/running, PID 618787 und dieselbe InvocationID 6a86c3f974e84815ba08c7cc70f9654d.
+HTTP 200 beider Health-Endpunkte 11435/11436. Der Coding-Agent ruft vor der
+Inferenz die vorhandene Learning-Kontextschnittstelle auf; deren Fehlschlag
+ergibt 503. Die vorhandene Korrekturschnittstelle wird bei vorheriger Assistenten-
+antwort aufgerufen, deren Fehler aber gesondert protokolliert. Keine vollständige
+Lernspeicher-/Korrekturabnahme aus Health oder Quellcode abgeleitet. Quellenreview
+filterte Stringliterale vor Ausgabe; keine Zugangsdaten ausgegeben. Belege:
+`p4-learning-service-contract-confirmed.json`,
+`p4-learning-handler-redacted-review.json`,
+`p4-coding-learning-binding-readonly.json` im bestehenden logs-Verzeichnis.
+
+`p4-real-browser-model-continuation`: echte HTTPS-Dashboard-/WebSocket-Anbindung,
+installierter Chromium, mobile Viewport 390x844, tatsächlicher Coding-Agent mit
+DeepSeek; kein Fixture-Provider, kein physisches Android. Eigener Testbrowser
+vertraut ausschließlich dem SPKI des bereits vorhandenen localhost-Testzertifikats;
+keine Systemvertrauens- oder produktive Profiländerung. Frühere native VS-Code-
+Prüfung wiederverwendet, in diesem Lauf keine neue VS-Code-Instanz. Historie der
+kanonischen Testsitzung 1793568939815_yktbw geladen, jimmi authentifiziert, dessen
+Schreibrecht über echte UI übernommen und tatsächliche Modellantwort
+NETAIGIS_SHARED_REAL_BROWSER_READY angezeigt. Der Test las danach zu früh den
+noch nicht fertig geschriebenen Dateiverlauf und meldete fälschlich fehlende
+Urheberschaft. Tatsächliche abschließende Datei enthält acht Nachrichten mit
+Urheberfolge Friseer/jimmi/jimmi/jimmi; erste sechs Nachrichten unverändert
+(SHA des JSON-Präfixes entspricht priorHistorySha256 des aufbewahrten Berichts).
+Kein erneuter Modellaufruf für diesen Nachweis. Beim Hub-Shutdown kein
+`database is not open` mehr; bestehende Suchindexkorrektur bestätigt.
+
+`p4-real-browser-state-continuation` sollte nur Restzustände prüfen und startete
+keine weitere Inferenz. Scheiterte berechtigt am Schutz session_not_quiescent.
+Dadurch ein echter weiterer Quellfehler nachgewiesen: read-only Resume behält
+die frühere Besitzer-PID; beim folgenden Turn wurde nur status=running erneuert.
+Die Reconciliation konnte daher den neuen laufenden Turn wegen der inzwischen
+beendeten alten PID als unknown markieren. Der Besitzer-Prüfnachweis betrifft
+PID 2385948; keine nachträgliche Behauptung über deren tatsächlichen Exit. Die
+betroffene Testsitzung inklusive aller acht Nachrichten und unknown-Marker bleibt
+erhalten und gesperrt; kein Zurücksetzen/Löschen des Markers zur Testabkürzung.
+
+Korrektur: unmittelbar vor tatsächlicher Turnausführung aktuelle process.pid
+gemeinsam mit status=running per OCC im vorhandenen Datei-/SQLite-Adapter
+speichern, danach Manifest-PID aktualisieren. Bloße Auswahl bleibt read-only.
+Die zusätzliche interne Eigentümerangabe akzeptiert ausschließlich die eigene
+PID beim running-Übergang; keine neue Remote-PID-Schreibschnittstelle. Fehlende
+Status-Persistenz verhindert den Agent-Aufruf. Unbekannte alte Besitzerbelege
+werden dadurch nicht gelöscht oder nachträglich mit Exitcodes versehen.
+
+Nachweise im bisherigen Prüfverzeichnis:
+- `p4-resumed-owner-pid-red`: 4 bestanden, beide neuen echten Speicher-
+  Regressionen fehlgeschlagen; Reconciliation markierte den aktiven Turn stale.
+- `p4-resumed-owner-pid-green`: 51/51 bestanden.
+- `p4-resumed-owner-regression`: 170 bestanden, fünf Fehler: drei alte Erwartungen
+  enthielten die neue PID noch nicht; zwei neue Fehlerfalltests erwarteten zu
+  streng ein unverändertes Manifest, obwohl der verweigerte Turn berechtigt als
+  failed gespeichert wird. Nachrichten müssen und bleiben unverändert.
+- `p4-resumed-owner-regression-corrected`: 175/175 bestanden, einschließlich
+  vollständiger LocalRuntimeHost-Datei, Resume, Persistenz, Writer-Schutz,
+  Suchindex und verweigerter Status-Persistenz für beide Speicherarten.
+- `p4-resumed-owner-core-build`: Exit 0.
+- `p4-resumed-owner-types`: Exit 0.
+Keine produktive Installation, kein Acer-Dienstwechsel und keine neue
+Modellanfrage nach dem bereits angezeigten Browserturn. Physisches Android,
+produktiver gemeinsamer Hub/Recall, unbekannte ältere Besitzerzustände und
+getrennter Watchdog bleiben bis zur echten jeweiligen Abnahme offen.

@@ -3086,12 +3086,20 @@ export class LocalRuntimeHost implements RuntimeHost {
 			session.sessionId,
 			status,
 			exitCode,
+			...(status === "running" ? [process.pid] : []),
 		);
-		if (!result.updated) return;
+		if (!result.updated) {
+			if (status === "running")
+				throw new Error(
+					"Running state was not persisted; agent turn was not started",
+				);
+			return;
+		}
 		const latestManifest = await this.mutateSessionManifest(
 			session,
 			(manifest) => {
 				manifest.status = status;
+				if (status === "running") manifest.pid = process.pid;
 				if (isNonTerminalSessionStatus(status)) {
 					delete manifest.ended_at;
 					manifest.exit_code = null;

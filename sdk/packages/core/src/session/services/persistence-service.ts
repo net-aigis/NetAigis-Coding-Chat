@@ -338,7 +338,15 @@ export class UnifiedSessionPersistenceService {
 		sessionId: string,
 		status: SessionStatus,
 		exitCode?: number | null,
+		runtimeOwnerPid?: number,
 	): Promise<{ updated: boolean; endedAt?: string }> {
+		if (
+			runtimeOwnerPid !== undefined &&
+			(status !== "running" || runtimeOwnerPid !== process.pid)
+		)
+			throw new Error(
+				"Only the running runtime can bind its own process identity",
+			);
 		let endedAt: string | undefined;
 		const result = await withOccRetry(
 			() => this.adapter.getSession(sessionId),
@@ -347,6 +355,7 @@ export class UnifiedSessionPersistenceService {
 				return this.adapter.updateSession({
 					sessionId,
 					status,
+					...(runtimeOwnerPid === undefined ? {} : { pid: runtimeOwnerPid }),
 					endedAt: endedAt ?? null,
 					exitCode: isNonTerminalSessionStatus(status)
 						? null

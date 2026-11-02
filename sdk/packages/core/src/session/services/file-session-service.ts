@@ -189,6 +189,7 @@ class FileSessionPersistenceAdapter implements SessionPersistenceAdapter {
 				: existing.statusLock;
 		const next: SessionRow = {
 			...existing,
+			pid: input.pid ?? existing.pid,
 			provider: input.provider ?? existing.provider,
 			model: input.model ?? existing.model,
 			status: input.status ?? existing.status,

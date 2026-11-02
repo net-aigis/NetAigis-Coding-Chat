@@ -211,6 +211,13 @@ connection once. Runtime disposal may still emit final `ended` events after the
 index closes; these must not restart indexing or touch a closed connection.
 Canonical history and final Recall archival retain their separate shutdown paths.
 
+Selecting a saved session is read-only. Before its next agent turn, the owning
+runtime commits its current PID together with the running status in the existing
+file/SQLite adapter, then updates the manifest. A rejected status write prevents
+the model turn. This avoids stale-owner reconciliation mistaking the previous
+process's PID for the owner of newly resumed work; it does not clear existing
+unknown-owner evidence or invent an exit result for older interrupted processes.
+
 The hub health endpoint includes its `hubId`. Restart callers compare this instance identity while waiting for shutdown, so a replacement started by reconnecting clients at the same address counts as retirement of the original hub. Desktop local activity is recorded only at its local hub observer subscription; cloud session projection does not write to that activity list.
 
 1. Host constructs a `RuntimeHost` through `@cline/core`.
