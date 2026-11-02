@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
+import { toSessionRecord } from "../../services/session-data";
 import { SqliteSessionStore } from "../../services/storage/sqlite-session-store";
 import { FileSessionService } from "../../session/services/file-session-service";
 import { CoreSessionService } from "../../session/services/session-service";
@@ -71,7 +72,7 @@ it("lists the existing file-backed history through the SQLite owner without rewr
 		// replace its confirmed state, even in a root-only listing.
 		const [old] = await file.listPersistedSessions(10);
 		store.create({
-			...old,
+			...toSessionRecord(old),
 			status: "failed",
 			pid: 456,
 			metadata: { owner: "sqlite" },
@@ -200,7 +201,7 @@ it("does not reconcile a file-only running owner during browsing or replace a co
 			if (!injected && sql.startsWith("INSERT OR IGNORE INTO sessions")) {
 				injected = true;
 				store.create({
-					...old,
+					...toSessionRecord(old),
 					status: "idle",
 					metadata: { concurrentOwner: "retained" },
 				});

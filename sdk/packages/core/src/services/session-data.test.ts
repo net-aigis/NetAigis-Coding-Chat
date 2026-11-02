@@ -202,17 +202,18 @@ describe("withLatestAssistantTurnMetadata", () => {
 			metadata: undefined,
 			modelInfo: undefined,
 		}));
+		const workingMessages: MessageWithMetadata[] = [
+			...cloned,
+			{
+				id: "next-user",
+				role: "user",
+				content: "Continue",
+				metadata: { author: { actorId: "Friseer" } },
+			},
+			{ id: "next-answer", role: "assistant", content: "New answer" },
+		];
 		const persisted = withLatestAssistantTurnMetadata(
-			[
-				...cloned,
-				{
-					id: "next-user",
-					role: "user",
-					content: "Continue",
-					metadata: { author: { actorId: "Friseer" } },
-				},
-				{ id: "next-answer", role: "assistant", content: "New answer" },
-			],
+			workingMessages,
 			createResult(),
 			previous,
 		);

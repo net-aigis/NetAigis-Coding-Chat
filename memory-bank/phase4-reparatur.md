@@ -4585,3 +4585,13 @@ Konkreter lokaler Root-Aufruf nach dieser geprüften Korrektur:
 Application-Nachweis enthält jede gegebenenfalls neu hinzugefügte Regel je
 runtime/permanent für die gezielte Rücknahme. Externer tatsächlicher VPN-Test
 bleibt offen, weil die DS gegebenenfalls NAT oder Rückrouten verwendet.
+
+
+Zusätzliche vollständige Core-Dev-Typprüfung fand drei Fixture-Typgrenzen aus
+vorherigen eigenen Tests: nullable SessionRow wurde als SessionRecord verwendet,
+und die neue Metadatenregression übergab reichere MessageWithMetadata-Literale
+unmittelbar an den schmaleren Message-Parameter. Nur Fixtures korrigiert:
+vorhandener toSessionRecord-Konverter statt Cast, explizit typisierte reale
+Arbeitskopien statt unzulässiger Literale. Laufzeitimplementierung unverändert.
+Betroffene zwei Suites15/15 erneut bestanden; anschließend vollständige
+Core-Dev-Typprüfung Exit0(104,22 s). Alter negativer Typnachweis erhalten.
