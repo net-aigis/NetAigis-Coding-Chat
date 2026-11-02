@@ -4422,3 +4422,50 @@ Die vorgeschlagene temporäre Firewallregel wurde NICHT ausgeführt. Vor dauerha
 minimalem Eingriff tatsächliche lokale Zonen-/VPN-Routen prüfen, aktuelle relevante
 Konfiguration sichern/wiederherstellen und eng begrenzte Änderung konkret machen.
 Keine Internet-Portfreigabe, kein Acer-Firewalleingriff, kein Systemvertrauenswechsel.
+
+
+### 2026-11-02: Historienfix produktiv installiert; dauerhafter LAN-Zugang vorbereitet
+
+Neue eigene VSIX shared-runtime-history-metadata-candidate.vsix im bestehenden
+Prüfbereich, SHA256 3e3bc4e9c61d95ce5d9b6265eb57d878f556c57dd6ffbbe83678f521230fca03.
+ZIP und 309 Dateien gegen Build geprüft, extrahierte echte Daemon-/TLS-/Browser-
+Paketprüfung Exit 0 (30,67 s), keine Inferenz dabei. Vor produktivem Update waren
+alle eigenen Sitzungen idle/failed, keine Spawn-Aufträge. Erster Stop-Versuch
+verweigerte vor Mutation eine falsche Testannahme (Nachrichtendatei ist Envelope,
+kein Array); nur diese Annahme korrigiert, keine Zustandsdaten geändert.
+Danach ausschließlich die zwei bereits genehmigten eigenen User-Units angehalten.
+
+Notwendiges neues Delta im bestehenden Sicherungsbaum: shared-history-metadata-delta,
+acht inzwischen geänderte Dateien, 28 unveränderte geprüfte Dateien referenziert.
+SQLite-Backup-API, Integrität, echter Gesamt-Restore und Attribute bestanden.
+Archiv ea9dfa07294576d8663cf4bcf6fa9874d3b4353d11da4edec04e29949a4d702a;
+Manifest fa6d0dca78b00347dbd90c6e71c7de208114423aab309741ecce3766f6724743.
+Installation erfolgreich, 309 Dateien geprüft, andere registrierte Extensions
+unverändert. Eigene Daten vor Start unverändert, alle sechs tatsächlichen
+Datenbankpfade samt WAL/SHM im eigenen Root. Runtime PID2659602 und Dashboard
+PID2659673 active/running, Result=success, NRestarts=0. Keine Acer-Änderung und
+kein produktives VS-Code-Fenster beendet. Gezielter tatsächlicher neuer Turn zur
+Historien-/Metadatenprüfung läuft unter p4-productive-history-metadata-fixed;
+elf vorherige Nachrichten vollständig dauerhaft VOR dieser Inferenz festgehalten.
+Kein Wiederholen früher bereits erfolgreicher Antworten, keine erfundenen Werte.
+
+Benutzer verlangt permanente lokale HTTPS-Freigabe. Reale lokale Netzwerkprüfung:
+nur wlp3s0/192.168.178.25/24 und Loopback; Route zum LAN und Gateway192.168.178.1,
+keine aktive lokale VPN-Schnittstelle. VPN kann am Heimrouter terminieren; dessen
+Adresszuordnung noch nicht belegt. Nach tatsächlichem Android-VPN-Zugang gefragt,
+keine Schlüssel oder fremden Projekte angefordert.
+
+sdk/scripts/netaigis-chat-firewall.py bereitet ausschließlich exakt diese Regel vor:
+IPv4 source192.168.178.0/24 TCP8787 in Zone public, permanent UND runtime ohneReload.
+Vor Mutation aktuelle eigene/etc-Zonendatei samt .old und vorhandene Vendorzone
+unter lokalem bestehenden Sicherungsbaum sichern und tatsächlich mit ACL/xattrs/
+UID/GID/Mode/mtime wiederherstellen, Prüfsummen prüfen, ursprüngliche Abwesenheit
+mitprotokollieren. Keine bestehende Zone ersetzen; nur firewalld add-rich-rule.
+Bestehende Regeln müssen unverändert bleiben. Sechs Tests inklusive wirklichem
+Archiv-Restore und Fehler-/Symlink-/Freigabeguards bestanden. Noch NICHT angewendet.
+Bedieneraufruf lokal auf 440G5suse, Passwort nur dort:
+`sudo env PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-chat-firewall.py apply --permanent-lan-approved`
+Rücknahme nur der neu ergänzten Regel über firewall-cmd --zone=public
+--remove-rich-rule=<exakt obige Regel>, zusätzlich --permanent ausschließlich
+wenn application.json diese Zustandsart als ursprünglich nicht vorhanden belegt.
+Kein Internetforward, Zertifikatsvertrauenswechsel oder geratenes VPN-Netz.

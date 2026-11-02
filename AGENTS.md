@@ -14,6 +14,23 @@ Continuation 2026-11-01: `be11bad51` fixes concurrent approval intents; `a460bd1
 
 ## Cloud Agent Instructions
 
+Newest 2026-11-02: history-metadata fix installed as own VSIX SHA3e3bc4e9...,
+309 payload files checked, current own daemon PID2659602/dashboard PID2659673.
+Current delta shared-history-metadata-delta verified actual full restore;
+28 unchanged records reused, eight new/current files. Targeted true new model
+turn p4-productive-history-metadata-fixed is in progress; do not replay it.
+User Root journal proves Watchdog ran healthy/successfully; helper a52cccfba
+now verifies fresh cursor-scoped trusted journal completion after oneshot GC.
+Sixteen tests pass; same already-approved Root apply requested, no grant needed.
+Root Recall inspection found ONLY total-recall-production-test/one event in the
+specified current DB, and no project config. No evidence of deletion inferred.
+NetAigisOS remains one user-approved project, never a global default. Discovery
+candidate in 69c3fc14b preserves original source bytes; not installed on Acer.
+User wants permanent LAN+VPN access. Local source192.168.178.0/24 tcp8787 helper
+prepared with actual current zone restore before mutation; six tests passed,
+not yet applied. No active local VPN; actual Android VPN mapping requested.
+
+
 Current 2026-11-02 correction supersedes older pending/stopped notes below:
 cold-resume VSIX 2d3a8a2c... installed/309 files verified; own Runtime PID2611805
 and dashboard PID2611858 active. Actual productive jimmi browser turn passed;
