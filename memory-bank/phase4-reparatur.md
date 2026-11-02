@@ -5234,3 +5234,28 @@ nachgewiesenen Unterprojekt-Restorefehler; keine Gesamtproduktabnahme daraus
 ableiten. Main-VS-Code-Anbindung und echter geräteübergreifender Modell-/Werkzeugturn,
 Learning-Verhaltensabnahme, ursprünglicher unbekannter Besitzerzustand, externes
 VPN und Zertifikatsvertrauen bleiben ausdrücklich offen.
+
+
+### 2026-11-02: Tatsächlicher Android-Zugriff über externes WireGuard bestätigt
+
+Benutzer beantwortet ausdrücklich den Test WLAN aus -> Mobilfunk + vorhandenes
+WireGuard -> derselbe Browser-Tab/Anmeldung/Verlauf mit „ja, funzt“.
+Damit echtes Android über externen VPN-Zugang als Bedienernachweis positiv;
+bisheriges „VPN offen“ ist für Verbindung/Anmeldung/Historienlesen überholt.
+Keine neue Firewall-, DS-, VPN-, Zertifikats- oder Dienständerung.
+Keine physische Android-Inferenz oder Werkzeugausführung daraus ableiten.
+Nächster separater Bedienertest: EIN Modellturn NETAIGIS_ANDROID_VPN_READY in der
+vorhandenen kontrollierten Sitzung, ohne Werkzeuge; keine automatische Wiederholung.
+
+
+Gezielte ausschließlich lesende Prüfung der eigenen produktiven VS-Code-
+Konfiguration bestätigt: shared-session-hub_connection derzeit nicht gespeichert.
+Keine Secrets ausgegeben oder geändert, kein ursprünglicher Auftrag abgebrochen.
+Damit bisherige isolierte native VS-Code-Integration nicht als bereits verbundene
+produktive Hauptinstanz ausgeben. Die vorhandene persönliche Konfigurations-
+Command bleibt der sichere Einstieg; keinen Secret-Cache von außen überschreiben.
+Lesender Verifikator für den angefragten physischen Android-Modellturn unter
+E/verify-physical-android-vpn-turn.mjs vorbereitet. Er sendet selbst KEINEN Prompt,
+übernimmt kein Schreibrecht und erfindet keine Geräteerkennung. Prüfung nach
+Bedienertest gegen vorhandenen15Nachrichten-Präfix/kanonische Autoren und tatsächlichen
+signierten Acer-Snapshot; erfolgreiche frühere Modellturns nicht wiederholen.
