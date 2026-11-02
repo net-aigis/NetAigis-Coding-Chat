@@ -1,5 +1,5 @@
 /** Real authenticated sockets/native persistence; Recall HTTP and agent/model are fixtures. */
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentConfig } from "@cline/shared";
@@ -13,11 +13,35 @@ import { NodeHubClient } from "../client";
 import { HubRuntimeHost } from "../runtime-host/hub-runtime-host";
 import { startHubWebSocketServer } from "./hub-websocket-server";
 
-async function fixture() {
+async function fixture(
+	layout:
+		| "same"
+		| "nested"
+		| "sibling-prefix"
+		| "symlink-escape"
+		| "cwd-outside-project" = "same",
+) {
 	const root = await mkdtemp(
 		join(process.env.CLINE_DATA_DIR || tmpdir(), "recall-recovery-wire-"),
 	);
 	const id = "saved-shared-session";
+	let authorizedRoot = root,
+		projectRoot = root,
+		projectCwd = root;
+	if (layout !== "same") {
+		authorizedRoot = join(root, "authorized");
+		await mkdir(authorizedRoot);
+		projectRoot = join(authorizedRoot, "project");
+		if (layout === "sibling-prefix")
+			projectRoot = join(root, "authorized-other");
+		if (layout === "symlink-escape") {
+			const outside = join(root, "outside");
+			await mkdir(outside);
+			await symlink(outside, projectRoot);
+		} else await mkdir(projectRoot);
+		projectCwd =
+			layout === "cwd-outside-project" ? authorizedRoot : projectRoot;
+	}
 	const service = new FileSessionService(join(root, "sessions"));
 	const createAgent = vi.fn(
 		(config: AgentConfig) =>
@@ -49,8 +73,8 @@ async function fixture() {
 			updatedAt: "2026-10-31T12:00:00Z",
 			provider: "fixture-saved-provider",
 			model: "fixture-selected-model",
-			cwd: root,
-			workspaceRoot: root,
+			cwd: projectCwd,
+			workspaceRoot: projectRoot,
 			enableTools: false,
 			enableSpawn: false,
 			enableTeams: false,
@@ -95,7 +119,7 @@ async function fixture() {
 	const server = await startHubWebSocketServer({
 		host: "127.0.0.1",
 		port: 0,
-		workspaceRoot: root,
+		workspaceRoot: authorizedRoot,
 		owner: {
 			ownerId: "fixture-recall-recovery",
 			discoveryPath: join(root, "hub.json"),
@@ -212,12 +236,16 @@ it("discovers the same projects for both personal clients and rejects unknown pr
 		expect(projects[0].projectId).toBe("fixture-project");
 		expect(f.readActors).toContain("Friseer");
 		expect(f.readActors).toContain("jimmi");
-		await expect(f.browser.command("session.recall.list", {
-			projectId: "UnknownProject",
-		})).rejects.toThrow();
-		await expect(f.browser.command("session.recall.list", {
-			projectId: {},
-		})).rejects.toThrow();
+		await expect(
+			f.browser.command("session.recall.list", {
+				projectId: "UnknownProject",
+			}),
+		).rejects.toThrow();
+		await expect(
+			f.browser.command("session.recall.list", {
+				projectId: {},
+			}),
+		).rejects.toThrow();
 		expect(f.createAgent).not.toHaveBeenCalled();
 	} finally {
 		await f.close();
@@ -371,6 +399,52 @@ it("exposes the owning runtime's Recall through the actual Core facade without a
 		expect(f.readActors.every((actor) => actor === "jimmi")).toBe(true);
 	} finally {
 		await core?.dispose();
+		await f.close();
+	}
+});
+
+it("restores a signed project below the authorized runtime root without starting work", async () => {
+	const f = await fixture("nested");
+	try {
+		const reply = await f.browser.command(
+			"session.recall.restore",
+			{ conversationId: f.id, expectedJournalSeq: 11 },
+			f.id,
+		);
+		expect(reply.payload).toMatchObject({
+			imported: true,
+			writerGranted: false,
+			runtimeResident: false,
+		});
+		expect(await f.local.readSessionMessages(f.id)).toEqual(
+			f.snapshot.messages,
+		);
+		expect((await f.local.getSession(f.id))?.workspaceRoot).toBe(
+			f.snapshot.workspace.root,
+		);
+		expect(f.createAgent).not.toHaveBeenCalled();
+	} finally {
+		await f.close();
+	}
+});
+
+it.each([
+	"sibling-prefix",
+	"symlink-escape",
+	"cwd-outside-project",
+] as const)("refuses %s project recovery without creating native history", async (layout) => {
+	const f = await fixture(layout);
+	try {
+		await expect(
+			f.browser.command(
+				"session.recall.restore",
+				{ conversationId: f.id, expectedJournalSeq: 11 },
+				f.id,
+			),
+		).rejects.toMatchObject({ code: "recall_workspace_mismatch" });
+		expect(await f.local.getSession(f.id)).toBeUndefined();
+		expect(f.createAgent).not.toHaveBeenCalled();
+	} finally {
 		await f.close();
 	}
 });

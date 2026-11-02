@@ -1739,6 +1739,11 @@ dashboard uses the authenticated peer's Core facade, binds inspected references
 to its actor and latest selection generation, and opens the imported ID through
 its existing session UI. Observer credentials never perform archive writes.
 Import, writer claim, activation and model execution remain separate operations.
+Recovery accepts a signed project at or below the runtime's configured workspace
+root. Both the project root and its working directory are resolved through
+realpath before two containment checks: runtime root contains project root, and
+project root contains cwd. This supports the existing multi-project runtime
+without accepting sibling prefixes, symlink escapes or a cwd outside its project.
 
 Explicit provider/model selection updates both native index and manifest under
 the session mutation queue and adapter revision. An atomic manifest replacement

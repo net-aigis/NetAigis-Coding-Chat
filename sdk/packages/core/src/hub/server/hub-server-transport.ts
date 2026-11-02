@@ -1293,27 +1293,30 @@ export class HubServerTransport implements NativeHubTransport {
 			const snapshot = saved.recordedSnapshot;
 			// Imported paths never confer authority over another project or host.
 			const authorizedRoot = this.options.workspaceRoot;
-			if (
-				!authorizedRoot ||
-				realpathSync(snapshot.workspace.root) !== realpathSync(authorizedRoot)
-			)
+			if (!authorizedRoot)
 				return errorReply(
 					envelope,
 					"recall_workspace_mismatch",
 					"Archive workspace differs from this runtime's authorized workspace",
 				);
 			const root = realpathSync(authorizedRoot),
-				cwd = realpathSync(snapshot.workspace.cwd),
-				suffix = relative(root, cwd);
+				projectRoot = realpathSync(snapshot.workspace.root),
+				cwd = realpathSync(snapshot.workspace.cwd);
+			// A runtime may own multiple projects beneath its configured root.
+			// Resolve symlinks before checking both boundaries: authorized runtime
+			// -> archived project -> archived cwd. A string prefix is insufficient.
 			if (
-				isAbsolute(suffix) ||
-				suffix === ".." ||
-				suffix.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)
+				[relative(root, projectRoot), relative(projectRoot, cwd)].some(
+					(suffix) =>
+						isAbsolute(suffix) ||
+						suffix === ".." ||
+						suffix.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`),
+				)
 			)
 				return errorReply(
 					envelope,
 					"recall_workspace_mismatch",
-					"Archive working directory is outside the authorized workspace",
+					"Archive project or working directory is outside its authorized workspace",
 				);
 			const event = saved.messages.find(
 				(item) => item.seq === saved.recordedSnapshotSeq,

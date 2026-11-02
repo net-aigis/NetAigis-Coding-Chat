@@ -5117,3 +5117,70 @@ Manifest472f6a235ba5cbd308aa3f9d0ee72001b3bebfcff93c30d7f9ae44d3b86ca606.
 Keine neue Schlüsselgenerierung oder produktive Dateiänderung beim Sichern.
 Produktive Installation dieser neuesten UI-Korrektur steht als nächster Schritt an;
 installiert bislang Lifecycle-Build e5477888... mit15Nachrichten und Recallseq2.
+
+### Tatsächlich installierte Android-Korrektur und vollständiger Recall-Snapshot
+
+Der folgende Nachweis ersetzt die unmittelbar vorherige Installationsnotiz:
+cdacb44f8 ist produktiv installiert, VSIX-SHA27eaee38efbd4e5cede18feacd36b3f5390d42742c5b7cfda47ef0685052cdd4,
+alle347Payload-Dateien verglichen. Vorher tatsächlich privates Owner-HTTP-Drain,
+Auftragsruhe und keine anderen Clients bestätigt; nur die zwei eigenen User-Dienste
+aktualisiert. CorePID2952209,Dashboard2952259,active/running,Resultsuccess,NRestarts0.
+Produktiver Haupt-VS-Code und Acer unverändert. Kanonische15Nachrichten, eigene
+Sitzungsdaten und Recall-Launchkonfiguration unverändert; idle nicht mehr fälschlich
+als Completed/Exit0 gespeichert. Nachweis R/shared-android-wake-delta/installation.json.
+
+p4-productive-android-wake Exit0(10,87s) prüft tatsächlich installierten HTTPS-Dienst
+mit Chromium: Menü rechts oben, persönliche Anmeldung, Übernehmen nach eigenem
+Claim deaktiviert, neuer Socket mit bestätigter Cookie-Anmeldung bei simuliertem
+Aufwecken, gleicher Verlauf, zwei Reloads, Logout+Reload anonym. Keine Modellantwort
+oder Historienänderung. Getrennter tatsächlicher Android-Nachweis durch Benutzer:
+„Menü und Wiederverbindung funktionieren“. Damit physisches Menü und Wiederverbindung
+nach Bildschirmsperre bestätigt; kein Nachweis externer Mobilfunk-/VPN-Nutzung.
+
+Korrigierte tatsächliche Archivierung ohne Wiederholung von Modellturn oder
+Projektbindung: kanonische Session modellfrei fortgesetzt, neuer Snapshotseq4
+appendiert. p4-productive-recall-corrected-snapshot Exit1(35,52s) bleibt als
+negativer Prüfbeleg erhalten: dessen Polling vergleicht JSON-Propertyreihenfolge
+statt semantischer Nachrichtengleichheit. Anschließende ausschließlich lesende
+Deep-Prüfung p4-productive-corrected-archive-readonly Exit0(0,89s): beide tatsächlichen
+Akteure lesen identischen, HMAC-verifizierten seq4, alle15Nachrichten inklusive
+letzter Metrics und unveränderlicher Autoren stimmen exakt mit kanonischer Historie
+überein, Unterschiedspfade leer, Statusidle, Wiederherstellung formal verfügbar.
+Früherer seq2 bleibt unverändert. Tatsächliche Wiederherstellungsprobe in getrenntem
+nativen Testbestand folgt; formale Eignung allein ist keine vollständige Abnahme.
+
+
+### Tatsächliche Wiederherstellungsprobe: Unterprojektgrenze repariert
+
+Erster isolierter Prüflauf p4-actual-recall-native-restore Exit1(1,20s) endete vor
+Hub-Start an der absichtlich strikten Workspace-Gleichheitsvorprüfung. Keine
+Wiederherstellung oder produktive Änderung. Prüfung mit tatsächlicher bestehender
+Runtimekonfiguration fortgesetzt: p4-actual-recall-native-installed-boundary
+Exit1(5,52s), tatsächlicher installierter Core verweigert Restore mit
+recall_workspace_mismatch. Konfiguration autorisiert /home/friseer/MyGIT,
+signiertes tatsächliches Archiv gehört zum Unterprojekt cline-4.1.26-repair.
+Keine Konfiguration oder Archivpfade umgeschrieben, keine Fremdprojekte gelesen.
+
+Gemeinsamen serverseitigen Restorepfad gezielt korrigiert: realpath-geprüfte
+Enthaltenheit Runtimewurzel -> Projektwurzel -> Projekt-cwd. Gleichheit bleibt
+gültig; benachbarte Zeichenpräfixe, Symlink-Ausbruch und cwd außerhalb des Projekts
+werden verweigert. Neuer echter Socket-Regressionsfall zunächst rot,9andere grün;
+danach alle41gezielten Transport-/Import-/Zugriffsprüfungen grün,Exit0(12,60s).
+Core-Build Exit0(32,54s),Dev-Typprüfung Exit0(57,36s),Pluginruntime Exit0(3,22s).
+
+p4-actual-recall-native-repaired-restore Exit0(4,72s): tatsächliche Acer-GET-API,
+vorhandene persönliche Zugänge und unabhängiger Signierer, tatsächlicher seq4;
+neuer reparierter Core-Build mit realem isoliertem Hub/native SQLite. Kein
+Fixturearchiv und keine Fixtureantwort. Alle15Nachrichten inklusive endgültiger
+Metrics und ursprünglicher Autoren exakt erhalten; Session-ID, Projektbindung,
+Modell/Workspace und Checkpoint-METADATEN erhalten. Kein Beleg einer zusätzlich
+physischen Checkpoint-Objektwiederherstellung. Antragstellerjimmi separat erfasst,
+kein Writergrant, keine Agent-/Tool-/Modellerzeugung, kein synthetischer Exitcode.
+Veraltete Revision verweigert, identischer Wiederholimport unveränderlich,
+verändertes Archiv darf vorhandenen Zielbestand nicht ersetzen. Native Datenbank
+geschlossen/neu geöffnet und komplette Historie erneut gleich gelesen.
+12echte Recall-GETs,0Schreibversuche; produktive15Nachrichten und ursprüngliche
+lange Auftragshistorie bytegleich unverändert. Sämtliche isolierten Testartefakte
+unter bestehendem E/test-data erhalten. Reparatur noch nicht produktiv installiert;
+Android-Menü/Wake-Build bleibt produktiv aktiv. Kein erneuter Modellturn, keine
+wiederholte Projektbindung, keine neue Sicherung oder Acer-Dienständerung.
