@@ -5308,3 +5308,44 @@ bestehende HTTP-Server liest index.html pro Request mit no-store. Deshalb bleibe
 bestehende RAM-only persönliche Browser-Tickets gültig. Anwendung erst nach den
 vorstehenden positiven Paketprüfungen; anschließender tatsächlicher Layout-/Draft-
 Nachweis am produktiven HTTPS-Dienst erforderlich.
+
+
+### Produktiv ausgelieferte Browserkorrektur ohne Neustart
+
+Sourcecommit1244cf0e4. Neues Paket23afa23989cc941418726ce3136d259cafadbb1ce79117f7c23cdf35ad8a9902
+unterscheidet sich vom bisher installierten Recall-Paket ausschließlich in Browser-
+Payloads. Bestehende347Payload-Dateien vor Übernahme vollständig verglichen.
+Kein erneuter allgemeiner Sitzungs-/DB-Sicherungslauf, weil diese Auslieferung
+nur öffentliche Browser-Assets und HTML ändert. Tatsächlich betroffene bestehende
+HTML-Datei geschützt gesichert und aus Sicherung mit Eigentümer/Modus/mtime/xattrs
+real wiederhergestellt, Inhalt und Attribute geprüft. Bestehender Sicherungsbaum:
+R/mobile-composer-assets-delta,ManifestSHA
+f144b35f9191b656448443b7f6072ae6a5afa9807c1aa39ab84ef4af55f8656f.
+Manifest dokumentiert ursprüngliche Abwesenheit neuer Hash-Assets und Rückfall:
+allein index.html atomar aus geprüftem Original wiederherstellen; alte referenzierte
+Assets bleiben erhalten. Keine unkontrollierte Löschung.
+
+Anwendung erfolgreich:16neue Hash-Assets zuerst exklusiv geschrieben/geprüft,
+eine HTML-Einstiegsdatei zuletzt atomar ersetzt; sämtliche363Payload-Dateien des
+neuen VSIX gegen produktive Installation bytegleich verglichen (package.json
+wie zuvor ohne Installer-__metadata verglichen). Hierfür KEIN code--install-extension
+aufgerufen und kein Dienst/Prozess gestoppt. CorePID2987922 und DashboardPID2988057
+sowie beide InvocationIDs vor/nach identisch, Launchkonfiguration unverändert,
+keine Session-/Secretmigration, kein Acer-/Modell-/Firewall-/Haupt-VS-Code-Eingriff.
+Privater Anwendungsbeleg R/mobile-composer-assets-delta/application.json.
+
+p4-mobile-composer-productive-fixed Exit0(6,82s), tatsächliche produktive HTTPS-Seite
+mit vorherigem persönlichen Browserprofil/Cookie aus negativer Layoutprobe:
+Friseer weiterhin ohne neue Schlüsseleingabe authentifiziert. Alle5Größen mit
+aktuell gespeicherter15Nachrichten-Historie geprüft, Input und Submit vollständig
+sichtbar und per echtem DOM-Hittest erreichbar. Bei360x640 jetzt Eingabe530..594,
+Senden600..632; zuvor643..707/geclippt. Bei390x430 jetzt Eingabe327..391,
+Senden397..429. Eingabe enabled, echter Entwurf getippt und geleert, nicht gesendet.
+Kanonische Historie bytegleich unverändert, kein Claim, keine Inferenz.
+
+Benutzer nun ausschließlich um Neuladen/Sichtbarkeit/Entwurf auf dem echten Handy
+gebeten, ohne Absenden. Physische Bildschirmtastatur noch NICHT bestätigt;
+Desktop-/mobile Viewportemulation nicht als Geräteabnahme ausgeben. Der zuvor
+angeforderte NETAIGIS_ANDROID_VPN_READY-Turn ist mangels erreichbarer Eingabe nicht
+erfolgt und bleibt offen. Keine automatische Wiederholung. Externer VPN-Zugriff/
+Anmeldung/Verlauf ist bereits durch echten Benutzerbefund positiv, unverändert.
