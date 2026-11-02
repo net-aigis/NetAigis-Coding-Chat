@@ -1,5 +1,6 @@
 import {
 	CheckIcon,
+	SendIcon,
 	HatGlassesIcon,
 	PaperclipIcon,
 	PlayIcon,
@@ -8,7 +9,9 @@ import {
 	SignalLow,
 	SignalMedium,
 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
+import { ChatDrafts, chatDraftKey } from "../chat-draft";
+import { useBrowserActor } from "./SharedSessionAccess";
 import { toast } from "sonner";
 import {
 	Attachment,
@@ -297,6 +300,7 @@ const reasonLevels = [
 ];
 
 export function Composer({
+	sessionId,
 	autoApproveTools,
 	disabled = false,
 	enableSpawn,
@@ -328,6 +332,7 @@ export function Composer({
 	reasonLevel,
 	workspaceRoot,
 }: {
+	sessionId?: string;
 	autoApproveTools: boolean;
 	disabled?: boolean;
 	enableSpawn: boolean;
@@ -365,6 +370,16 @@ export function Composer({
 }) {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const controller = usePromptInputController();
+	const actorId = useBrowserActor();
+	const drafts = useMemo(() => new ChatDrafts(), [actorId]);
+	const draftKey = chatDraftKey(actorId, sessionId, workspaceRoot);
+	const [draftSaved, setDraftSaved] = useState(false);
+	const setInput = controller.textInput.setInput;
+	useLayoutEffect(() => {
+		const saved = drafts.read(draftKey);
+		setInput(saved.text);
+		setDraftSaved(saved.persistent);
+	}, [drafts, draftKey, setInput]);
 	const attachments = usePromptInputAttachments();
 	const selectedModel = models.find((item) => item.id === model);
 	const thinkingSupported = selectedModel?.supportsThinking === true;
@@ -376,7 +391,7 @@ export function Composer({
 	const ReasonIcon = reasonLevels[reasonLevelOption].icon;
 
 	return (
-		<div className="min-w-0 shrink-0 border-t bg-background" aria-label="Nachricht verfassen">
+		<div className="min-w-0 shrink-0 border-t-2 border-foreground/70 bg-background" aria-label="Nachricht verfassen">
 			<PromptInput
 				accept="image/*,.txt,.md,.json,.ts,.tsx,.js,.jsx"
 				globalDrop
@@ -416,6 +431,7 @@ export function Composer({
 						attachments,
 						attachmentCount: message.files.length,
 					});
+					setDraftSaved(drafts.write(draftKey, ""));
 				}}
 			>
 				<PromptInputHeader>
@@ -424,12 +440,13 @@ export function Composer({
 				<PromptInputBody>
 					<PromptInputTextarea
 						disabled={disabled || status.includes("Failed")}
-						onChange={(event) =>
-							controller.textInput.setInput(event.target.value)
-						}
+						onChange={(event) => {
+							setInput(event.target.value);
+							setDraftSaved(drafts.write(draftKey, event.target.value));
+						}}
 						placeholder="Type @ for context and / for skills"
 						value={controller.textInput.value}
-						className="text-sm outline-none ring-0"
+						className="text-base text-foreground placeholder:text-slate-600 dark:placeholder:text-slate-300 outline-none ring-0"
 					/>
 				</PromptInputBody>
 				<PromptInputFooter className="flex-col items-stretch gap-1 px-0">
@@ -458,8 +475,8 @@ export function Composer({
 							workspaceRoot={workspaceRoot}
 						/>
 					) : null}
-					<div className="flex items-center justify-between gap-3">
-						<PromptInputTools className="shrink-0">
+					<div className="flex min-w-0 w-full items-center justify-between gap-2">
+						<PromptInputTools className="min-w-0 flex-1">
 							<PromptInputButton
 								disabled={disabled}
 								onClick={() => attachments.openFileDialog()}
@@ -471,11 +488,14 @@ export function Composer({
 							<PromptInputButton
 								disabled={disabled}
 								onClick={() => setSettingsOpen((open) => !open)}
+								className="min-w-0 flex-1"
+								aria-label="Modell und Einstellungen"
+								title={`${provider}:${model}`}
 								type="button"
 								variant={settingsOpen ? "default" : "ghost"}
 							>
 								<Settings2Icon className="size-3" />
-								<span>
+								<span className="truncate">
 									{provider}:{model}
 								</span>
 							</PromptInputButton>
@@ -515,17 +535,21 @@ export function Composer({
 								{status}
 							</Badge>
 						</PromptInputTools>
-						<div className="flex items-center gap-2">
+						<div className="flex min-w-0 shrink-0 items-center gap-2">
+							{!sending && controller.textInput.value && draftKey && <span role="status" className="max-w-24 truncate text-xs font-medium text-foreground" title={draftSaved ? "Textentwurf in diesem Browser-Tab gesichert" : "Browserspeicher nicht verfügbar; der Entwurf übersteht eventuell kein Neuladen"}>{draftSaved ? "Entwurf gesichert" : "Entwurf ungesichert"}</span>}
 							{sending ? (
 								<Button onClick={onAbort} type="button" variant="destructive">
 									Abort
 								</Button>
 							) : null}
 							<PromptInputSubmit
-								disabled={disabled || status.includes("Failed")}
+								disabled={disabled || sending || status.includes("Failed")}
 								status={sending ? "submitted" : "ready"}
-								variant="ghost"
-							/>
+								variant="default"
+								size="sm"
+								aria-label="Nachricht senden"
+								className="h-8 px-3 font-semibold"
+							><SendIcon className="size-4" />{sending ? "Läuft…" : "Senden"}</PromptInputSubmit>
 						</div>
 					</div>
 				</PromptInputFooter>

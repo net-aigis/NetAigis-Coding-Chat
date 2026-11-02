@@ -8,7 +8,7 @@ import {
 } from "../vscode";
 import { RecallSessions } from "./RecallSessions";
 
-function useBrowserActor() {
+export function useBrowserActor() {
 	const [actorId, setActorId] = useState<string | undefined>(
 		getConfirmedBrowserActorId,
 	);

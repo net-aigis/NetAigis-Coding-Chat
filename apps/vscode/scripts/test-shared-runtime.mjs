@@ -123,10 +123,12 @@ try {
 		const db = new SqliteSessionStore({ sessionsDir: path.join(storage, "data/db") })
 		try {
 			const service = new CoreSessionService(db, { sessionArtifactsDir: path.join(storage, "data/sessions") })
-			await service.createRootSessionWithArtifacts({ sessionId: layoutSessionId, source: "vscode", pid: 0, status: "idle", interactive: true,
+			for (const sessionId of [layoutSessionId, `${layoutSessionId}-other`]) {
+			await service.createRootSessionWithArtifacts({ sessionId, source: "vscode", pid: 0, status: "idle", interactive: true,
 				provider: "openai-compatible", model: "layout-model", cwd: root, workspaceRoot: root, enableTools: false, enableSpawn: false, enableTeams: false })
-			await service.persistSessionMessages(layoutSessionId, Array.from({ length: 16 }, (_, index) => ({ id: `layout-${index}`, role: index % 2 ? "assistant" : "user",
+			await service.persistSessionMessages(sessionId, Array.from({ length: 16 }, (_, index) => ({ id: `layout-${index}`, role: index % 2 ? "assistant" : "user",
 				content: `Mobile layout history ${index}. ` + "Retained history. ".repeat(20), metadata: { author: { actorId: index % 4 ? "jimmi" : "Friseer" } } })))
+		}
 		} finally { db.close() }
 	}
 	const daemon = start("daemon")
@@ -239,7 +241,7 @@ try {
 			for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }, { width: 390, height: 430 }, { width: 844, height: 390 }, { width: 1280, height: 800 }]) {
 				await page.setViewportSize(viewport)
 				await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-				for (const [label, locator] of [["input", input], ["send", page.getByRole("button", { name: "Submit", exact: true })]]) {
+				for (const [label, locator] of [["input", input], ["send", page.getByRole("button", { name: "Nachricht senden", exact: true })]]) {
 					const geometry = await locator.evaluate(el => {
 						const r = el.getBoundingClientRect()
 						const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
@@ -252,11 +254,76 @@ try {
 				await input.tap()
 				await input.fill("Unsent mobile layout test")
 				await expect(input).toHaveValue("Unsent mobile layout test")
+				const draftSend = await page.getByRole("button", { name: "Nachricht senden", exact: true }).boundingBox()
+				assert(draftSend && draftSend.x >= 0 && draftSend.x + draftSend.width <= viewport.width && draftSend.y + draftSend.height <= viewport.height, "Draft notice or model label must not push Send outside the viewport")
 				await input.fill("")
 			}
 			await page.setViewportSize({ width: 390, height: 844 })
 			report.composerAndSendReachableWithoutScrollingAtFiveViewportSizes = measurements
 			report.mobileDraftTypingWithoutSubmissionPassed = true
+		}
+		if (process.env.NETAIGIS_RUNTIME_BROWSER_DRAFT === "1") {
+			const input = page.getByPlaceholder("Type @ for context and / for skills", { exact: true })
+			const first = "Friseer: ungesendeter Entwurf mit Korrektur äöü"
+			const second = "Zweite Sitzung: eigener Entwurf"
+			let sent = 0
+			page.on("websocket", socket => socket.on("framesent", event => { try { if (JSON.parse(String(event.payload)).type === "send") sent++ } catch {} }))
+			await input.fill(first)
+			await page.reload({ waitUntil: "domcontentloaded" })
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
+			await expect(input).toHaveValue(first, { timeout: 15000 })
+			const chooser = page.locator("select").first()
+			await chooser.selectOption(`${layoutSessionId}-other`)
+			await expect(input).toBeEnabled()
+			await expect(input).toHaveValue("")
+			await input.fill(second)
+			await chooser.selectOption(layoutSessionId)
+			await expect(input).toBeEnabled()
+			await expect(input).toHaveValue(first)
+			await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
+			await page.getByRole("button", { name: "Abmelden", exact: true }).click()
+			await expect(input).toHaveValue("")
+			await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
+			await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.jimmi)
+			await page.getByRole("button", { name: "Verbinden", exact: true }).click()
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/jimmi/)
+			await expect(input).toHaveValue("")
+			await input.fill("jimmi: eigener Entwurf")
+			await page.reload({ waitUntil: "domcontentloaded" })
+			await expect(input).toHaveValue("jimmi: eigener Entwurf", { timeout: 15000 })
+			await input.fill("")
+			await page.reload({ waitUntil: "domcontentloaded" })
+			await expect(input).toBeEnabled()
+			await expect(input).toHaveValue("")
+			assert.equal(sent, 0, "Restoring a draft must never submit or replay a model turn")
+			const contrasts = []
+			for (const dark of [false, true]) {
+				await page.evaluate(dark => document.documentElement.classList.toggle("dark", dark), dark)
+				const contrast = await page.evaluate(() => {
+					const input = document.querySelector('textarea[placeholder="Type @ for context and / for skills"]')
+					const button = document.querySelector('button[aria-label="Nachricht senden"]')
+					const canvas = document.createElement("canvas"), context = canvas.getContext("2d", { willReadFrequently: true })
+					function color(css) { context.clearRect(0, 0, 1, 1); context.fillStyle = css; context.fillRect(0, 0, 1, 1); return [...context.getImageData(0, 0, 1, 1).data] }
+					function luminance(rgb) { return rgb.slice(0, 3).map(x => { const v = x / 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4 }).reduce((sum, x, i) => sum + x * [.2126, .7152, .0722][i], 0) }
+					function ratio(a, b) { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05) }
+					const style = getComputedStyle(button), bg = color(getComputedStyle(document.body).backgroundColor)
+					return { buttonRatio: ratio(color(style.color), color(style.backgroundColor)), placeholderRatio: ratio(color(getComputedStyle(input, "::placeholder").color), bg), visibleSendLabel: button.textContent.includes("Senden") }
+				})
+				assert(contrast.visibleSendLabel && contrast.buttonRatio >= 4.5 && contrast.placeholderRatio >= 4.5, `Insufficient contrast: ${JSON.stringify(contrast)}`)
+				contrasts.push({ dark, ...contrast })
+			}
+			await page.evaluate(() => document.documentElement.classList.remove("dark"))
+			report.actualRenderedComposerContrast = contrasts
+			report.unsentDraftReloadSessionActorAndLogoutIsolationPassed = true
+			report.draftRestorationNeverSubmittedAMessage = true
+			// Return to the existing Friseer auth/wake smoke contract.
+			await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
+			await page.getByRole("button", { name: "Abmelden", exact: true }).click()
+			await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
+			await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.Friseer)
+			await page.getByRole("button", { name: "Verbinden", exact: true }).click()
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/)
+			await expect(input).toHaveValue("")
 		}
 		if (process.env.NETAIGIS_RUNTIME_BROWSER_WAKE === "1") {
 			const account = page.getByRole("button", { name: "Sitzungszugang", exact: true })
@@ -318,6 +385,18 @@ try {
 			)
 		}
 		report.ownBrowserIdentityAndSharedRuntimeControlsConfirmed = true
+		if (process.env.NETAIGIS_RUNTIME_BROWSER_DRAFT === "1") {
+			await page.addInitScript(() => Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new DOMException("Blocked test storage", "SecurityError") } }))
+			await page.goto(`${config.dashboard.publicUrl}/chat?roomSecret=${config.dashboard.roomSecret}&id=${layoutSessionId}`, { waitUntil: "domcontentloaded" })
+			const input = page.getByPlaceholder("Type @ for context and / for skills", { exact: true })
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/)
+			await expect(input).toBeEnabled()
+			await input.fill("Entwurf bei gesperrtem Browserspeicher")
+			await expect(input).toHaveValue("Entwurf bei gesperrtem Browserspeicher")
+			await expect(page.getByText("Entwurf ungesichert", { exact: true })).toBeVisible()
+			report.blockedBrowserStorageKeepsTypingAndShowsUnsavedWarning = true
+		}
+
 		await browser.close()
 		browser = undefined
 		await stop(dashboard)

@@ -2,6 +2,7 @@ import type {
 	WebviewInboundMessage,
 	WebviewOutboundMessage,
 } from "../../webview-protocol";
+import { forgetActorDrafts } from "./chat-draft";
 
 type VsCodeApi = {
 	postMessage(message: WebviewInboundMessage): void;
@@ -137,6 +138,7 @@ function rememberConfirmedActor(actorId: string, authRequestId?: string): void {
 }
 
 export async function forgetBrowserActor(): Promise<void> {
+	const actorId = confirmedBrowserActorId;
 	++actorPersistenceGeneration;
 	pendingActorCredential = undefined;
 	await actorPersistence;
@@ -148,6 +150,7 @@ export async function forgetBrowserActor(): Promise<void> {
 	});
 	if (!response.ok)
 		throw new Error("Die Browser-Anmeldung konnte nicht gelöscht werden.");
+	forgetActorDrafts(actorId);
 	browserSocket?.close();
 	dispatchHostMessage({ type: "shared_actor" });
 }

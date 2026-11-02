@@ -5349,3 +5349,58 @@ Desktop-/mobile Viewportemulation nicht als Geräteabnahme ausgeben. Der zuvor
 angeforderte NETAIGIS_ANDROID_VPN_READY-Turn ist mangels erreichbarer Eingabe nicht
 erfolgt und bleibt offen. Keine automatische Wiederholung. Externer VPN-Zugriff/
 Anmeldung/Verlauf ist bereits durch echten Benutzerbefund positiv, unverändert.
+
+
+### Ungesendeter Text bei Reload und schwacher Kontrast
+
+Benutzer bestätigt physisches Android-Eingabefeld/Tippen. Präzisierung:
+„Nur der ungesendete Text“ geht nach Aktualisieren verloren. Kein gemeldeter
+Verlust von Login, ausgewählter Session oder bisherigem Verlauf.
+p4-composer-draft-productive-red Exit1(10,27s) reproduziert genau das am produktiven
+HTTPS-Dienst mit isoliertem Browser: Auth/ID/Historie bleiben, ungesendeter Entwurf
+verschwindet; kanonische15Nachrichten bytegleich, kein Claim/Modellturn.
+
+Bestehenden Composer um Textentwürfe im sessionStorage DES BROWSER-TABS ergänzt.
+Schlüssel nutzt bestätigten Akteur sowie Session-ID; neuer Chat getrennt über
+expliziten Workspace, keine erfundene globale Projekt-/Sitzungskennung.
+Synchrones Schreiben bei Eingabe, Wiederherstellen vor Darstellung; keine
+Sendequeue, keine automatische Übermittlung/Replay und keine zweite Archivarchitektur.
+Getrennter Namespace Friseer/jimmi und je Sitzung. Bewusstes Leeren/Absenden entfernt
+Entwurf; Absenden ist keine Aussage über den Erfolg des Modellturns. Explizites
+Abmelden entfernt nur die Entwürfe dieses Akteurs im Tab. Verbindungsausfall ist
+kein Logout. Speichersperre/Quota behalten Text im aktuellen Speicher und zeigen
+„Entwurf ungesichert“; ältere gespeicherte Daten überschreiben dann nicht den
+neuesten In-Memory-Text. Keine Persistenz von Anmeldeschlüsseln oder Dateianhängen
+in Entwurfsdaten. Tab-Schließen ist kein garantierter dauerhafter Entwurfserhalt.
+
+Deutliche Eingabekante/Text/Platzhalter, stärkere sekundäre Texte/Ränder hell/dunkel,
+primärer beschrifteter Senden-Knopf statt alleinstehendem blassem Icon. Während
+eines laufenden Turns verhindert disabled erneutes Absenden, Entwurf bleibt tippbar.
+Lange Modellanzeige passt flexibel in verbleibenden Platz, vollständig im Titel/
+Einstellungsdialog erhalten, Modellkonfiguration unverändert. Mobiler Chatkopf
+kompakter, damit Senden weiterhin bei430Pixelhöhe sichtbar bleibt.
+
+28/28Entwurfs-/Browsertransport-/Auth-/Zugriffsregressionen Exit0(16,85s), vier Dateien.
+Vorheriger Build verweigerte Constructor-Parameterproperty bei erasableSyntaxOnly,
+gezielt durch normales Feld ersetzt; negativer Beleg erhalten. Erster neuer
+Paketkandidat b0446d8b... scheitert berechtigt: breiteres Senden und ungekürzter
+Modellname überlaufen bei390Pixelbreite,Exit1(15,19s), nicht installiert.
+Abschließender Web-Build mit Typprüfung Exit0(18,95s),Bundle Exit0(3,11s),
+Paketierung Exit0(4,56s). Finales eigenes VSIX:
+netaigis-coding-chat-0.1.0-shared-runtime-browser-draft-contrast-v2-candidate.vsix,
+SHA590d7bab234039a1e9b484ac6448f61ebcc54098784dd57e72e4c5729532c94e,
+382Payload-Dateien bytegleich verifiziert/extrahiert.
+
+p4-browser-draft-contrast-v2-native-package Exit0(19,88s): tatsächliche isolierte
+native Runtime und Chromium. Zwei native16Nachrichten-Fixtures, keine Inferenz.
+Textentwurf bleibt bei Reload, Sessionwechsel getrennt, jimmi sieht Friseer-Entwurf
+nicht; expliziter Logout entfernt nur dessen Entwürfe. Eigener jimmi-Entwurf bleibt
+bei Reload, bewusstes Leeren bleibt leer. Wiederherstellung sendet keinerlei send-
+Frames. Gesperrter sessionStorage: Tippen funktioniert, Ungesichert-Hinweis sichtbar.
+Echte gerenderte Kontrastmessung im Browser hell/dunkel: Senden17,176:1,
+Platzhalter7,584:1hell/13,319:1dunkel. Weiterhin5Viewportgrößen mit Input/Send-Hittest,
+zusätzlich Entwurfshinweis schiebt Senden nicht aus dem Fenster. Auth/Wake/Reload/
+Logout, geschützte Cookies und saubere eigene Prozess-Exits positiv.
+Noch keine physische Geräteabnahme dieser Entwurfs-/Kontraständerung. Minimaler
+Browser-only-Rollout und anschließender tatsächlicher produktiver Reload-/Entwurfs-
+und Layoutnachweis folgen, ohne Neustart/Root-/Modell-/Dienständerung.
