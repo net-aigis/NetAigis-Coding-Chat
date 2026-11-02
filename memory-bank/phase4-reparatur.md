@@ -4122,3 +4122,38 @@ vergleicht Core-Hub-ID/Discovery-PID mit eigener systemd-MainPID und bestätigt
 Browser connected/healthy/address vor Enable. Keine Modellinferenz während
 Aktivierung. Physischer Android-/Vertrauensnachweis, echter produktiver
 Sitzungswechsel, Recall und externer Watchdog bleiben zusätzliche Aufgaben.
+
+### 2026-11-02: Freigegebene gemeinsame User-Runtime tatsächlich aktiviert
+
+Antwort auf die konkrete Sieben-Dateien-/Zwei-Dienste-Frage: "ok, mach weiter".
+Der vorbereitete Apply aus 3e9a2bc5e wurde einmal ausgeführt und ist erfolgreich.
+Geschützte Quittung: test-data/p4-local-runtime-prepare/data/application.json im
+bestehenden Prüfbereich. Nachgelesen: beide User-Units active/running, enabled,
+Result=success, NRestarts=0; Runtime-PID 2595926, Dashboard-PID 2595978.
+HTTP-Readiness und kanonische Hub-ID/PID sowie HTTPS-Verbindung wurden vor dem
+Enable im Apply geprüft. Keine Acer-/Modell-/Trust-Änderung, keine automatische
+Client-Umstellung und keine Modellinferenz. Apply nicht erneut ausführen.
+
+Browser-Oberfläche an freigegebene eigene Identität angeglichen: Titel und
+Anzeigename NetAigis Coding Chat, 0.1.0 aus FORK_IDENTITY (Core-Version getrennt),
+vorhandenes genehmigtes eigenes SVG für drei Browser-Assets und eigener
+Forgejo-Link. Im gemeinsamen Modus keine globalen Einstellungs-/Restartaktionen,
+die der bestehende Server bereits verweigert. Transport-/Client-IDs unverändert.
+Gezielte neue echte Chromium-Prüfung der ausgelieferten Assets/DOM bestanden:
+p4-browser-own-identity-native-smoke, Exit 0 (13,93 s), persönlicher Friseer-Login,
+Produktname/Version/Link/Logo und verborgene globale Aktionen geprüft.
+p4-browser-own-identity-shared-ui: Build Exit 0; Server-Typecheck Exit 0;
+p4-browser-own-identity-server-regression: 26/26 bestanden.
+Bundle zunächst in Sandbox mit "The service was stopped" gescheitert; unverändert
+nativ erfolgreich. Der genaue Sandbox-Unterprozessgrund ist nicht belegt.
+Neue Browser-Assets noch nicht produktiv installiert; laufende User-Dienste
+verwenden weiterhin den davor geprüften VSIX-Payload.
+
+Der anschließende neue lesende produktive Hub-Nachweis scheitert tatsächlich:
+Anmeldung Friseer bestätigt, session.list erfolgreich, aber nur alte SQLite-ID
+1793046128327_2s1er enthalten; aktuelle dateibasierte ID 1793603066247_pk2cs fehlt.
+Originalnachweise p4-productive-shared-history.json und -diagnostic.json bleiben
+erhalten. Keine Modellinferenz oder Verlaufsänderung. Quellbefund: LocalRuntimeHost
+listet Backend und residente Sitzungen; dateibasierte Manifeste fehlen beim
+SQLite-Hub. Vorhandene Manifest-Fallback-/Indexadoption reparieren. Kein zweiter
+Chat als Ersatz und keine rückwirkende Umdeutung alter Urheberschaft.

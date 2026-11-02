@@ -170,6 +170,22 @@ try {
 		await page.getByRole("button", { name: "Verbinden", exact: true }).click()
 		await expect(page.getByText("Bestätigter Akteur: Friseer", { exact: true })).toBeVisible({ timeout: 15000 })
 		report.packagedAssetsAndPersonalAuthenticationConfirmed = true
+		await expect(page).toHaveTitle(identity.displayName)
+		await page.getByRole("button", { name: "Home", exact: true }).click()
+		await expect(page.getByRole("heading", { name: identity.displayName, exact: true })).toBeVisible()
+		await expect(page.getByText(`v${identity.version}`, { exact: true })).toBeVisible()
+		await expect(page.getByRole("link", { name: "Repository", exact: true })).toHaveAttribute(
+			"href", "https://git.wittmer.software/AIGIS/cline",
+		)
+		await expect(page.getByRole("button", { name: "Restart", exact: true })).toHaveCount(0)
+		await expect(page.getByRole("button", { name: "Account", exact: true })).toHaveCount(0)
+		for (const asset of ["icon.svg", "favicon.svg", "cline-logo-filled.svg"]) {
+			assert.deepEqual(
+				await fs.readFile(path.join(extension, "dist/shared-runtime/webview", asset)),
+				await fs.readFile(path.join(sourceExtension, "assets/icons/netaigis-coding-chat.svg")),
+			)
+		}
+		report.ownBrowserIdentityAndSharedRuntimeControlsConfirmed = true
 		await browser.close()
 		browser = undefined
 		await stop(dashboard)

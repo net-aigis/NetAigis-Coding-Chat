@@ -14,6 +14,22 @@ Continuation 2026-11-01: `be11bad51` fixes concurrent approval intents; `a460bd1
 
 ## Cloud Agent Instructions
 
+Latest local-service continuation 2026-11-02: the user explicitly approved the
+seven-file/two-User-service activation with "ok, mach weiter". Apply from
+3e9a2bc5e SUCCEEDED; do not repeat it. Both own runtime (127.0.0.1:25463,
+PID 2595926) and HTTPS dashboard (192.168.178.25:8787, PID 2595978) are active,
+enabled, Result=success, NRestarts=0. No Acer service/model/trust change.
+Protected stage application.json records the actual result. Own browser title,
+version/logo/repository and shared-role controls passed native Chromium smoke;
+build and server types passed, 26/26 targeted server regressions passed. These
+browser changes are not installed yet. Actual productive Hub history probe
+exposed a concrete remaining defect: SQLite list omits the recent file-backed
+session 1793603066247_pk2cs, although its canonical files are present. Preserve
+negative receipts; fix common listing/index adoption, not by copying chats or
+inventing author/process state. VS Code connection, physical Android, Recall,
+Learning acceptance and separate Acer watchdog remain open. This approval does
+not authorize the separate pending Acer watchdog Root operation.
+
 Latest continuation 2026-11-02: `6976549cc` fixes search refresh after DB close (61/61 targeted, build/types passed). Real mobile-viewport Chromium then displayed the actual Coding-Agent/DeepSeek reply in canonical test session 1793568939815_yktbw, with personal jimmi login/writer claim. Final history has eight messages and unchanged first six. A too-early file assertion failed; its no-inference continuation exposed a REAL resume bug: old owner PID was retained when a new turn started, allowing stale reconciliation to attach unknown-owner evidence. `7f66a18c1` atomically binds current PID with running status and refuses inference after failed status persistence; 175/175, build/types passed. Do not clear the old test session's unknown marker to force it through, or replay successful model turns. Earlier real native VS Code evidence remains valid within its recorded limits.
 
 The own production bundle now includes the EXISTING Core daemon and Hub dashboard under dist/shared-runtime/netaigis-runtime.mjs. Existing own storage and private operator-selected config/actor/TLS files are mandatory. No automatic services, model selection, credentials or data roots. Actual packaged process/browser smoke and duplicate-owner/missing-runtime refusals passed. New separate VSIX: tmp/phase4-checks-20261030T193507+0100/netaigis-coding-chat-0.1.0-shared-runtime-candidate.vsix, SHA256 023afbf50437c71201d2d1b7b5be3a947d9e6f511c0cad854409bc852f5d2446. ZIP/identity/payload equality and extracted-VSIX native smoke passed. Physical Android and productive Hub/Recall/Learning remain open; no new LAN service is approved yet. Watchdog's separate approval/operator Root execution is still pending.

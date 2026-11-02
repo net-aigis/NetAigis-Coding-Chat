@@ -1296,7 +1296,9 @@ export default function Chat({
 			type: "approval_response",
 			approvalId,
 			approved,
-			reason: approved ? "Approved in Cline Hub." : USER_REJECTED_TOOL_REASON,
+			reason: approved
+				? "Approved in NetAigis Coding Chat."
+				: USER_REJECTED_TOOL_REASON,
 		});
 		setStatus(approved ? "Approval sent." : "Rejection sent.");
 	};

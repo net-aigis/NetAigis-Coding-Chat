@@ -499,7 +499,7 @@ export async function initializePeer(
 	syncHubClientsAndSessions: () => Promise<void>,
 ): Promise<void> {
 	await syncHubClientsAndSessions();
-	ctx.send(peer, { type: "status", text: "Cline Hub is ready." });
+	ctx.send(peer, { type: "status", text: "NetAigis Coding Chat is ready." });
 	ctx.send(peer, { type: "defaults", defaults: resolveBrowserDefaults(ctx) });
 	await loadProviders(ctx, peer);
 	await sendProviderCatalog(ctx, peer);

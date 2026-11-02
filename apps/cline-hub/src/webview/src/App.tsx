@@ -53,6 +53,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { FORK_IDENTITY } from "../../../../vscode/src/shared/fork-identity";
 import type {
 	WebviewActiveConnector,
 	WebviewConnectedClient,
@@ -355,11 +356,13 @@ function Shell({
 	onNavigate,
 	version,
 	view,
+	sharedRuntime,
 }: {
 	children: ReactNode;
 	onNavigate: (view: View) => void;
 	version?: string;
 	view: View;
+	sharedRuntime?: boolean;
 }) {
 	const navItems = [
 		{ view: "home", label: "Home", icon: HomeIcon },
@@ -437,29 +440,43 @@ function Shell({
 						className="size-6 shrink-0 dark:invert"
 						src="/cline-logo-filled.svg"
 					/>
-					<span className="truncate">Cline Hub</span>
+					<span className="truncate">NetAigis Coding Chat</span>
 				</button>
 				<nav
 					className="grid gap-1 overflow-y-auto max-[720px]:grid-flow-col max-[720px]:auto-cols-max max-[720px]:overflow-x-auto max-[720px]:[scrollbar-width:none] max-[720px]:[&::-webkit-scrollbar]:hidden"
 					aria-label="Hub views"
 				>
-					{navItems.map(renderNavButton)}
-					<div className="mt-4 px-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground max-[720px]:mt-0 max-[720px]:self-center">
-						Customizations
-					</div>
-					{customizationNavItems.map(renderNavButton)}
+					{navItems
+						.filter(
+							(item) =>
+								!sharedRuntime ||
+								item.view === "home" ||
+								item.view === "sessions",
+						)
+						.map(renderNavButton)}
+					{!sharedRuntime && (
+						<>
+							<div className="mt-4 px-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground max-[720px]:mt-0 max-[720px]:self-center">
+								Customizations
+							</div>
+							{customizationNavItems.map(renderNavButton)}
+						</>
+					)}
 				</nav>
 				<div className="mt-auto pt-6 max-[720px]:mt-2 max-[720px]:pt-0">
 					<div className="flex min-w-0 items-center gap-2 px-2 text-xs text-muted-foreground">
-						<span className="shrink-0">{version ? `v${version}` : "v-"}</span>
+						<span
+							className="shrink-0"
+							title={version ? `Runtime ${version}` : undefined}
+						>{`v${FORK_IDENTITY.version}`}</span>
 						<span className="shrink-0 text-border">|</span>
 						<a
 							className="truncate underline-offset-2 transition-colors hover:text-foreground hover:underline"
-							href="https://github.com/cline/cline/issues/new"
+							href="https://git.wittmer.software/AIGIS/cline"
 							rel="noopener noreferrer"
 							target="_blank"
 						>
-							Report issue
+							Repository
 						</a>
 					</div>
 				</div>
@@ -508,7 +525,7 @@ function HomeView({
 	return (
 		<PageFrame>
 			<PageHeader
-				title="Cline Hub"
+				title="NetAigis Coding Chat"
 				description="Monitor connected clients, sessions, and hub activity."
 				className="mb-10"
 				actions={
@@ -536,20 +553,22 @@ function HomeView({
 								{hubState.hubUrl ?? "no hub url"}
 							</span>
 						</button>
-						<Button
-							disabled={!hubState.connected || restartPending}
-							onClick={() => setRestartDialogOpen(true)}
-							size="sm"
-							title="Restart Cline Hub"
-							type="button"
-							variant="outline"
-							className="h-7 rounded px-2 text-xs"
-						>
-							<RotateCcwIcon
-								className={`size-3.5 ${restartPending ? "animate-spin" : ""}`}
-							/>
-							<span>{restartPending ? "Restarting" : "Restart"}</span>
-						</Button>
+						{!hubState.sharedRuntime && (
+							<Button
+								disabled={!hubState.connected || restartPending}
+								onClick={() => setRestartDialogOpen(true)}
+								size="sm"
+								title="Restart NetAigis Coding Chat"
+								type="button"
+								variant="outline"
+								className="h-7 rounded px-2 text-xs"
+							>
+								<RotateCcwIcon
+									className={`size-3.5 ${restartPending ? "animate-spin" : ""}`}
+								/>
+								<span>{restartPending ? "Restarting" : "Restart"}</span>
+							</Button>
+						)}
 					</>
 				}
 			/>
@@ -563,7 +582,7 @@ function HomeView({
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Restart Cline Hub</AlertDialogTitle>
+						<AlertDialogTitle>Restart NetAigis Coding Chat</AlertDialogTitle>
 						<AlertDialogDescription>
 							This will shut down the current hub process and start it again.
 							Connected clients and active sessions may disconnect while the hub
@@ -1323,6 +1342,19 @@ function App() {
 	}, []);
 
 	const content = useMemo(() => {
+		if (
+			hubState.sharedRuntime &&
+			!["home", "sessions", "chat"].includes(view)
+		) {
+			return (
+				<PageFrame>
+					<PageHeader
+						title="Gemeinsame Sitzung"
+						description="Öffne vorhandene Sitzungen über Sessions. Globale Einstellungen verwaltest du in VS Code."
+					/>
+				</PageFrame>
+			);
+		}
 		if (view === "chat") {
 			return (
 				<Chat
@@ -1448,7 +1480,12 @@ function App() {
 	]);
 
 	return (
-		<Shell onNavigate={navigate} version={hubState.coreVersion} view={view}>
+		<Shell
+			onNavigate={navigate}
+			version={hubState.coreVersion}
+			view={view}
+			sharedRuntime={hubState.sharedRuntime}
+		>
 			{hubState.sharedRuntime && (
 				<SharedSessionAccess
 					sessionId={selectedSessionId}
