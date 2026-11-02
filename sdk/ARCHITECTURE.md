@@ -1905,6 +1905,12 @@ identity/capabilities are retained and failed or unconfirmed resume never sends
 the user's message automatically through a replacement conversation.
 
 
+Live transcript reads enrich unchanged canonical messages with persisted final
+metadata, including latest-answer metrics. They retain unsaved live tails and
+edits instead of substituting disk history. Matching requires role/content and
+compatible message IDs; replaced messages cannot inherit another author's data.
+Inherited values are cloned so readers cannot mutate the persisted baseline.
+
 Canonical historical-message persistence preserves fields that exist only in the
 previous stored version when the same-ID agent working copy exposes them as
 undefined. Agent cloning explicitly materializes absent metrics/model metadata;

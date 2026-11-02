@@ -10,6 +10,7 @@ import {
 	deriveTitleFromPrompt,
 	resolveMessagesFileContext,
 	withLatestAssistantTurnMetadata,
+	withPersistedMessageMetadata,
 } from "./session-data";
 import { summarizeUsageFromMessages } from "./usage";
 
@@ -166,6 +167,19 @@ describe("messages file provenance", () => {
 				version: "3.99.0",
 			},
 		});
+	});
+});
+
+describe("withPersistedMessageMetadata", () => {
+	it.each(["id", "content"] as const)("does not inherit another message's metadata after %s changes", (field) => {
+		const saved: MessageWithMetadata = {
+			id: "original", role: "user", content: "Repeated instruction",
+			metadata: { author: { actorId: "Friseer" } },
+		};
+		const changed = { ...saved, [field]: "replacement", metadata: undefined };
+		const result = withPersistedMessageMetadata([changed], [saved]);
+		expect(result[0].metadata).toBeUndefined();
+		expect(result[0][field]).toBe("replacement");
 	});
 });
 

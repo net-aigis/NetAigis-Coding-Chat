@@ -64,6 +64,7 @@ import {
 import {
 	toSessionRecord,
 	withLatestAssistantTurnMetadata,
+	withPersistedMessageMetadata,
 } from "../../services/session-data";
 import { readImportedFromMetadata } from "../../services/session-import/service";
 import {
@@ -2138,7 +2139,7 @@ export class LocalRuntimeHost implements RuntimeHost {
 		if (live) {
 			const messages = live.agent.getMessages();
 			if (messages.length > 0) {
-				return messages;
+				return withPersistedMessageMetadata(messages, live.persistedMessages);
 			}
 		}
 		return this.readSessionMessages(target);

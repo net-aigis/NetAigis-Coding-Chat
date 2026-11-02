@@ -119,29 +119,41 @@ export function normalizeStoredMessagesForPersistence(
 	);
 }
 
+/** Enrich only the same canonical messages; keep live edits and unsaved tails. */
+export function withPersistedMessageMetadata(
+	messages: LlmsProviders.Message[],
+	previousMessages: LlmsProviders.MessageWithMetadata[] = [],
+): StoredMessageWithMetadata[] {
+	return messages.map((message, index) => {
+		const previous = previousMessages[index];
+		const current = message as StoredMessageWithMetadata;
+		const sameMessage =
+			previous?.role === message.role &&
+			(!previous.id || !current.id || previous.id === current.id) &&
+			JSON.stringify(previous.content) === JSON.stringify(message.content);
+		const incoming = Object.fromEntries(
+			Object.entries(message).filter(([, value]) => value !== undefined),
+		);
+		const inherited: Record<string, unknown> = {};
+		if (sameMessage) {
+			// Do not expose aliases into the persisted baseline to a live reader.
+			for (const [key, value] of Object.entries(previous)) {
+				if (value !== undefined && !Object.hasOwn(incoming, key))
+					inherited[key] = structuredClone(value);
+			}
+		}
+		return { ...inherited, ...incoming } as StoredMessageWithMetadata;
+	});
+}
+
 export function withLatestAssistantTurnMetadata(
 	messages: LlmsProviders.Message[],
 	result: AgentResult,
 	previousMessages: LlmsProviders.MessageWithMetadata[] = [],
 ): StoredMessageWithMetadata[] {
-	const next = messages.map((message, index) => {
-		const previous = previousMessages[index];
-		const sameMessage =
-			previous?.role === message.role &&
-			JSON.stringify(previous.content) === JSON.stringify(message.content);
-		const merged = sameMessage
-			? ({
-					...previous,
-					// Agent.cloneMessage materializes optional fields as undefined.
-					// Absence in its working copy must not erase metadata that final
-					// persistence added to the same canonical historical message.
-					...Object.fromEntries(
-						Object.entries(message).filter(([, value]) => value !== undefined),
-					),
-				} as StoredMessageWithMetadata)
-			: ({ ...message } as StoredMessageWithMetadata);
-		return normalizeStoredMessageModelMetadata(merged);
-	});
+	const next = withPersistedMessageMetadata(messages, previousMessages).map(
+		(message) => normalizeStoredMessageModelMetadata(message),
+	);
 	const firstNewMessageIndex = previousMessages.length;
 	const assistantIndexes: number[] = [];
 	for (let index = firstNewMessageIndex; index < next.length; index += 1) {

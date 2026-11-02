@@ -4990,3 +4990,84 @@ Neue produktive Paketierung/Statuskorrektur bleibt bis zu weiteren Prüfungen of
 Nach dem verweigerten Versuch alter Browser-Auth-V2-Build weiterhin installiert;
 CorePID2772664,Hubhub_1793623648445_6fj2z; Launchhash weiterhin
 5bde849fcb32930990072f12e81eef4c77ee1a36d70d504b085b7ea8493b670d,keinrecall.
+
+### Produktive sessionbezogene Recall-Verbindung und weiterer echter Archivbefund
+
+Dispose-Fix a676a2e11, Produktionsbundle Exit0(24,28s), neue VSIX
+shared-runtime-recall-lifecycle-candidate.vsix SHA
+e54778887f6944bb930da066a9dcca01a7967774e2bf8e01404d9dc65c5df456,
+334Payload-Dateien bytegeprüft; tatsächlicher isolierter Paketeigentümer-/Drain-
+Test Exit0(35,69s). Erforderliche aktuelle lokale Sicherung im vorhandenen
+R/shared-recall-runtime-lifecycle-delta: sieben durch den ersten Stop geänderte
+Dateien,31unveränderte geprüfte Dateien wiederverwendet; echte vollständige
+Wiederherstellung/Attribute bestätigt. Archiv
+2488169258f4963071366819e64d9ea7785d1c727af0410e689c3b97f4a45e96,
+Manifest25c3d106cc9a45c957aa24d2775dc996d027fdf32926c78dcea695f433f313f0.
+Erster neuer Preflight hatte wegen falsch übernommener Vorgänger-Hashkonstante
+vor jeder Änderung verweigert; Konstante gegen belegten Vorgänger korrigiert.
+
+Produktive Fortsetzung SUCCEEDED: ausschließlich eigene zwei Dienste und eigene
+VSIX/Launchkonfiguration, zuvor Auftragsruhe/keine weiteren Clients bestätigt.
+334installierte Dateien verglichen, andere registrierte Extensionidentitäten/
+Versionen/Pfade unverändert, Haupt-VS-Code nicht beendet, kein Acer-Eingriff.
+CorePID2788475,Dashboard2788577,active/running,Resultsuccess,NRestarts0.
+Eigene Daten gegen aktuellen Restore unverändert; geschützte Launchkonfiguration
+jetzt exakt verifizierter Hash51d6cdf2d543d7c80c2bbbc85a42000eccba95fa02c9f33e74e62cf976101e4b.
+Sessionbezogene Recall-Verbindung mit beiden bestehenden persönlichen Keys und
+getrenntem verifiziert gesichertem Signierer aktiv; kein globales Projekt.
+Privater Installationsnachweis R/shared-recall-runtime-lifecycle-delta/installation.json.
+
+p4-productive-recall-connection: beide tatsächlichen persönlichen Runtime-Logins
+lesen erfolgreich denselben produktiven Acer-Katalog, Producer configuredtrue.
+Vor erster Runtime-Archivierung vollständiger Live-Katalog/alle Ereignisse mit
+bereits geprüfter externer Phase-2-SQLite-Sicherung lesend verglichen: exakt derselbe
+eine ursprüngliche Datensatz. Keine unnötige neue Datenbanksicherung. Bestehende
+Backup-SHA48e8e86b5c77519ce57101c1cb08ef71d50373e8094f7339ab7272ee2809c85a.
+
+Neuer tatsächlicher HTTPS-Browser-/Modellturn p4-productive-recall-session-continuity
+Exit0(118,95s), kein Fixtureprovider: Friseer authentifiziert übernimmt kontrollierte
+Sitzung1793603066247_pk2cs und sendet EINMAL Marker
+NETAIGIS_RECALL_RUNTIME_CONTINUITY_READY. Alle bisherigen13Nachrichten exakt
+erhalten, nun15,neue NutzerurheberschaftFriseer,finalidle,CorePIDaktuell2788475,
+nach Browserclose resident. Echter neuer Turn beseitigt den zuvor nachgewiesenen
+falschen alten Completedstatus regulär, keine manuelle SQL-/Historienumschreibung.
+Nicht als physische Android-/neue VS-Code-/Archivierungsabnahme ausgeben.
+
+Danach kontrollierte technische Testsitzung ausdrücklich einzig dem bereits
+vorhandenen total-recall-production-test zugeordnet; Rücklesen der kanonischen
+Projektbindung erfolgreich. Keine Bindung des ursprünglichen langen Auftrags,
+keine globale NetAigisOS-Entscheidung. Tatsächlicher Core archiviert Snapshotseq2;
+beide persönlichen Akteure lesen identisches HMAC-verifiziertes, idle und formal
+wiederherstellbares Archiv mit15Nachrichten. Vollständiger Gleichheitsvergleich
+verweigert jedoch p4-productive-existing-session-recall-archive,Exit1(1,58s).
+Anschließende NUR LESENDE Diagnose Exit0(0,92s): EIN Unterschiedspfad
+/14/metrics. Autor/ID/Inhalt/übrige Historie unverändert. Neuester Agent-Workingcopy
+fehlen nach Finalpersistenz ergänzte Messdaten; readLiveSessionMessages gibt ihn
+bisher ungeprüft direkt zurück. Keine Projektbindung oder Modellantwort wiederholen.
+Neue echte Datei-/SQLite-Regressionsfälle zur sicheren Live-Metadatenanreicherung
+laufen; keine vollständige Archiv-/Wiederaufnahmenabnahme behaupten.
+
+Gezielte Metadatenkorrektur: bestehende Finalpersistenz-Zusammenführung als
+withPersistedMessageMetadata wiederverwendbar gemacht, readLiveSessionMessages
+ergänzt ausschließlich fehlende Felder derselben kanonischen Nachricht aus der
+eigenen Persistenzbaseline. Rollen/Inhalt und vorhandene IDs müssen passen;
+neue/geänderte Live-Nachrichten und ungespeicherte Streamingtails bleiben live,
+keine neuen IDs oder Messwerte erfunden. Übernommene Werte geklont gegen Aliasing.
+Neue native Dateien/SQLite-Fälle zunächst2/2rot(5,60s), danach mit bestehenden
+History-/Host-/Archivtests133/133grün(24,77s). Zusätzliche Fälle verweigern
+Metadatenübernahme bei anderer ID oder anderem Inhalt. Core-Build Exit0(26,06s),
+Core-Dev-Typen Exit0(47,83s). Dieser neueste Fix bislang nur Quelle/Build;
+installierter Lifecycle-Build weiterhin unverändert, Archivseq2 bleibt unverändert
+als auditierbarer früherer Snapshot. Kein Modellturn und keine Projektbindung
+wiederholt; korrigierten Snapshot später ausschließlich neu anhängen.
+
+Bediener bestätigt echte Android-Anmeldung UND Verlauf nach erneutem Seitenreload:
+„ja, scheint zu funktionieren“. Damit physischer Android-Reload-Lesebefund positiv.
+Neue verbindliche UI-/Reconnect-Korrekturen: Verbinden/Abmelden ganz oben rechts
+im Kopf, wiederholtes Übernehmen darf die Revision nicht grundlos erhöhen,
+Bildschirmsperre/-Aufwecken soll ohne erneute persönliche Schlüsseleingabe
+wiederverbinden. Aktueller Browseradapter hat belegtermaßen keinen automatischen
+Close-/Wake-Reconnect; bestehende persönliche HttpOnly-Tickets bleiben der
+Authentifizierungsweg. Neue Arbeit am belegten Stand, keine abgeschlossenen
+Modell-/Projekt-/Sicherungsphasen wiederholen. HTTPS-Zertifikatsvertrauen weiterhin
+offen; keine System-/Android-Vertrauensänderung durchgeführt.
