@@ -6235,3 +6235,44 @@ Vorläufiger terminalseitiger Sicherungsaufruf:
 Keine neue Produktivfreigabe aus diesem reinen Sicherungsaufruf
 ableiten. Produktive Aktivierung erst nach geprüfter Sicherung und
 konkretem abgegrenztem Anwendungsschritt.
+
+
+### 2026-11-03 – Ein-Datei-Sicherung extern geprüft, Anwendung vorbereitet
+
+Benutzer lieferte erfolgreichen Root-Nachweis für
+phase4-coding-prefix-cache-delta: genau1Datei, echteWiederherstellung
+mitOwner/Mode/mtime/xattrs, keineQuell-/Dienständerung. Archiv
+971e317aa9bdbf39d539c58a4abe24d5513941ea20c119a7aa0285102e358c40,
+Manifest e562454d23f0761239177f1932af3015cce3aefc52551331c44eba07e51d115b,
+SHA256SUMS311047764f78e68594ba05bc32fec503f0da16911778562d07da8efb44118e42.
+Gesamter gezielter Export eigenständig auf Acer aufgeschützten
+Verzeichnismodus/Owner, reguläreDateien und alle dreiPins geprüft.
+Geschützte externe Kopie im bestehenden lokalen Phase2-Baum unter
+phase4-coding-prefix-cache-delta erstellt, Quellcode geparst und
+tatsächlich ausArchiv wiederhergestellt. Bytes/Modus/mtime lokal
+verifiziert; ursprünglicher Root-Owner und securityxattrs durch
+Acer-Root-Restore belegt, nicht als unprivilegierte lokalechownProbe
+ausgegeben. external-verification.json erhält dieseUnterscheidung.
+Keine bisherigenSicherungen wiederholt/überschrieben.
+
+Neuer schmaler Helfer
+sdk/scripts/netaigis-coding-agent-prefix-cache-activate.py verwendet
+den bereits getesteten vorhandenen Transaktions-/Dateiattributcode
+des Adapterhelfers und den exakt gepinnten neuen Rewriter.
+Defaultinspect; apply verlangt maintenance-confirmed und
+external-copy-verified. Nurapp.py, ausschließlich Stop/Start
+netaigis-coding-agent.service; Zustände von ai-agent,Router,DeepSeek
+vor/nachgleich. Kein Modellaufruf, Konfigurationswechsel, Modellneustart
+oder automatischeRücknahme. Busy/abweichendeQuelle/Backup/Restore
+verweigertvorMutationen, exakterWiederholungsaufruf prüftohneNeustart.
+NeunAktivierungstests p4-coding-prefix-activation Exit0/0,31s, inklusive
+gebündelterRemoteAssets und nachgewiesenerSchutzdienständerung.
+Kandidat nochNICHT produktiv angewendet.
+
+Konkreter optionalerAnwendungsschritt ausschließlich nach gesonderter
+Freigabe und bei ruhendenKI-Aufträgen überbestehendenRoot-Terminalweg:
+`PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-coding-agent-prefix-cache-activate.py apply --remote --maintenance-confirmed --external-copy-verified`
+Die bisherigeRoot-Antwort genehmigte lediglichSicherung; neueapp.py-
+Änderung war nichtvonfrühererAdapterdatei-Freigabe erfasst. Danach
+realeGeschwindigkeits-/Cacheabnahme notwendig, bishernurQuell-/
+HTTP-Vertragsprüfungen. Sichere125B-Strata-Umschaltung separat offen.
