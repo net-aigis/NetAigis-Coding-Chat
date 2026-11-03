@@ -161,3 +161,80 @@ it("does not let a late close from an obsolete socket erase the current actor or
 	sockets[1].dispatchEvent(new Event("open"));
 	expect(sockets[1].send).toHaveBeenCalled();
 });
+
+it("does not announce a fresh login as ready before its reload ticket is committed", async () => {
+	const sockets: Socket[] = [];
+	class Socket extends EventTarget {
+		static OPEN = 1;
+		static CONNECTING = 0;
+		readyState = 1;
+		constructor(_url: string) {
+			super();
+			sockets.push(this);
+		}
+		send = vi.fn();
+	}
+	const target = Object.assign(new EventTarget(), {
+		location: new URL("https://fixture.invalid/chat?id=same-session"),
+		localStorage: { getItem: () => null, setItem: vi.fn() },
+	});
+	vi.stubGlobal("window", target);
+	vi.stubGlobal("WebSocket", Socket);
+	let complete!: (value: Response) => void;
+	const fetch = vi.fn(
+		() =>
+			new Promise<Response>((resolve) => {
+				complete = resolve;
+			}),
+	);
+	vi.stubGlobal("fetch", fetch);
+	const adapter = await import("./vscode");
+	adapter.postToHost({
+		type: "authenticateActor",
+		credential: "fixture-personal-key",
+	});
+	const request = JSON.parse(sockets[0].send.mock.calls[0][0]);
+	const acknowledgement = {
+		type: "shared_actor",
+		actorId: "Friseer",
+		authRequestId: request.authRequestId,
+	};
+	sockets[0].dispatchEvent(
+		new MessageEvent("message", { data: JSON.stringify(acknowledgement) }),
+	);
+	await vi.advanceTimersByTimeAsync(0);
+	expect(fetch).toHaveBeenCalledTimes(1);
+	expect(adapter.getConfirmedBrowserActorId()).toBeUndefined();
+	// A duplicate acknowledgement must not start another credential POST or
+	// publish the actor while the original response is still pending.
+	sockets[0].dispatchEvent(
+		new MessageEvent("message", { data: JSON.stringify(acknowledgement) }),
+	);
+	await vi.advanceTimersByTimeAsync(0);
+	expect(fetch).toHaveBeenCalledTimes(1);
+	expect(adapter.getConfirmedBrowserActorId()).toBeUndefined();
+	complete(
+		new Response(JSON.stringify({ actorId: "Friseer" }), { status: 200 }),
+	);
+	await vi.advanceTimersByTimeAsync(0);
+	expect(adapter.getConfirmedBrowserActorId()).toBe("Friseer");
+	const stale = {
+		...acknowledgement,
+		actorId: "jimmi",
+		authRequestId: "obsolete-request",
+	};
+	sockets[0].dispatchEvent(
+		new MessageEvent("message", { data: JSON.stringify(stale) }),
+	);
+	expect(adapter.getConfirmedBrowserActorId()).toBe("Friseer");
+	adapter.postToHost({ type: "authenticateActor", credential: "fixture-second-key" });
+	const second = JSON.parse(sockets[0].send.mock.calls.at(-1)![0]);
+	sockets[0].dispatchEvent(new MessageEvent("message", { data: JSON.stringify({ type: "shared_actor", actorId: "jimmi", authRequestId: second.authRequestId }) }));
+	await vi.advanceTimersByTimeAsync(0);
+	expect(fetch).toHaveBeenCalledTimes(2);
+	sockets[0].readyState = 3;
+	sockets[0].dispatchEvent(new Event("close"));
+	complete(new Response(JSON.stringify({ actorId: "jimmi" }), { status: 200 }));
+	await vi.advanceTimersByTimeAsync(0);
+	expect(adapter.getConfirmedBrowserActorId()).toBeUndefined();
+});

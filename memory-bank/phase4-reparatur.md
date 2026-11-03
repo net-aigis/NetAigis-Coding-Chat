@@ -5845,3 +5845,57 @@ Pakettest prüft tatsächlichen PNG-HTTP-Inhalt, Dekodierung1254² und bestehend
 Auth-/Mobile-/Writer-/Entwurfsregressionen isoliert ohne Modellanforderung.
 Notwendige eigene aktuelle Datendifferenz wird im vorhandenen geschützten
 Phase-2-Baum geprüft; keine Wiederholung abgeschlossener Phasen.
+
+
+### 2026-11-03 – Anmelderennen vor Cookieabschluss reproduziert und behoben
+
+Erster kombinierter Icon-Pakettest p4-user-icons-native-package Exit1(30,10s):
+Anmeldung nach sofortigem Seitenwechsel wieder Verbinden statt Friseer.
+Quelle: vscode.ts veröffentlichte shared_actor an UI sofort nach Hub-Ack,
+während POST/actor-session für Set-Cookie asynchron noch lief. UI konnte damit
+einen zur Navigation vermeintlich fertigen Login anzeigen, dessen Reloadticket
+noch nicht committed war. Deterministischer verzögerter-Fetch-Regressionstest
+p4-browser-auth-ticket-commit-red Exit1(0,89s) reproduziert exakt diese vorzeitige
+Anzeige. PNG-Schadhaftigkeit oder verursachende Bildbytes nicht behauptet.
+
+Korrektur veröffentlicht frischen, requestgebundenen Login erst nach Abschluss
+der vorhandenen Cookieoperation. Duplikat-Acks teilen denselben einen POST,
+alte Request-IDs/Generationen und geschlossene/ersetzte Sockets können keinen
+späten Benutzerstatus setzen. Cookie-basierte Wiederverbindung bleibt direkt;
+keine neue Secretablage, kein Rechtegrant, kein Timer verlängert. Vorhandene
+Fehlermeldung bei gescheiterter Ticketspeicherung bleibt erhalten.
+
+29/29 gezielte Auth-/Wake-/Cookie-/Entwurfs-/Sessionaccess-Tests positiv,
+p4-browser-auth-ticket-commit-final Exit0(13,11s). Zusätzlicher geschlossener-
+Socket-Nachweis führte zu abschließender Webneuerstellung Exit0(26,16s).
+V2-Bundle Exit0(2,23s), Paketierung Exit0(6,12s).
+V2-VSIX SHA76c4acdd9ff54efdf2aab9590a9b32c66078e98415c706b9b7d6f3de7f523887,
+426Payloads geprüft.
+
+Erster V2-Pakettest Exit1(27,67s) bestätigte bereits deterministisch verzögerte
+Cookieoperation, Navigation/Auth und mobile Regressionen. Ausschließlich neu
+hinzugefügte Bildbytes-Prüfung scheiterte: Playwrights separater Requestclient
+verwendet den ausschließlich im Chromium konfigurierten Fixture-SPKI nicht.
+Prüfer verwendet jetzt fetch im tatsächlich gepinnten Browser statt separates
+TLS-Vertrauen zu lockern. Fehlerredaktion ergänzt für kurzlebige Testcookies;
+alter negativer privater Beleg bleibt unverändert, darin enthaltenes Fixture-
+Ticket mit beendetem isoliertem Dashboard ungültig; keine produktiven Schlüssel.
+
+Abschließender tatsächlicher V2-Pakettest
+p4-user-icons-authcommit-native-final Exit0(55,31s): zurückgehaltener POST
+verhindert vorzeitiges Friseer, nach Freigabe Cookie/Navigation/Reload korrekt;
+PNGdekodierung1254² und tatsächlich per Browser geladenen SHA der Originaldatei
+verifiziert. Sämtliche betroffenen Mobile-/Writer-/Draft-/Auth-/Wake-/Shutdown-
+fälle positiv, keine Modellanforderung. Prüfharness wird nicht im VSIX
+ausgeliefert; Änderung daran erfordert kein erneutes identisches Paket.
+
+Notwendige aktuelle eigene Datendifferenz unter R/shared-project-icons-delta
+erfolgreich gesichert:10geänderte/neue Dateien,28unverändert geprüft
+wiederverwendet. SQLite-Backup-API, vollständige tatsächliche Datei-/Attribut-
+Wiederherstellung positiv, produktive Dateien/Dienste nicht verändert.
+ArchivSHA6336e597dd7a5e59de57b319f13c79f9e14cc5f6528b04654e5437881c67aab3,
+ManifestSHAc404064c79bb82a5d609b63eb2e3b5338bcd002b9294f77a944ea84b904d3eca.
+Bestehendes vorheriges eigenes VSIX cb8d3e... bleibt für Rückfall unverändert.
+Kombinierte Einführung erfolgt nur nach erneuten Quiesce-/Fingerprintguards
+und betrifft ausschließlich eigene Erweiterung sowie zwei eigene Userdienste;
+keine Acer-/Modell-/Endpoint-/Originalbranchänderung.

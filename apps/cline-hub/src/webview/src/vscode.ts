@@ -21,7 +21,7 @@ let browserSocket: WebSocket | undefined;
 const pendingMessages: WebviewInboundMessage[] = [];
 const stateKey = "cline-hub-webview-state";
 let pendingActorCredential:
-	| { credential: string; authRequestId: string }
+	| { credential: string; authRequestId: string; persistence?: Promise<void> }
 	| undefined;
 let actorPersistence: Promise<void> = Promise.resolve();
 let actorPersistenceGeneration = 0;
@@ -104,11 +104,15 @@ function actorSessionUrl(): string {
 	return url.toString();
 }
 
-function rememberConfirmedActor(actorId: string, authRequestId?: string): void {
+function rememberConfirmedActor(
+	actorId: string,
+	authRequestId?: string,
+): Promise<void> | undefined {
 	if (!authRequestId || pendingActorCredential?.authRequestId !== authRequestId)
 		return;
-	const credential = pendingActorCredential.credential;
-	pendingActorCredential = undefined;
+	const pending = pendingActorCredential;
+	if (pending.persistence) return pending.persistence;
+	const credential = pending.credential;
 	if (!credential || window.location.protocol !== "https:") return;
 	const generation = actorPersistenceGeneration;
 	actorPersistence = actorPersistence
@@ -130,11 +134,17 @@ function rememberConfirmedActor(actorId: string, authRequestId?: string): void {
 				throw new Error();
 		})
 		.catch(() => {
+			if (generation !== actorPersistenceGeneration) return;
 			dispatchHostMessage({
 				type: "error",
 				text: "Die persönliche Verbindung funktioniert, konnte aber nicht für das Neuladen gespeichert werden. Erneut anmelden.",
 			});
 		});
+	pending.persistence = actorPersistence;
+	void actorPersistence.then(() => {
+		if (pendingActorCredential === pending) pendingActorCredential = undefined;
+	});
+	return actorPersistence;
 }
 
 export async function forgetBrowserActor(): Promise<void> {
@@ -222,8 +232,30 @@ function createBrowserSocket(): WebSocket {
 			)
 				selectedBrowserSessionId = message.sessionId;
 			if (message.type === "reset_done") selectedBrowserSessionId = undefined;
-			if (message.type === "shared_actor" && message.actorId)
-				rememberConfirmedActor(message.actorId, message.authRequestId);
+			if (
+				message.type === "shared_actor" &&
+				message.actorId &&
+				message.authRequestId
+			) {
+				const persistence = rememberConfirmedActor(
+					message.actorId,
+					message.authRequestId,
+				);
+				// Explicit login is ready for navigation only after Set-Cookie has
+				// completed; stale or duplicate request identities cannot skip it.
+				if (persistence) {
+					const generation = actorPersistenceGeneration;
+					void persistence.then(() => {
+						if (
+							browserSocket === socket &&
+							socket.readyState === WebSocket.OPEN &&
+							generation === actorPersistenceGeneration
+						)
+							dispatchHostMessage(message);
+					});
+				}
+				return;
+			}
 			if (message.type === "error") pendingActorCredential = undefined;
 			dispatchHostMessage(message);
 		} catch {

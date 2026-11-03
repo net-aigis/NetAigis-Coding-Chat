@@ -216,6 +216,20 @@ try {
 		})
 		const page = browser.pages()[0]
 		const actorSockets = []
+		let releaseAuthTicket
+		let authPostWaiting = false
+		if (process.env.NETAIGIS_RUNTIME_AUTH_COMMIT === "1") {
+			const gate = new Promise(resolve => { releaseAuthTicket = resolve })
+			let intercepted = false
+			await page.route("**/actor-session?*", async route => {
+				if (route.request().method() === "POST" && !intercepted) {
+					intercepted = true
+					authPostWaiting = true
+					await gate
+				}
+				await route.continue()
+			})
+		}
 		page.on("websocket", socket => {
 			if (!socket.url().includes("/browser")) return
 			const state = { socket, actor: undefined }
@@ -230,6 +244,12 @@ try {
 		await page.getByRole("button", { name: "Sitzungszugang", exact: true }).click()
 		await page.getByLabel("Eigener Sitzungszugang", { exact: true }).fill(tokens.Friseer)
 		await page.getByRole("button", { name: "Verbinden", exact: true }).click()
+		if (releaseAuthTicket) {
+			await expect.poll(() => authPostWaiting && actorSockets.some(state => state.actor === "Friseer"), { timeout: 10000 }).toBe(true)
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).not.toHaveText(/Friseer/)
+			releaseAuthTicket()
+			report.explicitLoginWaitsForActualCookieCommit = true
+		}
 		await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
 		if (process.env.NETAIGIS_RUNTIME_MOBILE_COMPOSER === "1") {
 			await page.goto(`${config.dashboard.publicUrl}/chat?roomSecret=${config.dashboard.roomSecret}&id=${layoutSessionId}`, { waitUntil: "domcontentloaded" })
@@ -436,9 +456,15 @@ try {
 		const image = page.locator('header[aria-label="NetAigis Coding Chat Kopfbereich"] img')
 		await expect(image).toBeVisible()
 		assert(await image.evaluate(el => el.complete && el.naturalWidth === 1254 && el.naturalHeight === 1254), "User-supplied NetAigis logo did not decode")
-		const response = await page.request.get(new URL(await image.getAttribute("src"), page.url()).href)
-		assert.equal(response.status(), 200)
-		assert.deepEqual(await response.body(), await fs.readFile(path.join(sourceExtension, "assets/icons/netaigis-coding-chat-large.png")))
+		const downloaded = await image.evaluate(async el => {
+			// Use the actual browser's narrowly pinned fixture TLS context, not
+			// Playwright's separate HTTP client with different trust settings.
+			const response = await fetch(el.currentSrc, { cache: "no-store" })
+			const digest = await crypto.subtle.digest("SHA-256", await response.arrayBuffer())
+			return { status: response.status, sha256: Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("") }
+		})
+		assert.equal(downloaded.status, 200)
+		assert.equal(downloaded.sha256, createHash("sha256").update(await fs.readFile(path.join(sourceExtension, "assets/icons/netaigis-coding-chat-large.png"))).digest("hex"))
 		report.actualUserSuppliedPngIconsDecodedAndMatched = true
 		report.ownBrowserIdentityAndSharedRuntimeControlsConfirmed = true
 		if (process.env.NETAIGIS_RUNTIME_BROWSER_DRAFT === "1") {
@@ -481,6 +507,7 @@ try {
 		.replaceAll(config.dashboard.roomSecret, "[withheld]")
 		.replaceAll(tokens.Friseer, "[withheld]")
 		.replaceAll(tokens.jimmi, "[withheld]")
+		.replaceAll(/__Host-netaigis_actor=[a-f0-9]+/g, "__Host-netaigis_actor=[withheld]")
 		.slice(0, 1600)
 } finally {
 	await browser?.close().catch(() => {})
