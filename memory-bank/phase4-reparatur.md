@@ -5479,3 +5479,25 @@ Quellbefund Chat.tsx/finalizeAssistantTurn: fehlende inputTokens/outputTokens
 werden mit `?? 0` dargestellt. Ob hier fehlende oder explizite Nullwerte vom
 Backend vorlagen, ist damit noch nicht bewiesen und weiter zu verfolgen.
 Kein Werkzeugturn und keine Gesamtabnahme aus diesem Modellturn ableiten.
+
+
+### 2026-11-03 – Fehlende Tokenangaben nicht als Null darstellen
+
+Chat.tsx/finalizeAssistantTurn verwendete nachweislich `usage?.inputTokens ?? 0`
+und analog output. Neuer reiner Formatter unterscheidet fehlend/ungültig
+(„nicht gemeldet“) von tatsächlich gemeldetem0; keine Schätzung aus Textlänge.
+Zwei neue Regressionstests plus bestehende Entwurfstests:5/5 bestanden,
+p4-turn-summary-unknown-usage Exit0(1,81s). Web-Typecheck und Vite-Build
+p4-turn-summary-web-build-correct-cwd Exit0(40,95s). Erster Buildaufruf
+verwendete irrtümlich Repo-root statt Webview-cwd, TS5083; negativer Beleg
+erhalten, anschließender korrekter Aufruf erfolgreich.
+
+Server agent-events.ts reicht done.usage durch; Hub doneEventFromPayload
+verwirft unvollständige Zählerpaare als undefined. Die gespeicherten
+Sitzungsmetriken des Handy-Turns enthalten dagegen ausdrücklich0/0; allein
+dieser UI-Patch löst deshalb nicht die noch offene tatsächliche
+Telemetrieherkunft. Keine Behauptung einer vollständigen Tokenreparatur.
+Quelländerung gebaut/getestet, noch nicht paketiert oder produktiv ausgerollt.
+Nächste Arbeit: fehlende/Null-Telemetrie im vorhandenen Provider-/Adapterpfad
+verfolgen, anschließend zusammenhängend paketieren und prüfen. Keine neue
+Modellanfrage, kein Dienstneustart und keine produktive Dateiänderung hierfür.

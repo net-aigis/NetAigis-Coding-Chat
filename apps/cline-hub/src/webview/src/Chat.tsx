@@ -1,5 +1,7 @@
 "use client";
 
+import { formatTurnSummary } from "./turn-summary";
+
 import {
 	commandExecutionStatusText,
 	extractCommandExecution,
@@ -747,7 +749,7 @@ function finalizeAssistantTurn(
 		...current,
 		createMessage(
 			"meta",
-			`Turn ended (${finishReason}) • iterations=${iterations} • input=${usage?.inputTokens ?? 0} output=${usage?.outputTokens ?? 0}`,
+			formatTurnSummary(finishReason, iterations, usage),
 		),
 	];
 }
