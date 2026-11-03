@@ -1,3 +1,4 @@
+import netaigisLogo from "../../../../vscode/assets/icons/netaigis-coding-chat-large.png";
 import {
 	ActivityIcon,
 	ArrowUpDownIcon,
@@ -430,7 +431,7 @@ function Shell({
 	return (
 		<div className="flex h-dvh min-h-0 flex-col bg-background text-foreground">
 			{sharedRuntime && <header className="flex shrink-0 items-center gap-2 border-b px-2 py-1.5" aria-label="NetAigis Coding Chat Kopfbereich">
-				<div className="flex min-w-0 items-center gap-2 font-semibold"><img alt="" className="size-6 shrink-0" src="/cline-logo-filled.svg" /><span className="truncate">NetAigis Coding Chat</span></div>
+				<div className="flex min-w-0 items-center gap-2 font-semibold"><img alt="" className="size-6 shrink-0" src={netaigisLogo} /><span className="truncate">NetAigis Coding Chat</span></div>
 				<nav aria-label="Mobile Navigation" className="hidden shrink-0 gap-1 max-[720px]:flex">
 					<button type="button" aria-label="Home" title="Home" className="rounded p-2" onClick={() => onNavigate("home")}><HomeIcon className="size-4" /></button>
 					<button type="button" aria-label="Sessions" title="Sessions" className="rounded p-2" onClick={() => onNavigate("sessions")}><MessageSquareIcon className="size-4" /></button>
@@ -446,8 +447,8 @@ function Shell({
 				>
 					<img
 						alt=""
-						className="size-6 shrink-0 dark:invert"
-						src="/cline-logo-filled.svg"
+						className="size-6 shrink-0"
+						src={netaigisLogo}
 					/>
 					<span className="truncate">NetAigis Coding Chat</span>
 				</button>

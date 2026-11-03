@@ -430,6 +430,16 @@ try {
 				await fs.readFile(path.join(sourceExtension, "assets/icons/netaigis-coding-chat.svg")),
 			)
 		}
+		const png = await fs.readFile(path.join(sourceExtension, "assets/icons/netaigis-coding-chat.png"))
+		assert.deepEqual(await fs.readFile(path.join(extension, "dist/shared-runtime/webview/icon.png")), png)
+		await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", "/icon.png")
+		const image = page.locator('header[aria-label="NetAigis Coding Chat Kopfbereich"] img')
+		await expect(image).toBeVisible()
+		assert(await image.evaluate(el => el.complete && el.naturalWidth === 1254 && el.naturalHeight === 1254), "User-supplied NetAigis logo did not decode")
+		const response = await page.request.get(new URL(await image.getAttribute("src"), page.url()).href)
+		assert.equal(response.status(), 200)
+		assert.deepEqual(await response.body(), await fs.readFile(path.join(sourceExtension, "assets/icons/netaigis-coding-chat-large.png")))
+		report.actualUserSuppliedPngIconsDecodedAndMatched = true
 		report.ownBrowserIdentityAndSharedRuntimeControlsConfirmed = true
 		if (process.env.NETAIGIS_RUNTIME_BROWSER_DRAFT === "1") {
 			await page.addInitScript(() => Object.defineProperty(window, "sessionStorage", { configurable: true, get() { throw new DOMException("Blocked test storage", "SecurityError") } }))

@@ -117,7 +117,7 @@
 				{
 					"id": "netaigis-coding-chat-ActivityBar",
 					"title": "NetAigis Coding Chat",
-					"icon": "assets/icons/netaigis-coding-chat.svg"
+					"icon": "assets/icons/netaigis-coding-chat.png"
 				}
 			]
 		},
@@ -127,7 +127,7 @@
 					"type": "webview",
 					"id": "netaigis-coding-chat.SidebarProvider",
 					"name": "",
-					"icon": "assets/icons/netaigis-coding-chat.svg"
+					"icon": "assets/icons/netaigis-coding-chat.png"
 				}
 			]
 		},

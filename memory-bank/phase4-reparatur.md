@@ -5808,3 +5808,40 @@ fest. Erweiterungskandidat wird jetzt gebündelt und isoliert geprüft.
 Noch keine produktive Anwendung dieser Projektweitergabe; reale Learning-
 Verhaltens-/Tokenabnahme bleibt offen. Einzelturndiagnose weiterhin durch
 automatischen Review bis zur gezielten Freigabe gesperrt; keine Umgehung.
+
+
+### 2026-11-03 – Benutzer-PNGs für die eigene Fork-Identität
+
+Benutzer ergänzt laufenden Auftrag um Icons und nennt danach eindeutig
+/home/friseer/MyDevelop/netaigis/. Ausschließlich die beiden dortigen PNGs
+inhaltlich angesehen; benachbarte Dokumente nicht gelesen. Erste Dateisuche
+war zu weit gefasst und listete auch PNG-Pfade fremder Projekte; Inhalte dieser
+Dateien nicht geöffnet, Suche sofort auf benannten Ordner begrenzt und
+Abweichung im Chat offengelegt. Kein fremdes Projekt verändert.
+
+Originale unverändert, keine Bildbearbeitung oder Generierung:
+- ChatGPT Image 27. Apr. 2026, 14_59_54_1024x1024.png,1024²,976062Bytes,
+  SHAca60ff870d21495777c00e877373f3fdd7fa5bf2c51e975b4c392ed454d451b2.
+- ChatGPT Image 27. Apr. 2026, 14_59_54.png,tatsächlich1254²,1756130Bytes,
+  SHA40277566bb491da0f6cc22d8d056f7203f333e4de56bfaa404ba2728a77740d5.
+
+Bytegleiche Kopien in vorhandenen eigenen Assetpfaden: bestehendes
+assets/icons/netaigis-coding-chat.png ersetzt eigenes bisheriges Platzhaltericon;
+zusätzlich assets/icons/netaigis-coding-chat-large.png. Paketicon, Activitybar
+und Sidebar referenzieren PNG. Browserfavicon/Android-Touchicon verwenden
+1024er-PNG; Browserkopf/Sidebar und bestehende VS-Code-Webview-Logo-Komponenten
+verwenden große PNG. Farblogo wird nicht mehr im dunklen Thema invertiert.
+Bestehende SVG-Ressourcen bleiben erhalten, keine neue Identitäts-/Versionswahl.
+
+Browser-Webview/types Exit0(56,49s), VS-Code-Webview/types+Vite Exit0(144,14s),
+Extensionbundle Exit0(8,71s), Paketierung Exit0(13,68s). Eigenes0.1.0-VSIX
+shared-runtime-project-icons-candidate SHA
+fe5ea3298da196e29d471d0b7571e93d77a92f5c7f6f4037dc3726b65793dacc,
+415Payload-Dateien ZIP-/sichere-Pfade-/Identitäts-/Build-geprüft.
+Enthält zusätzlich bereits getestete kanonische Projektweitergabe b9128773d.
+Voriger Kandidat ohne neue Icons bestand nativen Pakettest in41,09s; nicht
+produktiv angewendet, wird nicht als neuer Icon-Test ausgegeben. Aktueller
+Pakettest prüft tatsächlichen PNG-HTTP-Inhalt, Dekodierung1254² und bestehende
+Auth-/Mobile-/Writer-/Entwurfsregressionen isoliert ohne Modellanforderung.
+Notwendige eigene aktuelle Datendifferenz wird im vorhandenen geschützten
+Phase-2-Baum geprüft; keine Wiederholung abgeschlossener Phasen.
