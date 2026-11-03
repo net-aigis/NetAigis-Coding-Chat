@@ -182,6 +182,11 @@ export function SharedSessionAccess({
 			<RecallSessions onOpenSession={onOpenSession} />
 			{sessionId && (
 				<>
+					<span role="status" aria-live="polite">
+						{writerConfirmed
+							? "Dieses Gerät: Schreibzugriff bestätigt."
+							: "Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen."}
+					</span>
 					<span>
 						Zuletzt bestätigtes Schreibrecht:{" "}
 						{control

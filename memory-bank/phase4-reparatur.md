@@ -5639,3 +5639,46 @@ Dadurch tatsächliche Inferenz-/Token-/Archivabnahme weiterhin offen;
 installierter Patch und laufender Dienst sind unabhängig lesend bestätigt.
 Nach ausdrücklicher Freigabe genau einmal senden, niemals bei Timeout
 automatisch erneut senden; stattdessen entstandenen Zustand lesend prüfen.
+
+
+### 2026-11-03 – Verständliche Geräte-Schreibrechte statt technischer Sitzungs-ID
+
+Benutzer weist darauf hin, dass technische ID nicht zur Auswahl hilft und am
+Handy keine writer role besteht. Gemeinte bestehende technische Testsitzung
+heißt „Controlled functional check“. Keine neue Sitzung erzeugt. Lesender
+Runtime-Nachweis: idle, gespeicherter Writer Friseer, Revision29. Prüfer hat
+kein Schreibrecht übernommen und keinen Turn gesendet. Quellvertrag bindet
+Writer an actorId+clientId+connectionId, nicht allein Benutzername; nach neuer
+Browserverbindung ist Anmeldung nicht gleich bestätigtes Schreibrecht. Die
+konkrete Ursache auf dem Handy ist ohne Ergebnis von Übernehmen noch offen.
+Benutzer um einmaliges Übernehmen in benannter Sitzung und ggf. exakten
+Fehlertext gebeten; noch keine Modellnachricht erneut senden.
+
+Kleine UI-Korrektur SharedSessionAccess zeigt ausdrücklich
+„Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen.“ bzw.
+„Dieses Gerät: Schreibzugriff bestätigt.“ anhand des bestehenden serverseitigen
+writerConfirmed. Keine Änderung an Autorisierung, Besitz, automatischen Claims
+oder Prozesszuständen. Isolierter Browser-/nativer Runtime-Test ergänzt für
+Lesen→Claim→bestätigt, Claim deaktiviert, Reload→lesend, erneuter Claim und
+Freigabe→lesend, ausschließlich Fixture-Sitzung ohne Modell.
+
+Web/types p4-device-writer-status-web Exit0(24,46s), Bundle Exit0(6,45s),
+Paketierung Exit0(10,41s), tatsächlicher isolierter Pakettest
+p4-device-writer-status-native-package Exit0(28,32s), einschließlich bisheriger
+Auth-/Wake-/Draft-/fünf Viewport-Regressionen.
+VSIX shared-runtime-writer-status-candidate SHA
+c96e28b3d996ee89ae680c6d64b031ff17d14de71de768090f453aa192a0b27e,
+396Payloads ZIP-/Build-/Identitätsgeprüft.
+
+Produktiv ausschließlich sieben neue Browserhashassets + ein atomarer HTML-
+Einstieg übernommen; alle396Payloads geprüft, alte Assets erhalten.
+R/browser-writer-status-assets-delta ManifestSHA
+f8ea664a7e249a0e94e9208c734b1c225d6417160a508bd3fc06ec832ac490b3,
+Original-index tatsächlich attributgleich wiederhergestellt. Keine Dienste/
+VS Code neu gestartet, PIDs/InvocationIDs und Launchkonfiguration gleich,
+keine Sitzungs-/Secret-/Acer-/Modelländerung.
+Tatsächlicher produktiver Lesestatus-/Reload-Nachtest separat protokolliert
+unter p4-device-writer-status-productive-readonly; kein Claim/Modellturn.
+Physische Handy-Bestätigung noch ausstehend. Automatische Sicherheitsfreigabe
+für den früher geplanten zusätzlichen Token-Abnahmeturn weiterhin offen;
+diese UI-Tests sind keine Umgehung und senden keine Modellnachrichten.

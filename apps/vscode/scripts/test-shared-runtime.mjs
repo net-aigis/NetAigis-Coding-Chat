@@ -262,6 +262,20 @@ try {
 			report.composerAndSendReachableWithoutScrollingAtFiveViewportSizes = measurements
 			report.mobileDraftTypingWithoutSubmissionPassed = true
 		}
+		if (process.env.NETAIGIS_RUNTIME_WRITER_STATUS === "1") {
+			await expect(page.getByText("Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen.", { exact: true })).toBeVisible()
+			await page.getByRole("button", { name: "Übernehmen", exact: true }).click()
+			await expect(page.getByText("Dieses Gerät: Schreibzugriff bestätigt.", { exact: true })).toBeVisible()
+			await expect(page.getByRole("button", { name: "Übernehmen", exact: true })).toBeDisabled()
+			await page.reload({ waitUntil: "domcontentloaded" })
+			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
+			await expect(page.getByText("Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen.", { exact: true })).toBeVisible()
+			await page.getByRole("button", { name: "Übernehmen", exact: true }).click()
+			await expect(page.getByText("Dieses Gerät: Schreibzugriff bestätigt.", { exact: true })).toBeVisible()
+			await page.getByRole("button", { name: "Freigeben", exact: true }).click()
+			await expect(page.getByText("Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen.", { exact: true })).toBeVisible()
+			report.deviceWriterStatusClaimReloadAndReleasePassed = true
+		}
 		if (process.env.NETAIGIS_RUNTIME_BROWSER_DRAFT === "1") {
 			const input = page.getByPlaceholder("Type @ for context and / for skills", { exact: true })
 			const first = "Friseer: ungesendeter Entwurf mit Korrektur äöü"
