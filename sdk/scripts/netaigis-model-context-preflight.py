@@ -21,6 +21,10 @@ PARENT = Path("/root/netaigis-recall-backups/phase2-20261030T165000Z")
 EXPORT = Path("/home/friseer/recall-phase2-export-20261030T165000Z")
 NAME = "phase4-model-context-preflight"
 DELTA_NAME = "phase4-dynamic-context-delta"
+LEARNING_OUTPUT_NAME = "phase4-learning-correction-output-delta"
+LEARNING_OUTPUT_FILES = {
+    "/opt/ai-agent/app.py": "b68af9d9954b616b47d127f8d3e62d93ae86ad5d6ffcc58df7eae9a8490de7dd",
+}
 CODING_PREFIX_NAME = "phase4-coding-prefix-cache-delta"
 CODING_PREFIX_FILES = {
     "/opt/netaigis-coding-agent/app.py": "ca9817079d3081eff10b4020cd44b298259963321522d449eb77c0d4073d6201",
@@ -79,10 +83,12 @@ def write_private(path, data):
 
 
 def prepare(files, parent, export_parent, export_uid, export_gid, state, run=subprocess.run, *, name=NAME):
-    if name not in (NAME, DELTA_NAME, RECALL_PROJECTS_NAME, CODING_PREFIX_NAME):
+    if name not in (NAME, DELTA_NAME, RECALL_PROJECTS_NAME, CODING_PREFIX_NAME, LEARNING_OUTPUT_NAME):
         raise Refused("unknown_incremental_backup_name")
     if name == RECALL_PROJECTS_NAME and files != RECALL_PROJECTS_FILES:
         raise Refused("recall_project_backup_scope_changed")
+    if name == LEARNING_OUTPUT_NAME and files != LEARNING_OUTPUT_FILES:
+        raise Refused("learning_output_backup_scope_changed")
     protected_parent(parent, os.geteuid())
     protected_parent(export_parent, export_uid)
     before_state = state()
@@ -207,6 +213,7 @@ def main():
     group.add_argument("--router-context-delta", action="store_true", help="back up only the two router files changed since the verified seven-file snapshot")
     group.add_argument("--recall-projects-delta", action="store_true", help="back up only the two newly affected existing Recall modules")
     group.add_argument("--coding-prefix-cache-delta", action="store_true", help="back up only the existing Coding-Agent app before the reviewed prefix repair")
+    group.add_argument("--learning-correction-output-delta", action="store_true", help="back up only the reviewed existing Learning-Agent app; no installation")
     args = parser.parse_args()
     if args.remote:
         helper = Path(__file__).with_name("netaigis-coding-agent-adapter-remote.py")
@@ -218,7 +225,8 @@ def main():
                    + "); assert hashlib.sha256(s).hexdigest()==" + repr(digest(source))
                    + "; sys.argv=" + repr(["model-context-file-preflight", *(["--router-context-delta"] if args.router_context_delta else []),
                                             *(["--recall-projects-delta"] if args.recall_projects_delta else []),
-                                            *(["--coding-prefix-cache-delta"] if args.coding_prefix_cache_delta else [])]) + "; "
+                                            *(["--coding-prefix-cache-delta"] if args.coding_prefix_cache_delta else []),
+                                            *(["--learning-correction-output-delta"] if args.learning_correction_output_delta else [])]) + "; "
                    + "exec(compile(s,'public-model-context-preflight','exec'),{'__name__':'__main__'})")
         with open("/dev/tty") as terminal:
             return subprocess.call(transport.ssh_command(program), stdin=terminal)
@@ -228,10 +236,10 @@ def main():
     account = pwd.getpwnam("friseer")
     try:
         reused = verify_reused_base() if args.router_context_delta else 0
-        selected_files = CODING_PREFIX_FILES if args.coding_prefix_cache_delta else RECALL_PROJECTS_FILES if args.recall_projects_delta else DELTA_FILES if args.router_context_delta else FILES
-        selected_name = CODING_PREFIX_NAME if args.coding_prefix_cache_delta else RECALL_PROJECTS_NAME if args.recall_projects_delta else DELTA_NAME if args.router_context_delta else NAME
+        selected_files = LEARNING_OUTPUT_FILES if args.learning_correction_output_delta else CODING_PREFIX_FILES if args.coding_prefix_cache_delta else RECALL_PROJECTS_FILES if args.recall_projects_delta else DELTA_FILES if args.router_context_delta else FILES
+        selected_name = LEARNING_OUTPUT_NAME if args.learning_correction_output_delta else CODING_PREFIX_NAME if args.coding_prefix_cache_delta else RECALL_PROJECTS_NAME if args.recall_projects_delta else DELTA_NAME if args.router_context_delta else NAME
         report = prepare(selected_files, PARENT, EXPORT, account.pw_uid, account.pw_gid,
-                         lambda: service_state(include_learning=args.recall_projects_delta or args.coding_prefix_cache_delta), name=selected_name)
+                         lambda: service_state(include_learning=args.recall_projects_delta or args.coding_prefix_cache_delta or args.learning_correction_output_delta), name=selected_name)
         if args.router_context_delta:
             report["previously_verified_files_reused_without_backup"] = reused
     except Refused as error:

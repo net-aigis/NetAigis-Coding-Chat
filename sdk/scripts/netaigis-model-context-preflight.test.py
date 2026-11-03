@@ -76,6 +76,20 @@ class ModelContextBackup(unittest.TestCase):
         with tarfile.open(Path(result["backup"]) / "artifacts.tar") as archive:
             self.assertEqual([m.name for m in archive if m.isfile()], [str(source).lstrip("/")])
 
+    def test_learning_delta_refuses_expanded_scope_and_restores_only_reviewed_file(self):
+        source = self.sources / "learning.py"
+        source.write_bytes(b"# isolated learning fixture\nvalue = 1\n")
+        files = {str(source): hashlib.sha256(source.read_bytes()).hexdigest()}
+        with mock.patch.object(preflight, "LEARNING_OUTPUT_FILES", files):
+            with self.assertRaisesRegex(preflight.Refused, "learning_output_backup_scope_changed"):
+                self.prepare(name=preflight.LEARNING_OUTPUT_NAME)
+            self.assertEqual(list(self.parent.iterdir()), [])
+            result = preflight.prepare(files, self.parent, self.export, os.getuid(), os.getgid(),
+                                       lambda: {"four_services": "unchanged"}, name=preflight.LEARNING_OUTPUT_NAME)
+        self.assertEqual(result["file_count"], 1)
+        self.assertTrue(result["owner_mode_mtime_xattrs_verified"])
+        self.assertEqual(source.read_bytes(), (Path(result["backup"]) / "restore-probe" / source.relative_to("/")).read_bytes())
+
     def test_source_hash_change_refuses_before_creating_backup_or_export(self):
         (self.sources / "router.py").write_text("changed fixture\n")
         with self.assertRaisesRegex(preflight.Refused, "source_hash_changed"):

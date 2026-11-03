@@ -206,3 +206,11 @@ A Tauri v2 (Rust) shell + Next.js webview + a Bun "sidecar" backend. Rust and th
 - **Rust version caveat:** the crate graph needs Cargo's `edition2024` feature, so **Rust ≥1.85** is required (the VM's base 1.83 fails with "feature `edition2024` is required"). The toolchain here was updated via `rustup default stable` (currently 1.97). First `cargo` build downloads/compiles the full Tauri crate graph (a few minutes); subsequent builds are cached.
 - **System libs (already installed):** `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `libxdo-dev`, `libssl-dev`, `build-essential`.
 - **Test/typecheck:** `bun run typecheck`, `bun run test:chat-ui` (Vitest). Both trigger `build:ui` first.
+
+Learning speed follow-up (2026-11-03): the actual two operator turns are already
+verified; do not resend them. Synthetic short-negative classifier comparison
+passed (23.612s/131 output tokens -> 12.740s/17; positive correction retained).
+Candidate remains uninstalled; no Learning writes occurred. Next privileged
+backup is only --learning-correction-output-delta in the existing preflight
+helper. External-copy/restore verification and distinct Learning deployment
+approval are still required. Do not conflate this with prior Coding app approval.

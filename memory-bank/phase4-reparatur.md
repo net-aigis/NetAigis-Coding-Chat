@@ -6362,3 +6362,37 @@ Original-Funktionsreproduktion, SchutzvorSeiteneffektenundgültigeAliasse.
 ErsterLaufunvollständigeFixture(coding.contextfehlte) erhalten,korrigiert.
 KandidatprivatimvorhandenenPrüfbaum,nichtinstalliert. Dasimplementiert
 nochKEINE125B-Registrierung/-Umschaltung. ProduktiverRouterunverändert.
+
+### 2026-11-03 – Learning-Vorlauf gezielt verkürzt, noch nicht installiert
+
+Die zwei vom Benutzer auf Android gesendeten Fragen wurden nicht wiederholt.
+Der warme Hauptturn dauerte 5,2 s, der Gesamtturn 41,325 s; zwei synchrone
+Learning-Abfragen beanspruchten 35,8 s. Präfixreuse war auch vor dem Patch
+vorhanden; keine pauschale Beschleunigungsbehauptung.
+
+Source-only-Kandidat `sdk/scripts/netaigis-learning-correction-output.py`
+ändert ausschließlich die Ausgabeanweisung der vorhandenen Korrekturklassifikation:
+bei keiner Korrektur zwei JSON-Felder statt leerer Regeltexte; positive Kriterien,
+Schema, Parser und Speicherpfad bleiben unverändert. Original-SHA256
+b68af9d9954b616b47d127f8d3e62d93ae86ad5d6ffcc58df7eae9a8490de7dd,
+Kandidat 4fc273648ce62962b42a4f604d659dc54344695451c439bcc8fd58b32127f3f4.
+Fünf Vertragsregressionen bestanden (p4-learning-short-negative-contract).
+
+Drei echte synthetische Klassifikationsinferenzen am vorhandenen Learning-Alias:
+Original negativ 23,612 s/131 Ausgabetokens; Kandidat negativ 12,740 s/17 Tokens;
+Kandidat positiv 37,718 s/312 Tokens, echte Korrektur mit Konfidenz 0,98 erkannt.
+Alle Antworten regulär beendet. Vergleich verwendet temperatur=0, maximal512
+Ausgabetokens und synthetische Nachrichten: keine vollständige semantische oder
+produktive Leistungsabnahme. Kein kanonischer Turn, keine Recall-Anfrage,
+keine Learning-Schreibfunktion, keine Quell-/Dienständerung. Vier Dienstzustände
+vorher/nachher identisch. Nachweis im vorhandenen Prüfbaum:
+logs/p4-learning-short-negative-real-comparison.log (Exit0).
+
+Bestehenden Sicherungshelfer um --learning-correction-output-delta erweitert:
+ausschließlich aktuell gepinnte /opt/ai-agent/app.py, gleicher vorhandener
+Phase-2-Sicherungs-/Exportbaum, tatsächlicher Restore inklusive Eigentümer,
+Modus, mtime und xattrs, Scope-Erweiterung verweigert. Lokale Sicherungstests
+p4-learning-delta-backup-contract Exit0. Noch keine Acer-Sicherung dieses neuen
+Moduls durchgeführt, keine produktive Installation oder Learning-Neustart.
+Dafür fehlen Root-Sicherung, externe Kopie mit Restoreprüfung und gesonderte
+produktive Freigabe. Vorhandene abgeschlossene Sicherungen bleiben erhalten.
