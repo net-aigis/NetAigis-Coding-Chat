@@ -6035,3 +6035,50 @@ Startauswahl und Logo-Beschriftung machten exakte Namen-Locators falsch.
 Finaler Locator verwendet tatsächlichen Trigger-Slot und Optionstext;
 keine verlängerten Timer und kein ignorierter Testfehler. Physisches
 Android und produktive Auslieferung dieser Korrektur noch nicht geprüft.
+
+
+## 2026-11-03 – Modellauswahl ausdrücklich freigegeben und aktiviert
+
+Benutzer: „dann mach un aktivier“. Neue eigene VSIX
+`tmp/phase4-checks-20261030T193507+0100/netaigis-coding-chat-0.1.0-mobile-model-picker-candidate.vsix`
+SHA256 3b966a0dfebf6508d0003abaa0ee31d5cd8dcdc9f21e03630a99ba00be03bc9a.
+CRC, sichere Pfade, eigene Identität/0.1.0 und sämtliche 434 Paketdateien
+gegen Build geprüft. Aus dieser tatsächlichen VSIX extrahierte Runtime:
+p4-mobile-model-picker-native-vsix Exit0/19,50s, konfiguriertes Modell
+ausgewählt, kein Modellaufruf, alle eigenen Testkinder sauber beendet.
+
+Gezielte Sicherung im bestehenden geschützten Phase-2-Unterbaum
+`productive-rollout/shared-runtime-repair-20261102/mobile-model-picker-delta`:
+10 betroffene Dateien, davon nur 2 ersetzt und 8 neu. Bestehende
+426-Payload-Installation zuvor gegen vorige VSIX geprüft. Archiv und
+tatsächliche Wiederherstellungsprobe einschließlich Eigentümer, Modus,
+mtime und xattrs vollständig geprüft. Keine neue Gesamtsicherung.
+Manifest SHA256 75d1a84dedbfc819fe2009eb2bdd23b2637148c48d4f74db794edb8138deca53;
+Archiv SHA256 61d439fa9982c8274dc7ab0e0b9eaf4c95b0092adf99bc9a5af8b64e095e4e63.
+Vorige VSIX und alte Hash-Assets unverändert für Rückfall erhalten.
+
+Aktivierung ausschließlich eigener Dashboard-Payloads im installierten
+Extension-Verzeichnis. Kein Code-CLI-Neuinstallationslauf nötig; Registry
+bytegleich. Bestehende Runtime per authentifiziertem Owner-HTTP-Drain
+vor neuen Turns geschützt und idle bestätigt; ausschließlich
+netaigis-coding-chat-dashboard.service gestoppt/gestartet. Core selbst
+blieb mit identischem Prozess und Invocation unverändert aktiv. Drain
+anschließend aufgehoben, idle bestätigt. Alle 434 installierten
+Paketdateien stimmen mit neuer VSIX überein. Sämtliche erfassten
+kanonischen Nachrichten und Settings/Secrets bytegleich. Keine Acer-,
+Endpunkt-, Modellkonfigurationsänderung, kein Beenden produktiver VS Code.
+Dashboard danach PID254069/Invocation2faff2df79e540099ae734d50e5aea45,
+active/running, Resultsuccess,NRestarts0. Geschützter Beleg activation.json
+im genannten Sicherungsunterordner.
+
+Tatsächliche produktive HTTPS-Prüfung im isolierten mobilen Chromium:
+p4-productive-mobile-model-picker Exit0/7,16s. Katalog enthält
+deepseek-v4.1-flash-1017-iq2_xs und gpt-4o; DeepSeek ausgewählt, Picker
+geschlossen, korrekte Anzeige, nach Reload weiterhin DeepSeek und
+Friseer-Anmeldung. Keine verschachtelten Buttons, keine Nachricht,
+Modellinferenz oder Schreibübernahme; kanonischer Verlauf bytegleich.
+Das ist produktives Dashboard, aber kein neuer physischer Androidnachweis.
+Benutzer soll Handyseite neu laden; nach dem absichtlichen Dienstneustart
+kann einmalige neue persönliche Anmeldung erforderlich sein.
+Originalbranch coding-agent-v4 bleibt624c2cd6661e100680d8b61daa3a3447f4708536.
+Gesamtauftrag und bekannte andere Abnahmen bleiben offen.
