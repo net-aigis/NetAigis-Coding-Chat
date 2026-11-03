@@ -6167,3 +6167,71 @@ Modellwechsel. Diese Restlücke ausdrücklich erhalten. Alte Router-
 strata_launch-Qwen-Werte existieren noch neben aktivem runtime_profile;
 aus Altwerten nicht ableiten, dass tatsächlich Qwen läuft. Kein
 Modellstart/-wechsel, keine Konfigurations- oder Dienständerung.
+
+
+## 2026-11-03 – Strata-Startnachweis und vorbereitete Präfix-Cache-Reparatur
+
+Benutzer bestätigt125B,135B war Tippfehler; keine Zuordnung zu35B
+mehr erfragen. Benutzer bestätigt produktive Handy-DeepSeek-Auswahl
+„also, geht“; bisherige physical-pending-Notiz hierfür überholt.
+
+Tatsächliches vorhandenes DeepSeek-Startlog bestätigt schon im
+ursprünglichen32k-Start --dsparkauto und --dspark-conf0.65. Native
+Engine lädt DSpark nicht:149GB geroutete Experten gegenüber15GB GPU;
+Verifikation laut Engine3,3facher Datenzugriff, kein erwarteter Gewinn.
+Das trat bereits bei32k auf, nicht erst1M. Kein verlorener Schalter.
+Ältere Strata-Oberfläche0.1.53 kennt in drafting.engine_info nur
+--mtp/--draftdflash2; deshalb ist deren draftingoff allein kein
+ausreichender Nachweis für native DSpark-Entscheidungen. Aktueller
+Befund durch native Startmeldungen, nicht bloß UI, bestätigt.
+Installierte0.1.54-dsv41-Engine --help Exit0, ohne Modellargumente:
+unterstützt --dsparkauto/on/off, --prefill-chunk, --expert-profile,
+--mmap-experts und weitere eigene Flags; Qwen --spec4 nicht blind
+übertragen. Kein Speicher-/Kontext-/Modellparameter geändert.
+
+Conversation-cache-Metrik:enabledfalse,keinBudget/Slots,57Anfragen,
+14mitReuse; das schließt einfachen aktuellen Präfix-Reuse nicht aus.
+Kein unterstützter nativer conversation-cache-Schalter in dieser
+DeepSeek-Hilfe belegt. Keine erfundene Cache-Aktivierung. Altes
+qwen125_dynamic.py nutzt tatsächlich llama-server, ist derzeit aber
+nicht aktiv, kein11439/11438/11440Listener; dessen Start wäre somit
+keine Rückkehr zum vorhandenen Strata-Profil. Alte Qwen-Strata-
+Profile separat erhalten. Sichere125B-Umschaltung noch offen.
+
+Konkreter Cache-Kandidat im vorhandenen Coding-Gateway:
+wechselnden Lern-Systemkontext hinter die führenden stabilen
+system/developer-Anweisungen, weiterhin vor die Gesprächshistorie
+einfügen. Keine Löschung/Komprimierung, kein Weglassen von Regeln,
+kein Abschalten von Learning/Focus/Recall, keine Änderung der
+Modellendpunkte oder Routingwahl. Fokusadapter bleibt unverändert
+danach aufgerufen. Behebt vermeidbare Änderung des stabilen Präfixes;
+physischer Token-Cachetreffer/Leistungsgewinn erst produktiv messbar.
+Originalapp SHAca9817079d3081eff10b4020cd44b298259963321522d449eb77c0d4073d6201;
+Kandidat SHAa85a9065358c55ae90bc85faac58d7dfd99daccebce51436178f417f7a513a0a.
+Nur exakt gepinnter Einfügeblock ändert sich, übriger Quelltext
+bytegleich. Public Rewriter sdk/scripts/netaigis-coding-agent-prefix-cache.py;
+privater Quell-/Kandidatenabzug ausschließlich im bestehenden Prüfbaum.
+
+Gezielte5Regressionen bestanden p4-coding-stable-prefix-regression
+Exit0/0,14s. Fünf zusätzliche Fälle im existierenden Acer-Python mit
+echtem FastAPI/HTTPX, tatsächlicherproxy-Funktion und tatsächlichem
+Adapter bestanden: Altfehler/variableKontexte/keinLernkontext,
+Autoren-/Projekt-/Sessionzuordnung, System-/Focus-/Toolpaare und
+Multimodalpayload erhalten, native Antwort/Tokenvertrag korrekt.
+Alle HTTP-Aufrufe über MockTransport abgefangen; keine Modellinferenz,
+Lernspeicher- oder produktiven Dateischreibvorgänge. Beleg
+logs/p4-coding-prefix-cache-actual-route.log.
+
+Bestehender Sicherungshelfer um --coding-prefix-cache-delta ergänzt:
+nur /opt/netaigis-coding-agent/app.py in aktuellem gepinntem Stand,
+unter vorhandenem Acer-Phase2-Baum phase4-coding-prefix-cache-delta,
+echte GNU-tar-Wiederherstellung mit Attributen und geschützterExport.
+16/16Tests Exit0/0,73s; erster Testlauf vergaß neue Namens-Allowlist
+und verweigerte sicher, korrigiert und Beleg erhalten. Keine andere
+Sicherung wiederholt. Produktiver Root-Sicherungslauf/externe Kopie
+und tatsächliche Inferenzabnahme fehlen; Kandidat NICHT installiert.
+Vorläufiger terminalseitiger Sicherungsaufruf:
+`PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-model-context-preflight.py --remote --coding-prefix-cache-delta`
+Keine neue Produktivfreigabe aus diesem reinen Sicherungsaufruf
+ableiten. Produktive Aktivierung erst nach geprüfter Sicherung und
+konkretem abgegrenztem Anwendungsschritt.

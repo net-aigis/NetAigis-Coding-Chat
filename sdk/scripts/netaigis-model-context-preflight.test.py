@@ -61,6 +61,21 @@ class ModelContextBackup(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(exported.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(Path(result["export"]).stat().st_mode), 0o700)
 
+    def test_single_gateway_delta_does_not_recapture_completed_files(self):
+        import tarfile
+        completed = self.prepare()
+        saved = (Path(completed["backup"]) / "artifacts.tar").read_bytes()
+        source = self.sources / "app.py"
+        source.write_bytes(b"# reviewed gateway fixture\nvalue = 2\n")
+        files = {str(source): hashlib.sha256(source.read_bytes()).hexdigest()}
+        result = preflight.prepare(files, self.parent, self.export, os.getuid(), os.getgid(),
+                                   lambda: {}, name=preflight.CODING_PREFIX_NAME)
+        self.assertEqual(result["file_count"], 1)
+        self.assertTrue(result["actual_file_restore_verified"])
+        self.assertEqual((Path(completed["backup"]) / "artifacts.tar").read_bytes(), saved)
+        with tarfile.open(Path(result["backup"]) / "artifacts.tar") as archive:
+            self.assertEqual([m.name for m in archive if m.isfile()], [str(source).lstrip("/")])
+
     def test_source_hash_change_refuses_before_creating_backup_or_export(self):
         (self.sources / "router.py").write_text("changed fixture\n")
         with self.assertRaisesRegex(preflight.Refused, "source_hash_changed"):

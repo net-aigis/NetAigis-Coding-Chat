@@ -21,6 +21,10 @@ PARENT = Path("/root/netaigis-recall-backups/phase2-20261030T165000Z")
 EXPORT = Path("/home/friseer/recall-phase2-export-20261030T165000Z")
 NAME = "phase4-model-context-preflight"
 DELTA_NAME = "phase4-dynamic-context-delta"
+CODING_PREFIX_NAME = "phase4-coding-prefix-cache-delta"
+CODING_PREFIX_FILES = {
+    "/opt/netaigis-coding-agent/app.py": "ca9817079d3081eff10b4020cd44b298259963321522d449eb77c0d4073d6201",
+}
 RECALL_PROJECTS_NAME = "phase4-recall-projects-delta"
 RECALL_PROJECTS_FILES = {
     "/opt/netaigis-coding-agent/recall_api.py": "76c17214d28422026ff98a461d44884d9330624765d6e878e16cccda2c070d3b",  # gitleaks:allow -- Public source SHA256, not a credential.
@@ -75,7 +79,7 @@ def write_private(path, data):
 
 
 def prepare(files, parent, export_parent, export_uid, export_gid, state, run=subprocess.run, *, name=NAME):
-    if name not in (NAME, DELTA_NAME, RECALL_PROJECTS_NAME):
+    if name not in (NAME, DELTA_NAME, RECALL_PROJECTS_NAME, CODING_PREFIX_NAME):
         raise Refused("unknown_incremental_backup_name")
     if name == RECALL_PROJECTS_NAME and files != RECALL_PROJECTS_FILES:
         raise Refused("recall_project_backup_scope_changed")
@@ -202,6 +206,7 @@ def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--router-context-delta", action="store_true", help="back up only the two router files changed since the verified seven-file snapshot")
     group.add_argument("--recall-projects-delta", action="store_true", help="back up only the two newly affected existing Recall modules")
+    group.add_argument("--coding-prefix-cache-delta", action="store_true", help="back up only the existing Coding-Agent app before the reviewed prefix repair")
     args = parser.parse_args()
     if args.remote:
         helper = Path(__file__).with_name("netaigis-coding-agent-adapter-remote.py")
@@ -212,7 +217,8 @@ def main():
         program = ("import base64,hashlib,sys; s=base64.b64decode(" + repr(base64.b64encode(source).decode())
                    + "); assert hashlib.sha256(s).hexdigest()==" + repr(digest(source))
                    + "; sys.argv=" + repr(["model-context-file-preflight", *(["--router-context-delta"] if args.router_context_delta else []),
-                                            *(["--recall-projects-delta"] if args.recall_projects_delta else [])]) + "; "
+                                            *(["--recall-projects-delta"] if args.recall_projects_delta else []),
+                                            *(["--coding-prefix-cache-delta"] if args.coding_prefix_cache_delta else [])]) + "; "
                    + "exec(compile(s,'public-model-context-preflight','exec'),{'__name__':'__main__'})")
         with open("/dev/tty") as terminal:
             return subprocess.call(transport.ssh_command(program), stdin=terminal)
@@ -222,10 +228,10 @@ def main():
     account = pwd.getpwnam("friseer")
     try:
         reused = verify_reused_base() if args.router_context_delta else 0
-        selected_files = RECALL_PROJECTS_FILES if args.recall_projects_delta else DELTA_FILES if args.router_context_delta else FILES
-        selected_name = RECALL_PROJECTS_NAME if args.recall_projects_delta else DELTA_NAME if args.router_context_delta else NAME
+        selected_files = CODING_PREFIX_FILES if args.coding_prefix_cache_delta else RECALL_PROJECTS_FILES if args.recall_projects_delta else DELTA_FILES if args.router_context_delta else FILES
+        selected_name = CODING_PREFIX_NAME if args.coding_prefix_cache_delta else RECALL_PROJECTS_NAME if args.recall_projects_delta else DELTA_NAME if args.router_context_delta else NAME
         report = prepare(selected_files, PARENT, EXPORT, account.pw_uid, account.pw_gid,
-                         lambda: service_state(include_learning=args.recall_projects_delta), name=selected_name)
+                         lambda: service_state(include_learning=args.recall_projects_delta or args.coding_prefix_cache_delta), name=selected_name)
         if args.router_context_delta:
             report["previously_verified_files_reused_without_backup"] = reused
     except Refused as error:
