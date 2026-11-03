@@ -672,3 +672,17 @@ execution owner. The existing browser UI supports separate personal credentials
 and explicit read/claim/release controls in shared mode. HTTPS can use existing
 operator-selected `CLINE_HUB_DASHBOARD_TLS_CERT_FILE` and
 `CLINE_HUB_DASHBOARD_TLS_KEY_FILE`; no credential files are generated automatically.
+
+
+### Existing Coding-Agent project provenance
+
+`@cline/llms` exports `withNetaigisProject(projectId, operation)` and
+`getNetaigisProject()` for trusted host integration. This async scope conveys
+the existing canonical session Recall binding; it is not a project assignment
+API and must not be derived from prompt text or model-supplied metadata. Core
+sets (or explicitly clears) it on every local runtime turn, including auth
+retries. Only the existing Coding-Agent route receives `X-AI-Project`. No
+project is generated for an unbound session. The current literal HTTP header
+contract requires nonempty printable ASCII; incompatible identifiers fail
+explicitly on that route rather than being renamed or sent to a default scope.
+No Recall identifier/storage validation or model endpoint is changed.

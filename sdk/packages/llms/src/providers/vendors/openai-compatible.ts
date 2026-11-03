@@ -13,6 +13,7 @@ import { splitToolImagesMiddleware } from "../middleware/split-tool-images";
 import { isOpenAIReasoningEraModelId } from "../model-facts";
 import {
 	getNetaigisActor,
+	getNetaigisProject,
 	netaigisConversation,
 } from "../netaigis-conversation";
 import type { ProviderFactoryResult } from "./types";
@@ -250,6 +251,7 @@ export async function createOpenAICompatibleProviderModule(
 		const originalFetch = providerFetch ?? globalThis.fetch;
 		const id = netaigisConversation.getStore();
 		const actor = getNetaigisActor();
+		const project = getNetaigisProject();
 		const url = new URL(
 			typeof input === "string"
 				? input
@@ -259,7 +261,7 @@ export async function createOpenAICompatibleProviderModule(
 		);
 
 		if (
-			(id || actor) &&
+			(id || actor || project !== undefined) &&
 			(url.protocol === "http:" || url.protocol === "https:") &&
 			url.port === "11436" &&
 			url.pathname.startsWith("/v1/")
@@ -269,6 +271,19 @@ export async function createOpenAICompatibleProviderModule(
 			);
 			if (id) headers.set("X-AI-Conversation", id);
 			if (actor) headers.set("X-AI-User", actor);
+			if (project !== undefined) {
+				// The existing backend reads this header literally. Never silently
+				// encode/rename a project or send an invalid value into another scope.
+				if (
+					!project ||
+					project.trim() !== project ||
+					/[^\x20-\x7e]/.test(project)
+				)
+					throw new Error(
+						"Canonical project cannot be represented by the existing Coding-Agent header contract",
+					);
+				headers.set("X-AI-Project", project);
+			}
 
 			return originalFetch(input, { ...init, headers });
 		}

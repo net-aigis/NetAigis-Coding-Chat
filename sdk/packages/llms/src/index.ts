@@ -134,6 +134,8 @@ export {
 export {
 	getNetaigisActor,
 	withNetaigisActor,
+	getNetaigisProject,
+	withNetaigisProject,
 } from "./providers/netaigis-conversation";
 export { resolveProviderModelCatalogKeys } from "./providers/provider-keys";
 export {

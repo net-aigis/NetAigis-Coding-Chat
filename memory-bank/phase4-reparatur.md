@@ -5752,3 +5752,59 @@ Benutzer kann nun am echten Handy nach Reload Platzangebot und Einstellungen
 prüfen. Diese physische UI-Bestätigung bleibt separat offen; die bereits
 bestätigte tatsächliche Handy-Schreibübernahme wird nicht erneut getestet.
 Token-Abnahmeturn bleibt ohne gezielte Einzelfreigabe ungesendet.
+
+
+### 2026-11-03 – Physische mobile UI-Abnahme und kanonische Projektweitergabe
+
+Benutzer bestätigt zur kompakten Handyansicht und den scrollbar/schließbaren
+Einstellungen ausdrücklich „ja, is gut so“. Diese physische UI-Abnahme ist
+erledigt; nicht erneut anfordern. Keine Modellabnahme daraus ableiten.
+
+Fortsetzung mit belegter Integrationslücke: bestehender Coding-Agent erwartet
+x-ai-project für Learning-Kontext/Korrekturen und Kontextsession; Fork setzte
+bisher nur Benutzer/Sitzung. Reparatur liest ausschließlich die vorhandene
+kanonische Recall-Projektbindung (inklusive abgeschlossener Recall-Importquelle)
+über readSessionRecallProject(session.sessionMetadata). Kein Prompt-/Modell-
+Metadatenwert als Quelle, kein neuer Speicher, keine Workspaceheuristik.
+Host scoped sie pro Turn samt Auth-Retry über getrennten AsyncLocalStorage-
+Kontext; ungebundene Sitzung löscht geerbten Kontext ausdrücklich.
+
+OpenAI-compatible Provider übermittelt exakt diese Bindung als X-AI-Project
+nur auf bisherigem /v1/-Pfad/Port11436 und überschreibt dabei einen gegebenen
+statischen Projektheader. Ohne kanonische Bindung bleibt explizite vorhandene
+Providerkonfiguration unverändert; keine Kennung generiert. Andere Provider/
+Ports/Pfade unverändert. Actor-/Conversationheader, Modell-/Routingentscheidungen
+und API-Endpunkte bleiben gleich.
+
+Konkrete Kompatibilitätsgrenze offen dokumentiert: bestehender Backendvertrag
+liest Header literal. Nichtleere druckbare ASCII-IDs werden unverändert
+übermittelt; nicht darstellbare IDs (z.B. CJK) scheitern ausdrücklich vor HTTP
+statt stiller Umbenennung/Default. Die IDs bleiben im Recall-Store gültig;
+kein neuer Zeichensatzfilter für Archivierung, keine Backenddateiänderung.
+Unicode-Transport würde einen kompatiblen Backendvertrag benötigen.
+
+Tatsächliche Prüfungen:
+- p4-canonical-project-provider-wire-fixed Exit0(5,10s),13/13 über drei Dateien:
+  parallele Projekte/Friseer-jimmi/Sitzungen/Modellwechsel, vorhandene Header,
+  ungebundener Kontext, Abgrenzung anderer Routen und Header-Injektionsschutz.
+  Erstlauf4/13 fehlgeschlagen wegen falscher Erwartung direkt geworfenen
+  Fehlertyps: AI SDK meldet eigentlichen Providerfehler über onError und text
+  scheitert mit No output generated. Prüfer korrigiert; HTTPstub bei ungültigen
+  Werten nachweislich nie aufgerufen. Keine produktive Modellanforderung.
+- Host-Einzelregression Exit0(15,18s), danach stärkere Paarzuordnungsprüfung
+  und vorhandene Binding-/Importfälle zusammen:
+  p4-canonical-project-final-host-and-bindings Exit0(29,97s),6bestanden,107
+  bewusst abgewählt; nicht113bestandene Tests behaupten.
+- Direkter LLMS-Build Exit0(19,02s), LLMS-types Exit0(38,02s), Corebuild
+  Exit0(40,19s), Core-dev-types Exit0(65,05s), Pluginruntime Exit0(4,92s).
+  Erster Paket-Buildaufruf war zwar Exit0(24,38s), rief aber unerwünscht
+  Bashprofil auf und versuchte dort nicht erlaubte SSH-Umgebungsoperationen;
+  danach ausschließlich direkte vorhandene Buildschritte ohne Profil.
+  Nachfolgende Prozessprüfung fand keinen verbliebenen eigenen Build;
+  keine produktiven Prozesse beendet.
+
+ARCHITECTURE.md und DOC.md halten den bestehenden Zuständigkeits-/Wirevertrag
+fest. Erweiterungskandidat wird jetzt gebündelt und isoliert geprüft.
+Noch keine produktive Anwendung dieser Projektweitergabe; reale Learning-
+Verhaltens-/Tokenabnahme bleibt offen. Einzelturndiagnose weiterhin durch
+automatischen Review bis zur gezielten Freigabe gesperrt; keine Umgehung.

@@ -1990,3 +1990,24 @@ or starts a task. Logout revokes the ticket; dashboard shutdown clears the volat
 ticket cache, requiring a new personal login after that server restart. Existing
 same-origin Host/invite checks also protect ticket POST/DELETE. No new persistent
 session/history/knowledge database or Cline self-monitoring service is introduced.
+
+
+### Canonical session project forwarding to the existing Coding-Agent
+
+The local runtime scopes each turn's existing immutable Recall project binding
+(from canonical session metadata or a completed Recall import) alongside its
+trusted actor context. Provider request metadata and prompt text cannot choose
+this project. The OpenAI-compatible adapter forwards `X-AI-Project` only on the
+existing Coding-Agent `/v1/` route on port 11436, preserving endpoints, models,
+actor and conversation headers. Concurrent turns use independent async scopes;
+an unbound turn clears inherited scope and introduces no project identifier.
+An explicit canonical binding supersedes a static configured project header;
+without a binding, explicit pre-existing provider configuration is unchanged.
+
+The existing backend reads the header literally. This change refuses project
+values that cannot be represented as a nonempty printable ASCII header rather
+than silently encoding or renaming them. Such project IDs remain valid Recall
+identifiers, but need a separately compatible backend wire contract before use
+through this header. No restriction is added to archive storage or to other
+model routes, and no new project store, project default or backend service is
+introduced. Project lifecycle and writer authorization remain in Core.

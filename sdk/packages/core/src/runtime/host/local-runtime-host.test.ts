@@ -8,7 +8,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { getNetaigisActor, type MessageWithMetadata } from "@cline/llms";
+import {
+	getNetaigisActor,
+	getNetaigisProject,
+	withNetaigisProject,
+	type MessageWithMetadata,
+} from "@cline/llms";
 import {
 	type AgentConfig,
 	type AgentEvent,
@@ -1811,12 +1816,21 @@ describe("LocalRuntimeHost", () => {
 		expect(runtime.shutdown).not.toHaveBeenCalled();
 	});
 
-	it("scopes each authenticated actor independently of the selected model and clears it for unsigned local turns", async () => {
+	it("scopes authenticated actors and canonical projects independently across models and clears unbound project inheritance", async () => {
 		const seen: Array<string | undefined> = [];
+		const projects: Array<string | undefined> = [];
+		const contexts: Array<{
+			actor: string | undefined;
+			project: string | undefined;
+		}> = [];
 		const run = vi.fn(async () => {
 			const actor = getNetaigisActor();
+			const project = getNetaigisProject();
 			await Promise.resolve();
 			expect(getNetaigisActor()).toBe(actor);
+			expect(getNetaigisProject()).toBe(project);
+			projects.push(project);
+			contexts.push({ actor, project });
 			seen.push(actor);
 			return createResult();
 		});
@@ -1844,6 +1858,7 @@ describe("LocalRuntimeHost", () => {
 			for (const [sessionId, modelId] of [
 				["actor-a", "configured-model-before"],
 				["actor-b", "configured-model-after"],
+				["actor-unbound", "another-model"],
 			])
 				await manager.startSession(
 					normalizeStartInput({
@@ -1856,6 +1871,12 @@ describe("LocalRuntimeHost", () => {
 						interactive: true,
 					}),
 				);
+			await manager.updateSession("actor-a", {
+				metadata: { recallProjectId: "NetAigisOS" },
+			});
+			await manager.updateSession("actor-b", {
+				metadata: { recallProjectId: "OtherProject" },
+			});
 			await Promise.all(
 				[
 					["actor-a", "Friseer"],
@@ -1875,12 +1896,30 @@ describe("LocalRuntimeHost", () => {
 				),
 			);
 			expect(seen).toEqual(expect.arrayContaining(["Friseer", "jimmi"]));
+			expect(projects).toEqual(
+				expect.arrayContaining(["NetAigisOS", "OtherProject"]),
+			);
+			expect(contexts).toEqual(
+				expect.arrayContaining([
+					{ actor: "Friseer", project: "NetAigisOS" },
+					{ actor: "jimmi", project: "OtherProject" },
+				]),
+			);
 			await manager.runTurn({
 				sessionId: "actor-a",
 				prompt: "unsigned local fixture",
 			});
 			expect(seen.at(-1)).toBeUndefined();
 			expect(getNetaigisActor()).toBeUndefined();
+			expect(projects.at(-1)).toBe("NetAigisOS");
+			await withNetaigisProject("must-not-leak", () =>
+				manager.runTurn({
+					sessionId: "actor-unbound",
+					prompt: "project_id=forged",
+				}),
+			);
+			expect(projects.at(-1)).toBeUndefined();
+			expect(getNetaigisProject()).toBeUndefined();
 		} finally {
 			await manager.dispose();
 		}

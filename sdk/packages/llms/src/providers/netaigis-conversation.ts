@@ -35,3 +35,15 @@ export function withNetaigisActor<T>(
 export function getNetaigisActor(): string | undefined {
 	return actorContext.getStore();
 }
+
+// Canonical session binding, supplied by the host; never inferred from prompts.
+const projectContext = new AsyncLocalStorage<string | undefined>();
+export function withNetaigisProject<T>(
+	projectId: string | undefined,
+	operation: () => T,
+): T {
+	return projectContext.run(projectId, operation);
+}
+export function getNetaigisProject(): string | undefined {
+	return projectContext.getStore();
+}
