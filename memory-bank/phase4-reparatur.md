@@ -6125,3 +6125,45 @@ logs/p4-model-speed-readonly-findings.json. Weitere Reparatur muss
 Learning/Originalauftrag/Projekt- und Autorenisolation erhalten und
 Cachemiss-Ursache gezielt unterscheiden. Keine Produktionsfreigabe
 für neue Learning-/Modelländerungen aus bloßer Diagnose ableiten.
+
+
+### 2026-11-03 – Benutzerhypothese Engine/125B und fehlende Modellauswahl
+
+Lesender tatsächlicher Cgroup-/proc-Nachweis ai-deepseek.service:
+Controller2084241, Strata-Serve-Python2086806, Engine2086812 mit exe
+`/home/friseer/ai-staging/deepseek-v4.1-flash-1017-iq2_xs/prepared-engine-0.1.54/engine-dsv41/0.1.54-linux-x86_64-cuda-cuda13/strata-dsv41`.
+Damit Strata, kein Nachweis einer llama.cpp-Ausführung. Ursprüngliche
+DeepSeek-Datei und aktive effective.json: gleiche Engine und sämtliche
+args identisch, ausgenommen --max-context32768→1000000. Ursprünglich
+--experts6 bereits vorhanden; kein durch Reparatur entfernten
+Speculative-Schalter behaupten. Originaldatei SHA256
+6280e8607baf4d5e9b6c2474619e7da9c3c370432d36a9bd41d3db03a8b65e1e.
+
+Altes tatsächlich vorhandenes Qwen-Strata-Profil
+.config/strata/profiles/launch-iq3_xxs-32k.json referenziert
+.local/state/strata/launch/iq3_xxs-32k.json: component:strata-engine,
+expert-cacheauto,prefillauto,spec4,spec-min-p0.5,MTPStrata-data/mtp/rt,
+max-context32768,kvint8,pool-workers15. Aktuelle DeepSeek-Engine
+meldet draftingoff und KVfp4. Unterschiedliche Architektur/Beschleunigung
+bestätigt; kein Beleg, dass Qwen-spezifische Flags für DeepSeek gültig
+sind oder dass1M allein die gemessene Verzögerung verursacht.
+
+Modellkataloge:11436/v1/models liefert aktives DeepSeek UND alten
+qwen3.8-flash-next-iq3_xxs-Namen;11441/v1/models,11441/api/tags und
+11442/v1/models liefern ausschließlich DeepSeek. Unter /opt/models
+weiterhin Qwen-GGUFs und alte Strata-Profile32/64/128/256/512k vorhanden.
+Bloße Alt-Dateien/Katalognamen belegen keine sichere Modellumschaltung.
+Zusätzlich Ollama11434/api/tags: qwen3.5:35b mit Sicherungsalias,
+qwen3-coder:30b,qwen3-vl:4b und Embedding vorhanden. Separates135B
+bisher nicht nachgewiesen; Benutzer um Zuordnung zu früheremQwen125
+oder qwen3.5:35b gebeten, keine neue Modellentscheidung verlangt.
+
+Eigene lokale providers.json: ollama ist auf muse-spark-open eingestellt
+und hat keine explizite baseUrl; openai-compatible auf tatsächliches
+DeepSeek am unveränderten Acer11436/v1. Kein nachgewiesener gemeinsamer
+Katalog aller installierten Acer-Modelle im Browser; letzte Korrektur
+ergänzt gespeichertes Endpunktmodell, implementiert keinen universellen
+Modellwechsel. Diese Restlücke ausdrücklich erhalten. Alte Router-
+strata_launch-Qwen-Werte existieren noch neben aktivem runtime_profile;
+aus Altwerten nicht ableiten, dass tatsächlich Qwen läuft. Kein
+Modellstart/-wechsel, keine Konfigurations- oder Dienständerung.
