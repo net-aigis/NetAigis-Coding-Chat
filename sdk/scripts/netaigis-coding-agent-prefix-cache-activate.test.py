@@ -81,4 +81,31 @@ class Activation(unittest.TestCase):
             prepared=self.plan()
             self.assertEqual(prepared['candidate'],self.new)
 
+    def test_manifest_owned_module_is_accepted_when_old_root_guard_refuses_it(self):
+        scoped=a.load('maintenance')
+        regular=scoped.regular
+        def legacy_root_guard(path,private=False):
+            if not private:raise scoped.Refused('file_owner_type_or_protection_changed')
+            return regular(path,private)
+        scoped.regular=legacy_root_guard
+        prepared=a.plan(scoped,SimpleNamespace(rewrite=lambda _:self.new),self.source,self.backup,self.hash,self.archivehash)
+        self.assertEqual(scoped.regular(self.source),self.old)
+        result=a.apply(scoped,prepared,Controller())
+        self.assertTrue(result['ok'])
+        self.assertEqual(self.source.read_bytes(),self.new)
+        unrelated=self.source.parent/'unrelated.py';unrelated.write_bytes(b'unrelated')
+        with self.assertRaises(scoped.Refused):scoped.regular(unrelated)
+
+    def test_owner_change_from_pinned_manifest_is_refused(self):
+        scoped=a.load('maintenance')
+        a.plan(scoped,SimpleNamespace(rewrite=lambda _:self.new),self.source,self.backup,self.hash,self.archivehash)
+        original=Path.lstat
+        def changed(path,*args,**kwargs):
+            value=original(path,*args,**kwargs)
+            if path==self.source:
+                fields=list(value);fields[4]+=1;return os.stat_result(fields)
+            return value
+        with patch.object(Path,'lstat',changed):
+            with self.assertRaises(scoped.Refused):scoped.regular(self.source)
+
 if __name__=='__main__':unittest.main()

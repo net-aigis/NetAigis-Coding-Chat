@@ -6276,3 +6276,30 @@ Die bisherigeRoot-Antwort genehmigte lediglichSicherung; neueapp.py-
 Änderung war nichtvonfrühererAdapterdatei-Freigabe erfasst. Danach
 realeGeschwindigkeits-/Cacheabnahme notwendig, bishernurQuell-/
 HTTP-Vertragsprüfungen. Sichere125B-Strata-Umschaltung separat offen.
+
+
+### 2026-11-03 – Aktivierung sicher verweigert, Eigentümerprüfung korrigiert
+
+Benutzer hat begrenzte Anwendung ausdrücklich genehmigt und ausgeführt;
+Helfer verweigertmitfile_owner_type_or_protection_changed. Lesender
+Vergleich bestätigtunverändert originalca981707..., app.pyUID/GID460:460,
+Modus0644, keinSymlink, ParentRoot0755. Coding-,Learning-,Router- und
+Modell-InvocationIDs identisch zuvorher. KeinStop/Schreibvorgang erreicht.
+Ursacheerneut strengeRoot-Eigentümerannahme im wiederverwendeten
+maintenance.regular(), die beiRoot-Prozess auchuser-ownedModule ablehnt.
+Diese bekannteBesonderheit hättevorab berücksichtigt werdenmüssen.
+
+GezielteKorrektur nur im neuenPrefix-Aktivierungshelfer: Root/private
+Sicherungsenvelopes weiterstrikt; vertrauenswürdigerEigentümer ausexakt
+gepinntemRootManifest nurfürkonkreteQuelldatei, derenRestore und
+exklusivenatomarenTemporärpfad zugelassen. VollständigeManifest-
+Attributprüfung bleibtimvorhandenenTransaktionscode. Prozesslokale
+Maintenance-Instanz angepasst, gemeinsamergespeicherterHelfer und
+produktiveDateiberechtigungen unverändert. AnderePfade bleibenRoot-
+geschützt; tatsächlicherOwnerwechsel/Symlink weiterhinrefused.
+ElfTests p4-coding-prefix-activation-owner-fix Exit0/0,42s, einschließlich
+ReproduktionalterRoot-Verweigerung, echterDateiersetzung, Ablehnung
+einesvomManifestabweichendenOwners und unverwandterPfade.
+Sicherung/Restore/Export unverändertweiterverwendbar; nichtwiederholen.
+Anwendungweiterhinfreigegeben, Umfangunverändert. Nurerneuterbereits
+freigegebenerRoot-Aufrufnötig; keineerneuteFreigabefrage.

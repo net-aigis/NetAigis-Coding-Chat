@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import stat
 import subprocess
 from types import SimpleNamespace
 
@@ -49,6 +50,31 @@ def activation():
 
 
 def plan(maintenance, prefix, source=SOURCE, backup=BACKUP, manifest_hash=MANIFEST, archive_hash=ARCHIVE):
+    # Backup envelopes remain Root/private. Productive and restored module ownership
+    # must match the pinned manifest, not the UID of the Root maintenance process.
+    if backup.resolve() != backup or backup.is_symlink() or backup.stat().st_uid != os.geteuid() or backup.stat().st_mode & 0o077:
+        raise maintenance.Refused('backup_not_protected')
+    original_regular = getattr(maintenance, '_prefix_original_regular', maintenance.regular)
+    manifest_bytes = original_regular(backup / 'manifest.json', True)
+    if maintenance.digest(manifest_bytes) != manifest_hash:
+        raise maintenance.Refused('backup_hash_changed')
+    expected_uid = json.loads(manifest_bytes)['files'][str(source)]['attributes']['uid']
+    restored = backup / 'restore-probe' / source.relative_to('/')
+
+    def checked_regular(path, private=False):
+        temporary = path.parent == source.parent and re.fullmatch(r'\.ollama-adapter-phase4-[0-9a-f]{32}', path.name)
+        if not private and (path in (source, restored) or temporary):
+            info = path.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != expected_uid:
+                raise maintenance.Refused('source_owner_or_type_changed')
+            return path.read_bytes()
+        return original_regular(path, private)
+
+    # This is a fresh, process-local maintenance asset, never the installed service
+    # module. Keep the shared helper and every other deployment's defaults intact.
+    maintenance._prefix_original_regular = original_regular
+    maintenance.regular = checked_regular
+    maintenance.replace_verified.__globals__['regular'] = checked_regular
     return activation().plan(maintenance, prefix, source, backup, manifest_hash, archive_hash)
 
 
