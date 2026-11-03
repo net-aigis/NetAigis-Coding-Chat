@@ -6396,3 +6396,40 @@ p4-learning-delta-backup-contract Exit0. Noch keine Acer-Sicherung dieses neuen
 Moduls durchgeführt, keine produktive Installation oder Learning-Neustart.
 Dafür fehlen Root-Sicherung, externe Kopie mit Restoreprüfung und gesonderte
 produktive Freigabe. Vorhandene abgeschlossene Sicherungen bleiben erhalten.
+
+### 2026-11-03 – Learning-Sicherung extern geprüft, begrenzter Aktivierungshelfer
+
+Operator hat die neu betroffene /opt/ai-agent/app.py einmalig mit Root gesichert
+und Eigentümer/Modus/mtime/xattrs tatsächlich wiederhergestellt geprüft.
+Geschützte Zweitkopie unabhängig übertragen und tatsächlich lokal extrahiert:
+/home/friseer/MyContainer/backups/cline-phase2-20261030T173159+0100/phase4-learning-correction-output-delta
+Archive-SHA256: 2f14e38eb2f3fb751df8b7ce8592fa511af942bdc607771cb4e42b66e65e8f98
+Manifest-SHA256: f4bafa66dcdf2fb2b62f618e37671b59994be314551e6097a941935d51d82992
+SHA256SUMS-SHA256: 02e410d8910476b543fb50bb451025030204a361008d662969b84ee8bcdd740d
+Alle drei Pins, ein exakter Archivmember, gepinnte Quellbytes, AST, Modus und
+mtime lokal geprüft; Root-Eigentümer/SELinux-Restore ist Acer-Nachweis, keine
+falsche lokale Chown-Behauptung. external-verification.json im selben Backup.
+Kein vorheriger Sicherungsstand erneut erstellt oder überschrieben.
+
+Neuer netaigis-learning-correction-activate.py ist ausschließlich vorbereitet:
+verwendet den bestehenden attributerhaltenden Transaktionskern; privater
+prozesslokaler Controller steuert nur ai-agent.service/Health11435. Aktuelle
+Unit-Identität und ursprünglicher Learning-PID618787/Invocation6a86c3... lesend
+bestätigt; app.py Root:Root0644, Anwendungsordner460:460/0755, vorhandener
+Unit-Drop-in model-router.conf berücksichtigt. Keine Root-Eigentümerannahme
+für andere Module. Original-/Kandidatenhash und geprüfter Root-Restore sind
+vor Installation erforderlich. Fremde Änderung, Busy-Sockets11435 und
+Stop/Start-Hooks werden verweigert. Exakte Wiederholung prüft statt Neustart.
+Nur die Learning-Datei und dieser eine Dienst sind der beabsichtigte Eingriff;
+Coding-/Router-/Modellzustände müssen identisch bleiben. Konfigurationsdateien
+werden nur gehasht, keine Secrets ausgegeben. Fehler behalten die neue Version
+für gezielte Reparatur; keine automatische Altversionsrücknahme.
+
+18 Aktivierungstests bestanden: echte Fixture-Dateiersetzung/Attribute,
+Busy-/Hash-/Owner-/Konfigurationsfehler, erneuter Aufruf, Healthfehler mit
+Erhalt neuer Version, ausschließlich Learning-Unit/Port, keine Proxy/Redirects,
+Schutz der anderen drei Dienste und exakter gepinnter Kandidat aus dem
+gebündelten Rewriter mit tatsächlich gelesenem Learning-Quellstand.
+Nachweise p4-learning-output-activation-final, Exit0. Keine Installation,
+kein Neustart und keine zusätzliche Inferenz erfolgt. Gesonderte produktive
+Learning-Freigabe und Root-Anwendung fehlen noch; Gesamtauftrag bleibt offen.

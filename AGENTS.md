@@ -214,3 +214,12 @@ Candidate remains uninstalled; no Learning writes occurred. Next privileged
 backup is only --learning-correction-output-delta in the existing preflight
 helper. External-copy/restore verification and distinct Learning deployment
 approval are still required. Do not conflate this with prior Coding app approval.
+
+Learning follow-up supersedes the previous pending-backup note: Root one-file
+backup completed; external copy and actual local restore verified at existing
+B/phase4-learning-correction-output-delta (archive2f14e38e..., manifestf4bafa66...).
+New learning-correction-activate helper prepared,18tests pass including actual
+private-source bundled candidate. Only /opt/ai-agent/app.py and ai-agent.service
+are proposed; Learning health11435, existing model-router.conf included. Other3
+services must remain identical. NOT installed, no new inference; productive
+Learning-specific approval and operator Root application remain required.
