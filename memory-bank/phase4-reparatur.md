@@ -5617,3 +5617,25 @@ sessionMetadata.recallProjectId, mit Schutz gegen widersprüchliche Umzuordnung.
 Kein globaler Projektwert und keine neue Speicherarchitektur eingeführt.
 Die sichere Weitergabe genau dieser vorhandenen Bindung bleibt als konkrete
 Integrationsaufgabe offen; kein produktiver Header- oder Routingwechsel erfolgt.
+
+
+### 2026-11-03 – Streaming-Adapter produktiv angewendet, Einzelturndiagnose gesperrt
+
+Benutzer führte cc6269c12 über Root-Terminal aus: ok:true, AdapterSHA
+205b879bba773dae0184097fbddbcc01c941f080b89f2969cf41be1563d691eb,
+Coding-Agent active/running,PID3269380,InvocationID53a86cd5c57044bfbc96f25a44bcea7d,
+NRestarts0,Konfigurationsbytes unverändert. Anschließende eigene ausschließlich
+lesende SSH-Prüfung bestätigt genau diesen Dateihash und Dienstzustand.
+Keine erneute Installation/Sicherung oder Dienststeuerung.
+
+Geplanter einmaliger tatsächlicher Streaming-Abnahmeturn mit neuem Marker
+NETAIGIS_STREAM_USAGE_READY in bestehender technischer Testsitzung
+1793603066247_pk2cs wurde vor Ausführung durch automatische Sicherheitsprüfung
+abgelehnt. Begründung: dauerhafte Ergänzung der produktiven Sitzung und des
+Recall-Archivs um Nutzernachricht/Antwort erfordere ausdrückliche Freigabe
+dieser Sitzung und dieses Prompts. Keine Umgehung, kein Ersatzturn, kein
+Modellaufruf ausgeführt. Gezielte Einzelfreigabe abgefragt.
+Dadurch tatsächliche Inferenz-/Token-/Archivabnahme weiterhin offen;
+installierter Patch und laufender Dienst sind unabhängig lesend bestätigt.
+Nach ausdrücklicher Freigabe genau einmal senden, niemals bei Timeout
+automatisch erneut senden; stattdessen entstandenen Zustand lesend prüfen.
