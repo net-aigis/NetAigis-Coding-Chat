@@ -6303,3 +6303,62 @@ einesvomManifestabweichendenOwners und unverwandterPfade.
 Sicherung/Restore/Export unverändertweiterverwendbar; nichtwiederholen.
 Anwendungweiterhinfreigegeben, Umfangunverändert. Nurerneuterbereits
 freigegebenerRoot-Aufrufnötig; keineerneuteFreigabefrage.
+
+
+## 2026-11-03 – Cache-Kandidat produktiv aktiv, tatsächliche Abnahme differenziert
+
+Benutzer führte bereits freigegebenen korrigiertenAufruf erfolgreich aus.
+EigenständigerSSH-Lesenachweis: app.py exakt
+a85a9065358c55ae90bc85faac58d7dfd99daccebce51436178f417f7a513a0a,
+Marker vorhanden, UID/GID460:460/0644 erhalten. CodingPID3345384,
+Invocation8f0a57eab21c41cfb994f75791d26cc9, active/running,NRestarts0.
+Learning/Router/Modell mit unveränderten ursprünglichenInvocationIDs;
+alle relevantenHealths200, DeepSeekloaded,max_context1000000.
+Konfigurationsbytes lautRoot-Helfer unverändert.
+
+Benutzer sendete anschließend selbst beideFragen zuVorteil/Nachteil
+lokalerKI und meldeteerledigt. KeinenTurn durchAgent wiederholt.
+KanonischerVerlauf27Nachrichten, beideFriseer/hub-authenticated,
+letzteFragen korrektzugeordnet, idle/resident. LesenderHub-/Recall-
+Nachweis p4-operator-prefix-performance-recall Exit0/1,34s:
+signierte/sourceVerifiedQuelle,seq348,alle27Nachrichten/finalen
+Metadaten identisch, Nachrichtendateivor/nachbytegleich.
+
+KalterTurn:115,329s gesamt,32.301in/36out. Klassifikationen25,6+13,0s;
+Hauptanfrage76,5s,ersterToken72,768s,Reuse0,Decode9,7tok/s.
+Folgeturn:41,325s gesamt,32.359in/33out. Klassifikationen22,5+13,3s;
+Hauptanfrage5,2s,ersterToken1,681s,Reuse32.336,Decode9,2tok/s.
+DamitPräfixreuseundVerträge tatsächlichfunktionsfähig. ABER:
+warmerReuse existiertebereitsvordemPatch (3,3sbei15out). Daraus
+keinenkausalenGesamtgeschwindigkeitsgewinn desPatches behaupten.
+DominanterverbleibenderWarteblock sindzweisynchroneLearning-Inferenzen.
+EchteNachfragen/Antworten undRecallabnahme belegt, keineallgemeine
+Leistungs-/Semantik-/Gesamtabnahme.
+
+### Sichere125B-Grundlage und Schutz gegenstilleModellsubstitution
+
+Vorhandene125B-Qwen-Strata-Engine durchinstalliertenResolver
+engine_component.expand(full=True) vollständigaufIntegrität geprüft:
+/home/friseer/.local/share/strata/components/engine/0.1.52-linux-x86_64-cuda-cuda13/strata.
+KeinDownload, Start oder Modellaufruf. Das bestehendeStrata-Profil
+referenziertcomponent:strata-engine; keinefehlerhafteAnnahmefehlender
+Engine ausDateinamenfilterung. QwenProfil hatLoopback11440, aktueller
+DeepSeekBackend11442; sichereUmschaltung mussdieseBindung kontrolliert
+integrieren unddarföffentlicheAgent-Endpunkte nichtersetzen.
+
+TatsächlicherRouterf7c9a3e...: do_openai_chat überschreibtjedenangefragten
+Modellnamen mit_MODEL; nativeVarianteordnetunbekannteNamen dem
+Learning-Standardzu. Reproduktion mitOriginalfunktionen belegt:
+unbekanntesgewünschtesModell würdeunbemerktalsaktivesanderesModell
+ausgeführt. Vor125B-AuswahlistdieserFehlerzubeheben, keinefalsche
+ErfolgsanzeigeoderDropdown-Attrappe.
+
+Publicsource-onlyKandidat sdk/scripts/netaigis-model-router-selection.py:
+exakteaktiveModellnamen undbestehendeRole-Aliasse/Defaultbleibengültig;
+unregistrierteModellewerdenvorHistory-I/O,KontextallokationundInference
+explizitverweigert. Modellneutral, keineEngine-/Routing-Konfiguration.
+SiebenTests p4-model-selection-actual-router-final Exit0/0,42s, darunter
+Original-Funktionsreproduktion, SchutzvorSeiteneffektenundgültigeAliasse.
+ErsterLaufunvollständigeFixture(coding.contextfehlte) erhalten,korrigiert.
+KandidatprivatimvorhandenenPrüfbaum,nichtinstalliert. Dasimplementiert
+nochKEINE125B-Registrierung/-Umschaltung. ProduktiverRouterunverändert.
