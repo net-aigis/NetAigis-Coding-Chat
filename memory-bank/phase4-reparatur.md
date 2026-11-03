@@ -5989,3 +5989,49 @@ Damit ist reale Tokenübermittlung für diesen tatsächlichen Benutzerturn
 belegt. Keine rückwirkende Korrektur alter 0/0-Metriken behaupten.
 Produktive VS-Code-Bindung, reales Learning-Verhalten und vollständige
 Gesamtabnahme bleiben offen; keine erneute Geräte-/Layoutabnahme nötig.
+
+
+## 2026-11-03 – Fehlende lokale Modellauswahl im Android-Browser
+
+Benutzer meldet DeepSeek nicht auswählbar. Ausschließlich lesende Prüfung
+des tatsächlichen produktiven HTTPS-Dashboards im isolierten mobilen
+Chromium: Anbieter openai-compatible, Auswahl enthält ausschließlich
+gpt-4o, obwohl providers.json ausdrücklich das laufende DeepSeek-Modell
+konfiguriert. Kanonischer Verlauf blieb bytegleich. Kein Modellaufruf,
+keine Schreibübernahme, kein Provider-/Endpunktwechsel. Prüfungen
+p4-mobile-model-picker-probe und p4-mobile-model-catalog-probe erhalten.
+Zweite Probe liest den Katalog erfolgreich; abschließendes innerText am
+inerten Eltern-Dialog verursacht Timeout, daher kein vollständiger Pass.
+
+Ursache: server/providers.ts verwendet nur getLocalProviderModels; der
+gebündelte Katalog enthält das individuell konfigurierte Endpunktmodell
+nicht. Chat.tsx verwirft daraufhin die nicht gelistete Auswahl zugunsten
+des ersten Katalogeintrags. Neue Funktion includeConfiguredModel nimmt
+das tatsächlich gespeicherte Modell zusätzlich auf, dedupliziert, erhält
+bekannte Metadaten und erfindet keine Kontext-/Reasoning-Fähigkeiten.
+Kein hart codiertes DeepSeek, kein globaler Standard, keine Änderung an
+Acer, Modellkonfiguration oder Schnittstellen. Nebenbefund: verschachtelte
+button-Elemente im ModelSelectorTrigger; durch bestehendes render-API
+auf einen einzigen Button korrigiert.
+
+Drei gezielte Regressionstests bestanden (p4-configured-model-catalog,
+Exit0/1,62s); Hub-Typprüfung Exit0/44,28s; Browser-Typprüfung/Build
+Exit0/58,37s. Runtime-Bundle erster Sandboxversuch esbuild service stopped,
+mit IPC-Freigabe Exit0/0,30s. Isolierte native Auswahltests
+p4-model-picker-native und p4-model-picker-native-catalog-diagnosis
+belegen wiederholt die Übermittlung von endpoint-configured-model und
+gpt-4o, scheitern aber am zu spezifischen Test-Trigger: die native
+Testsitzung verwendet layout-model. Keine produktive Modellinferenz.
+Locator korrigiert; tatsächliche Auswahlprüfung läuft. Produktive
+Installation bis hier unverändert; Korrektur nicht als ausgeliefert melden.
+
+Abschluss gezielter isolierter Auswahlprüfung: p4-model-picker-native-option-label
+Exit0/18,20s. Reale gebündelte Runtime, HTTPS und mobiler Chromium,
+konfiguriertes endpoint-configured-model im geöffneten Picker ausgewählt,
+Picker geschlossen, tatsächlicher Trigger zeigt gewähltes Modell; kein
+verschachtelter Button, keine Inferenz. Alle Testkinder Exit0 ohne Kill.
+Zwischenversuche selection/stable-trigger erhalten: unterschiedliche
+Startauswahl und Logo-Beschriftung machten exakte Namen-Locators falsch.
+Finaler Locator verwendet tatsächlichen Trigger-Slot und Optionstext;
+keine verlängerten Timer und kein ignorierter Testfehler. Physisches
+Android und produktive Auslieferung dieser Korrektur noch nicht geprüft.

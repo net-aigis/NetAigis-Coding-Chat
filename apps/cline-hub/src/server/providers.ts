@@ -14,6 +14,7 @@ import type {
 	WebviewInboundMessage,
 	WebviewProviderModel,
 } from "../webview-protocol";
+import { includeConfiguredModel } from "./configured-model-catalog";
 import { providerSettingsManager, workspaceRoot } from "./deps";
 import type { HubContext } from "./state";
 import type { BrowserPeer } from "./types";
@@ -115,7 +116,14 @@ export async function loadModels(
 			inputModalities: model.inputModalities,
 			outputModalities: model.outputModalities,
 		}));
-	ctx.send(peer, { type: "models", providerId: provider, models });
+	ctx.send(peer, {
+		type: "models",
+		providerId: provider,
+		models: includeConfiguredModel(
+			models,
+			providerSettingsManager.getProviderSettings(provider)?.model,
+		),
+	});
 }
 
 export async function sendProviderCatalog(

@@ -174,15 +174,13 @@ function ComposerSettings({
 						onOpenChange={onModelSelectorOpenChange}
 						open={modelSelectorOpen}
 					>
-						<ModelSelectorTrigger>
-							<Button className="w-full justify-between" variant="outline">
-								<div className="flex min-w-0 items-center gap-2">
-									{selectedProvider && renderProviderLogo(selectedProvider.id)}
-									<span className="truncate">
-										{selectedModel?.name || selectedModel?.id || "Select model"}
-									</span>
-								</div>
-							</Button>
+						<ModelSelectorTrigger render={<Button className="w-full justify-between" variant="outline" />}>
+							<div className="flex min-w-0 items-center gap-2">
+								{selectedProvider && renderProviderLogo(selectedProvider.id)}
+								<span className="truncate">
+									{selectedModel?.name || selectedModel?.id || "Select model"}
+								</span>
+							</div>
 						</ModelSelectorTrigger>
 						<ModelSelectorContent>
 							<ModelSelectorInput placeholder="Search models..." />

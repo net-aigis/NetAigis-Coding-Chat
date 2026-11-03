@@ -131,6 +131,13 @@ try {
 		}
 		} finally { db.close() }
 	}
+	if (process.env.NETAIGIS_RUNTIME_CONFIGURED_MODEL === "1") {
+		const settings = path.join(storage, "data/settings")
+		await fs.mkdir(settings, { recursive: true, mode: 0o700 })
+		await fs.writeFile(path.join(settings, "providers.json"), JSON.stringify({ version: 1, lastUsedProvider: "openai-compatible", modes: {}, providers: {
+			"openai-compatible": { settings: { provider: "openai-compatible", model: "endpoint-configured-model", baseUrl: "http://127.0.0.1:9/v1" }, updatedAt: new Date().toISOString(), tokenSource: "manual" }
+		} }), { flag: "wx", mode: 0o600 })
+	}
 	const daemon = start("daemon")
 	const discovery = path.join(storage, "data/locks/hub/production.json")
 	await expect
@@ -235,7 +242,12 @@ try {
 			const state = { socket, actor: undefined }
 			actorSockets.push(state)
 			socket.on("framereceived", event => {
-				try { const frame = JSON.parse(String(event.payload)); if (frame.type === "shared_actor") state.actor = frame.actorId } catch {}
+				try {
+					const frame = JSON.parse(String(event.payload))
+					if (frame.type === "shared_actor") state.actor = frame.actorId
+					if (process.env.NETAIGIS_RUNTIME_CONFIGURED_MODEL === "1" && frame.type === "models")
+						(report.modelCatalogFrames ??= []).push({ provider: frame.providerId, ids: frame.models.map(m => m.id) })
+				} catch {}
 			})
 		})
 		await page.goto(`${config.dashboard.publicUrl}/chat?roomSecret=${config.dashboard.roomSecret}`, {
@@ -310,6 +322,21 @@ try {
 			}
 			report.compactChatAndScrollableClosableSettings = sizes
 			await page.setViewportSize({ width: 390, height: 844 })
+		}
+		if (process.env.NETAIGIS_RUNTIME_CONFIGURED_MODEL === "1") {
+			await page.setViewportSize({ width: 390, height: 844 })
+			await page.getByRole("button", { name: "Modell und Einstellungen", exact: true }).click()
+			const settings = page.getByRole("dialog", { name: "Modell und Einstellungen", exact: true })
+			await expect(settings.locator("button button")).toHaveCount(0)
+			await settings.locator("[data-slot=dialog-trigger]").click()
+			const picker = page.getByRole("dialog", { name: "Model Selector", exact: true })
+			await expect(picker).toBeVisible()
+			report.configuredModelPickerLabels = await picker.getByRole("option").allTextContents()
+			await picker.getByRole("option").filter({ hasText: "endpoint-configured-model" }).click()
+			await expect(picker).toBeHidden()
+			await expect(settings.locator("[data-slot=dialog-trigger]")).toHaveText("endpoint-configured-model")
+			await settings.getByRole("button", { name: "Einstellungen schließen", exact: true }).click()
+			report.configuredEndpointModelSelectableWithoutInference = true
 		}
 		if (process.env.NETAIGIS_RUNTIME_WRITER_STATUS === "1") {
 			await expect(page.getByRole("status", { name: "Schreibzugriff dieses Geräts", exact: true })).toHaveText("Lesend")
