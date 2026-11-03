@@ -176,46 +176,33 @@ export function SharedSessionAccess({
 	if (!actorId) return null;
 	return (
 		<section
-			className="flex max-h-[35%] min-h-0 shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-b px-4 py-2 text-sm"
+			className="flex max-h-[35%] min-h-0 shrink-0 flex-wrap items-center gap-2 overflow-y-auto border-b px-2 py-1 text-xs"
 			aria-label="Gemeinsame Sitzung"
 		>
-			<RecallSessions onOpenSession={onOpenSession} />
-			{sessionId && (
-				<>
-					<span role="status" aria-live="polite">
-						{writerConfirmed
-							? "Dieses Gerät: Schreibzugriff bestätigt."
-							: "Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen."}
-					</span>
-					<span>
-						Zuletzt bestätigtes Schreibrecht:{" "}
-						{control
-							? `${control.writer?.actorId ?? "frei"} · Revision ${control.revision}`
-							: "ungeprüft"}
-					</span>
-					<button
-						type="button"
-						disabled={pending}
-						onClick={() => request("get")}
-					>
-						Prüfen
-					</button>
-					<button
-						type="button"
-						disabled={pending || !control || writerConfirmed}
-						onClick={() => request("claim")}
-					>
-						Übernehmen
-					</button>
-					<button
-						type="button"
-						disabled={pending || !writerConfirmed}
-						onClick={() => request("release")}
-					>
-						Freigeben
-					</button>
-				</>
-			)}
+			{sessionId && <>
+				<span role="status" aria-label="Schreibzugriff dieses Geräts" aria-live="polite"
+					title={writerConfirmed ? "Dieses Gerät darf schreiben" : "Zum Schreiben einmal Übernehmen wählen"}>
+					{writerConfirmed ? "Schreiben" : "Lesend"}
+				</span>
+				<button type="button" className="rounded border px-2 py-1"
+					disabled={pending || !control || writerConfirmed} onClick={() => request("claim")}>
+					Übernehmen
+				</button>
+			</>}
+			<details className="min-w-0 open:basis-full">
+				<summary className="cursor-pointer rounded px-2 py-1">Sitzungsdetails</summary>
+				<div className="grid gap-2 py-2">
+					<RecallSessions onOpenSession={onOpenSession} />
+					{sessionId && <>
+						<span>Zuletzt bestätigtes Schreibrecht: {control
+							? `${control.writer?.actorId ?? "frei"} · Revision ${control.revision}` : "ungeprüft"}</span>
+						<div className="flex gap-3">
+							<button type="button" className="rounded border px-2 py-1" disabled={pending} onClick={() => request("get")}>Prüfen</button>
+							<button type="button" className="rounded border px-2 py-1" disabled={pending || !writerConfirmed} onClick={() => request("release")}>Freigeben</button>
+						</div>
+					</>}
+				</div>
+			</details>
 		</section>
 	);
 }

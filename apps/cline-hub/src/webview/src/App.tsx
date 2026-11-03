@@ -429,12 +429,16 @@ function Shell({
 
 	return (
 		<div className="flex h-dvh min-h-0 flex-col bg-background text-foreground">
-			{sharedRuntime && <header className="flex shrink-0 items-center gap-3 border-b px-4 py-2" aria-label="NetAigis Coding Chat Kopfbereich">
+			{sharedRuntime && <header className="flex shrink-0 items-center gap-2 border-b px-2 py-1.5" aria-label="NetAigis Coding Chat Kopfbereich">
 				<div className="flex min-w-0 items-center gap-2 font-semibold"><img alt="" className="size-6 shrink-0" src="/cline-logo-filled.svg" /><span className="truncate">NetAigis Coding Chat</span></div>
+				<nav aria-label="Mobile Navigation" className="hidden shrink-0 gap-1 max-[720px]:flex">
+					<button type="button" aria-label="Home" title="Home" className="rounded p-2" onClick={() => onNavigate("home")}><HomeIcon className="size-4" /></button>
+					<button type="button" aria-label="Sessions" title="Sessions" className="rounded p-2" onClick={() => onNavigate("sessions")}><MessageSquareIcon className="size-4" /></button>
+				</nav>
 				<SharedActorAccess />
 			</header>}
-			<div className="grid min-h-0 flex-1 grid-cols-[14.5rem_minmax(0,1fr)] max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_minmax(0,1fr)]">
-			<aside className="flex min-h-0 flex-col border-r bg-sidebar p-4 text-sidebar-foreground max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:p-3">
+			<div className="grid min-h-0 flex-1 grid-cols-[14.5rem_minmax(0,1fr)] max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_minmax(0,1fr)]" style={sharedRuntime ? { gridTemplateRows: "minmax(0, 1fr)" } : undefined}>
+			<aside className={`flex min-h-0 flex-col border-r bg-sidebar p-4 text-sidebar-foreground max-[720px]:border-b max-[720px]:border-r-0 max-[720px]:p-3 ${sharedRuntime ? "max-[720px]:hidden" : ""}`}>
 				<button
 					className={`mb-5 flex min-w-0 items-center gap-2 rounded-md px-0 py-1 text-left text-lg font-semibold outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar max-[720px]:mb-2 ${sharedRuntime ? "max-[720px]:hidden" : ""}`}
 					onClick={() => onNavigate("home")}

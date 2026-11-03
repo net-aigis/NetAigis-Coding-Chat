@@ -48,6 +48,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -391,6 +392,7 @@ export function Composer({
 	const ReasonIcon = reasonLevels[reasonLevelOption].icon;
 
 	return (
+		<Dialog open={settingsOpen} onOpenChange={(open) => { setSettingsOpen(open); if (!open) onModelSelectorOpenChange(false); }}>
 		<div className="min-w-0 shrink-0 border-t-2 border-foreground/70 bg-background" aria-label="Nachricht verfassen">
 			<PromptInput
 				accept="image/*,.txt,.md,.json,.ts,.tsx,.js,.jsx"
@@ -450,7 +452,12 @@ export function Composer({
 					/>
 				</PromptInputBody>
 				<PromptInputFooter className="flex-col items-stretch gap-1 px-0">
-					{settingsOpen ? (
+					<DialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl" showCloseButton={false} aria-describedby={undefined}>
+						<div className="flex shrink-0 items-center justify-between gap-3 border-b px-3 py-2">
+							<DialogTitle>Modell und Einstellungen</DialogTitle>
+							<DialogClose render={<Button type="button" variant="outline" size="sm" aria-label="Einstellungen schließen" />}>Schließen</DialogClose>
+						</div>
+						<div role="region" aria-label="Chat-Einstellungen" className="min-h-0 overflow-y-auto overscroll-contain touch-pan-y">
 						<ComposerSettings
 							autoApproveTools={autoApproveTools}
 							enableSpawn={enableSpawn}
@@ -474,7 +481,8 @@ export function Composer({
 							systemPrompt={systemPrompt}
 							workspaceRoot={workspaceRoot}
 						/>
-					) : null}
+						</div>
+					</DialogContent>
 					<div className="flex min-w-0 w-full items-center justify-between gap-2">
 						<PromptInputTools className="min-w-0 flex-1">
 							<PromptInputButton
@@ -485,20 +493,19 @@ export function Composer({
 							>
 								<PaperclipIcon className="size-3" />
 							</PromptInputButton>
-							<PromptInputButton
+							<DialogTrigger render={<PromptInputButton
 								disabled={disabled}
-								onClick={() => setSettingsOpen((open) => !open)}
 								className="min-w-0 flex-1"
 								aria-label="Modell und Einstellungen"
 								title={`${provider}:${model}`}
 								type="button"
 								variant={settingsOpen ? "default" : "ghost"}
-							>
+							/>}>
 								<Settings2Icon className="size-3" />
 								<span className="truncate">
 									{provider}:{model}
 								</span>
-							</PromptInputButton>
+							</DialogTrigger>
 							<PromptInputButton
 								disabled={disabled || !thinkingSupported}
 								onClick={() => {
@@ -555,6 +562,7 @@ export function Composer({
 				</PromptInputFooter>
 			</PromptInput>
 		</div>
+		</Dialog>
 	);
 }
 

@@ -5682,3 +5682,44 @@ unter p4-device-writer-status-productive-readonly; kein Claim/Modellturn.
 Physische Handy-Bestätigung noch ausstehend. Automatische Sicherheitsfreigabe
 für den früher geplanten zusätzlichen Token-Abnahmeturn weiterhin offen;
 diese UI-Tests sind keine Umgehung und senden keine Modellnachrichten.
+
+
+### 2026-11-03 – Mobile Platzersparnis und zugängliche Composer-Einstellungen
+
+Benutzer bestätigt nach Übernehmen den tatsächlichen Schreibzugriff am Handy.
+Damit ist diese Geräteübernahme bestätigt, kein Modellturn daraus ableiten.
+Neue Meldung: Steuerung verbraucht zu viel Chatfläche; Composer-Einstellungen
+öffnen, sind aber nicht bis unten scrollbar und nicht mehr schließbar.
+Vorherige technische ID künftig durch sichtbaren Sitzungstitel ersetzen.
+
+Ursache im vorhandenen Layout: volle mobile Sidebar-/Versionszeilen zusätzlich
+zur Kopfzeile, mehrfach sichtbare Recall-/Writerdetails; ComposerSettings
+ungegrenzt inline im Footer statt separatem Scrollbereich. Negativer Test
+p4-mobile-settings-compact-red Exit1(19,87s) auf bisherigem extrahierten Paket:
+Einstellungsdialog mit erreichbarer Schließfunktion fehlt. Dieser Test allein
+macht keine Messbehauptung zu jedem ursprünglichen physischen Scrollversuch.
+
+Korrektur ohne Autorisierungs-/Konfigurationsänderung:
+- Mobile Navigation Home/Sessions als benannte Schaltflächen in bestehender
+  Kopfzeile, volle Sidebar mobil ausgeblendet; Desktopnavigation bleibt.
+- Kompakte Zeile zeigt Schreiben/Lesend und Übernehmen. Recall, Inhaber/Revision,
+  Prüfen/Freigeben hinter standardmäßig geschlossenen Sitzungsdetails.
+- Composer-Einstellungen als bestehender zugänglicher Dialog mit Titel,
+  begrenzter dynamischer Viewporthöhe, eigenem scrollbarem Inhalt, festem
+  Schließen-Knopf im Dialogkopf, Escape und registriertem Trigger. Keine
+  Änderung von Provider/Modell/Auto-approve/Subagent-Einstellungen beim Öffnen.
+
+Web-Typecheck/Build Exit0(32,35s), Bundle Exit0(8,01s), Paket Exit0(11,51s).
+VSIX shared-runtime-compact-settings-candidate SHA
+cb8d3e71c37e49ea304312bbdda2c7702b97bbaeba31aadb6a2bee599799594b,
+404Payload-Dateien ZIP-/Identitäts-/Build-geprüft.
+Isolierter nativer Pakettest p4-compact-settings-native-package erfolgreich:
+Chat-Höhen bei390x844:584px,360x640:353px,390x430:170px,844x390:122px.
+Vier Größen: Einstellungen tatsächlich öffnen, Scrollbereich bis Ende,
+Schließen-Hittest im Viewport, Schließen sowie erneutes Öffnen/Escape positiv.
+Bestehende fünf Input-/Senden-Geometrien, Schreibübernahme/Reload/Freigabe,
+Auth/Wake/Entwurfs-/Kontrast-/Shutdownprüfungen ebenfalls positiv.
+Keine Modellanforderung, keine produktiven Rechte oder Historien verändert.
+Produktiver Browser-only-Rollout mit tatsächlicher Index-Restoreprüfung und
+anschließendem rein lesendem HTTPS-Nachtest folgt. Physische Androidprüfung
+dieser neuen Layoutänderung noch offen.

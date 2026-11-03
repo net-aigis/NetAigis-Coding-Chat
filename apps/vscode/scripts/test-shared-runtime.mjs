@@ -262,18 +262,49 @@ try {
 			report.composerAndSendReachableWithoutScrollingAtFiveViewportSizes = measurements
 			report.mobileDraftTypingWithoutSubmissionPassed = true
 		}
+		if (process.env.NETAIGIS_RUNTIME_COMPACT_MOBILE === "1") {
+			const sizes = []
+			for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }, { width: 390, height: 430 }, { width: 844, height: 390 }]) {
+				await page.setViewportSize(viewport)
+				const log = page.getByRole("log")
+				const box = await log.boundingBox()
+				assert(box && box.height >= viewport.height * (viewport.height >= 640 ? 0.45 : 0.25), `Chat area too small at ${viewport.width}x${viewport.height}: ${JSON.stringify(box)}`)
+				sizes.push({ ...viewport, chatHeight: box.height })
+				const trigger = page.getByRole("button", { name: "Modell und Einstellungen", exact: true })
+				await trigger.click()
+				const dialog = page.getByRole("dialog", { name: "Modell und Einstellungen", exact: true })
+				await expect(dialog).toBeVisible()
+				const scroll = dialog.getByRole("region", { name: "Chat-Einstellungen", exact: true })
+				const scrollState = await scroll.evaluate(el => { el.scrollTop = el.scrollHeight; return { height: el.clientHeight, total: el.scrollHeight, top: el.scrollTop } })
+				assert(scrollState.height > 0 && (scrollState.total <= scrollState.height || scrollState.top > 0), "Settings body cannot scroll to bottom")
+				await expect(dialog.getByText("Auto-approves", { exact: true })).toBeVisible()
+				const close = dialog.getByRole("button", { name: "Einstellungen schließen", exact: true })
+				const visible = await close.evaluate(el => { const r = el.getBoundingClientRect(); const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return r.top >= 0 && r.bottom <= innerHeight && (hit === el || el.contains(hit)) })
+				assert(visible, "Settings close button clipped or covered after scroll")
+				await close.click()
+				await expect(dialog).toBeHidden()
+				await trigger.click()
+				await page.keyboard.press("Escape")
+				await expect(dialog).toBeHidden()
+				await expect(page.getByPlaceholder("Type @ for context and / for skills", { exact: true })).toBeEnabled()
+			}
+			report.compactChatAndScrollableClosableSettings = sizes
+			await page.setViewportSize({ width: 390, height: 844 })
+		}
 		if (process.env.NETAIGIS_RUNTIME_WRITER_STATUS === "1") {
-			await expect(page.getByText("Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen.", { exact: true })).toBeVisible()
+			await expect(page.getByRole("status", { name: "Schreibzugriff dieses Geräts", exact: true })).toHaveText("Lesend")
 			await page.getByRole("button", { name: "Übernehmen", exact: true }).click()
-			await expect(page.getByText("Dieses Gerät: Schreibzugriff bestätigt.", { exact: true })).toBeVisible()
+			await expect(page.getByRole("status", { name: "Schreibzugriff dieses Geräts", exact: true })).toHaveText("Schreiben")
 			await expect(page.getByRole("button", { name: "Übernehmen", exact: true })).toBeDisabled()
 			await page.reload({ waitUntil: "domcontentloaded" })
 			await expect(page.getByRole("button", { name: "Sitzungszugang", exact: true })).toHaveText(/Friseer/, { timeout: 15000 })
-			await expect(page.getByText("Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen.", { exact: true })).toBeVisible()
+			await expect(page.getByRole("status", { name: "Schreibzugriff dieses Geräts", exact: true })).toHaveText("Lesend")
 			await page.getByRole("button", { name: "Übernehmen", exact: true }).click()
-			await expect(page.getByText("Dieses Gerät: Schreibzugriff bestätigt.", { exact: true })).toBeVisible()
+			await expect(page.getByRole("status", { name: "Schreibzugriff dieses Geräts", exact: true })).toHaveText("Schreiben")
+			await page.getByText("Sitzungsdetails", { exact: true }).click()
 			await page.getByRole("button", { name: "Freigeben", exact: true }).click()
-			await expect(page.getByText("Dieses Gerät: Lesend. Zum Schreiben Übernehmen wählen.", { exact: true })).toBeVisible()
+			await page.getByText("Sitzungsdetails", { exact: true }).click()
+			await expect(page.getByRole("status", { name: "Schreibzugriff dieses Geräts", exact: true })).toHaveText("Lesend")
 			report.deviceWriterStatusClaimReloadAndReleasePassed = true
 		}
 		if (process.env.NETAIGIS_RUNTIME_BROWSER_DRAFT === "1") {
@@ -384,6 +415,7 @@ try {
 		}
 		report.packagedAssetsAndPersonalAuthenticationConfirmed = true
 		await expect(page).toHaveTitle(identity.displayName)
+		await page.setViewportSize({ width: 1280, height: 800 })
 		await page.getByRole("button", { name: "Home", exact: true }).click()
 		await expect(page.getByRole("heading", { name: identity.displayName, exact: true })).toBeVisible()
 		await expect(page.getByText(`v${identity.version}`, { exact: true })).toBeVisible()
