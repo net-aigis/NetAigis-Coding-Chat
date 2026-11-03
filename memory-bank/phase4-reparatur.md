@@ -5899,3 +5899,64 @@ Bestehendes vorheriges eigenes VSIX cb8d3e... bleibt für Rückfall unverändert
 Kombinierte Einführung erfolgt nur nach erneuten Quiesce-/Fingerprintguards
 und betrifft ausschließlich eigene Erweiterung sowie zwei eigene Userdienste;
 keine Acer-/Modell-/Endpoint-/Originalbranchänderung.
+
+
+### 2026-11-03 – Kombinierte eigene Aktualisierung tatsächlich produktiv
+
+Erster Einführungsversuch verweigerte VOR Diensteingriff/Installation, weil
+Sicherungsfingerprint von session-search.db inzwischen abwich. Anschließender
+vollständiger lesender Vergleich: ebenfalls sessions.db und kontrollierte
+Sitzungsmanifestdatei geändert, Nachrichtenfile unverändert. JSON-Differenz
+betrifft ausschließlich sharedSessionControl revision/lastChange/client-/
+connectionId nach weiterer legitimer Schreibübergabe; status weiterhin idle.
+Suchindex nur source_revision/indexed_at und abgeleitete FTS-Segmente.
+Kein Fingerprintguard pauschal entfernt, keine Modellanforderung wiederholt.
+
+Nur neue Differenz unter vorhandenem R/shared-project-icons-delta/
+current-state-delta-v1 ergänzt: vier geänderte Dateien (einschließlich
+operativem Hub-Event-DB),34verifizierte Dateien und Restorebelege wiederverwendet.
+Nur vier neue Dateien tatsächlich wiederhergestellt und Attribute geprüft;
+SQLite-Backup-API für geänderte Datenbanken. Ursprüngliche Sicherung/Belege
+unverändert erhalten. Neues ArchivSHA
+70e45384692a86f17aad02868d2737ec6619ee5e60e3d67cff7b4285463c8871,
+ManifestSHA348dfbe28d352d8435a5637bd7a6cbeff2938940451e48fdfb518f1f60d55c4d.
+
+Zweiter, auf exakt diese geprüfte Differenz gebundener Einführungsaufruf
+erfolgreich. Vor Core-Stop tatsächliches owner HTTP-drain bestätigt, keine
+anderen verbliebenen Clients/angenommene Arbeit; nur eigenes Dashboard und
+eigene Runtime gestoppt/gestartet. Idle-Auftragsstatus und Historien nach Stop
+unverändert. Eigene VSIX0.1.0 via Code-CLI installiert, alle426Payload-Dateien
+gegen tatsächliches Paket SHA
+76c4acdd9ff54efdf2aab9590a9b32c66078e98415c706b9b7d6f3de7f523887 verifiziert.
+Andere registrierte Erweiterungen diesmal als vollständige Registryobjekte
+verglichen und identisch. Launch-/Recall-Konfiguration und kanonische Daten
+erhalten. Originalbranch weiterhin624c2cd6661e100680d8b61daa3a3447f4708536.
+Keine Acer-/Modell-/Endpoint-/Produktiv-VS-Code-Prozessänderung.
+
+Beide eigenen Dienste active/running,success,NRestarts0: CorePID204634,
+DashboardPID204681. Tatsächliches HTTPS-health connected. Privater Beleg
+R/shared-project-icons-delta/current-state-delta-v1/installation.json.
+Vorheriges eigenes kompakte-Einstellungen-VSIX cb8d3e... und geprüfte aktuelle
+Daten-Differenz bleiben für abgesicherten Rückfall erhalten; keine automatische
+Rücknahme. Die notwendige Dashboardwartung beendet RAM-Anmeldetickets; Benutzer
+kann sich einmal frisch als Friseer anmelden, normale Reload-/Wake-Fälle
+sind davon getrennt geprüft.
+
+Tatsächlicher Produktiv-Nachtest p4-project-icons-productive-readonly
+Exit0(12,67s), kein physisches Handy und keine Inferenz: sichtbares PNG1254²
+dekodiert, tatsächlicher Headerbild-SHA402775... und Favicon-SHAca60...
+entsprechen den unveränderten Benutzeroriginalen. Login/Reload, ausgewählte
+Sitzung/Historie/Entwurf, Schließen/Escape/Scrollen in vier Viewportgrößen
+positiv; kanonische Nachrichten bytegleich, kein Claim/Modellturn.
+Installiertes LLMS-Modul enthält tatsächlich neue Projekt-Scope-Exporte;
+isolierter Scopewert korrekt, anschließend gelöscht. Dies ist keine echte
+Learning-/Modell-Projektabnahme; keine Behauptung produktiver Tokenzählung.
+
+Quellcommits b9128773d (Projektbindung),c10c00ee5 (Benutzer-PNGs),de2a49d72
+(Anmelderennen) erhalten. Benutzer um noch offene Einzelfreigabe des genau
+einen Token-Abnahmeturns gebeten, diesmal über sichtbaren Titelbeginn
+„Controlled functional check“ statt opaker ID. Kein neuer Turn gesendet.
+Weitere Originalaufgaben einschließlich produktiver VS-Code-Runtimebindung,
+realem Learning-Verhalten, vollständiger Werkzeug-/Originalauftragsfortsetzung
+und Gesamtabnahme bleiben offen. Keine erneute physische UI-Abnahme für bereits
+bestätigte Layoutfunktionen verlangen; Icons kann Benutzer nach Reload sehen.
