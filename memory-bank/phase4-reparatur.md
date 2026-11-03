@@ -6433,3 +6433,21 @@ gebündelten Rewriter mit tatsächlich gelesenem Learning-Quellstand.
 Nachweise p4-learning-output-activation-final, Exit0. Keine Installation,
 kein Neustart und keine zusätzliche Inferenz erfolgt. Gesonderte produktive
 Learning-Freigabe und Root-Anwendung fehlen noch; Gesamtauftrag bleibt offen.
+
+### 2026-11-03 – Learning-Ausgabeänderung produktiv aktiviert
+
+Operator hat den begrenzten Learning-Eingriff ausdrücklich freigegeben und mit
+Root ausgeführt. Unabhängige lesende SSH-Prüfung bestätigt Kandidatenhash
+4fc273648ce62962b42a4f604d659dc54344695451c439bcc8fd58b32127f3f4,
+Datei Root:Root0644. ai-agent.service läuft mit PID3360368 und InvocationID
+293a08e3d76a4c709cadca5c26686671, NRestarts0. Unveränderte InvocationIDs von
+Coding-Agent8f0a57e..., Router1dff7c62... und Modell ef3cc7b7... bestätigt,
+alle aktiv/running/NRestarts0. Health11435/11436/11441 jeweils HTTP200.
+Operator-Transaktion bestätigt Konfigurationsbytes unverändert. Eigene
+Nachprüfung änderte keine Dateien/Dienste und sendete keine Modellanfrage.
+Quittung: logs/p4-learning-output-installed-readonly.json im bestehenden Prüfbaum.
+
+Nicht erneut installieren/sichern oder die alten zwei Handyfragen wiederholen.
+Eine neue tatsächliche Operator-Nachfrage zur Gesamtturn-Messung ist angefragt;
+noch keine nachträgliche Geschwindigkeits-/Semantikabnahme behaupten.
+Sichere ursprüngliche125B-Strata-Auswahl bleibt separat offen.
