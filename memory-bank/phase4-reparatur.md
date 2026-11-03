@@ -5458,3 +5458,24 @@ Dieser Nachweis ist kein Modellturn und keine Gesamtabnahme. Als nächster offen
 Geräteschritt bleibt der einmalige Modellturn in derselben bestehenden Sitzung
 1793603066247_pk2cs als Friseer, anschließend lesender Vergleich von kanonischem
 Verlauf, Urheberschaft und tatsächlicher TOTAL-RECALL-Archivierung.
+
+
+### 2026-11-03 – Tatsächlicher Handy-Modellturn und Recall geprüft
+
+Benutzer meldet „Turn ended (completed), iterations=1, input=0, output=0“.
+Lesende Prüfung findet genau einen neuen authentifizierten Friseer-Turn in
+1793603066247_pk2cs und die echte Antwort `NETAIGIS_ANDROID_VPN_READY.`.
+Die ursprünglichen15Nachrichten bleiben identisch; jetzt17Nachrichten.
+Erster strikter Markerprüfer Exit1 wegen zusätzlichem abschließendem Punkt;
+negativer Nachweis erhalten. Auf tatsächlich beobachteten Text angepasster
+lesender Vergleich p4-physical-android-turn-observed-period Exit0(4,64s):
+Runtime idle/resident, Recallseq48, Quelle verifiziert, alle Nachrichten und
+finalen Metadaten identisch archiviert. Kein erneutes Absenden, keine Inferenz
+durch Prüfer, keine Änderung der produktiven Historie. Geräte-/Netzzuordnung
+beruht auf angeleitetem Benutzertest, nicht Hardwareerkennung des Prüfers.
+
+Die Nullanzeige darf nicht als fehlende Modellantwort interpretiert werden.
+Quellbefund Chat.tsx/finalizeAssistantTurn: fehlende inputTokens/outputTokens
+werden mit `?? 0` dargestellt. Ob hier fehlende oder explizite Nullwerte vom
+Backend vorlagen, ist damit noch nicht bewiesen und weiter zu verfolgen.
+Kein Werkzeugturn und keine Gesamtabnahme aus diesem Modellturn ableiten.
