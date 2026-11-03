@@ -6082,3 +6082,46 @@ Benutzer soll Handyseite neu laden; nach dem absichtlichen Dienstneustart
 kann einmalige neue persönliche Anmeldung erforderlich sein.
 Originalbranch coding-agent-v4 bleibt624c2cd6661e100680d8b61daa3a3447f4708536.
 Gesamtauftrag und bekannte andere Abnahmen bleiben offen.
+
+
+## 2026-11-03 – Tatsächliche Geschwindigkeitsursachen lesend eingegrenzt
+
+Benutzer priorisiert Modellgeschwindigkeit; keine neue Inferenz ausgelöst,
+keine Dienste/Modelle/Kontexteinstellungen verändert. Vorhandene Backend-
+Metriken auf Acer11442 und kanonische Zeitstempel abgeglichen. Letzter
+Turn in Testsitzung:31.350 Eingabetokens,20 Ausgabetokens,107,070s
+kanonische Dauer. Backend-Hauptanfrage dab4c5146ab4:74,2s, erster
+Engine-Token nach72,05s, prompt_ms72039,7, decode_ms2163,4,9,2tok/s,
+reused0. Unmittelbar davor zwei Anfragen cad36e88dc8c20,2s/1333in102out
+und85b66513045a12,5s/1188in13out. Summe106,9s erklärt kanonischen
+107,070s-Turn nahezu vollständig.
+
+Tatsächlicher Codepfad /opt/netaigis-coding-agent/app.py128–198:
+wartet vor eigentlicher Modellanfrage synchron auf Learning-Korrektur
+und danach Learning-Kontext. /opt/ai-agent/app.py:detect_correction
+1386/1483 und select_relevant_rules1219/1329 rufen jeweils ollama_chat
+624 auf. Somit zwei zusätzliche Modellklassifikationen vor der Antwort,
+nicht bloß langsame Browserdarstellung. Keine Lernfunktion abgeschaltet.
+
+Früherer tatsächlicher Warm-Turn82bf74744358:30.695prompt,30.670reused,
+15output,3,3s Backend,2,029s erster Token,12,1tok/s Decode. Kanonischer
+Turn35,637s einschließlich der vorgeschalteten19,4+12,7s-Prüfungen.
+Großer Unterschied liegt daher in Vorverarbeitung und Cachetreffern;
+Ursache des jeweiligen Cachemiss ist noch NICHT bewiesen. Weder
+Learning-Aufrufe allein noch Änderung dynamischer Regeln pauschal als
+Cachezerstörer behaupten: Warm-Turn hatte dieselben Klassifikationsschritte.
+
+Health200 Coding/Router/Modell, Modell geladen,max_context1000000,
+idle/queue0, alle vier bisherigen Service-InvocationIDs unverändert,
+NRestarts0. Leerlaufprobe:MemAvailable10.920.320KiB; Swapbelegung
+2.297.520KiB, aber aktuelle vmstat-si/so0 und memory-PSIavg10=0.
+GPU15361/16303MiB belegt. Kein Beleg für aktuellen Swapthrash oder
+Hardwareunfähigkeit; keine1M-Promptmessung. Modell-Engine zeigt KVfp4,
+kv_resident1000000,expert_slots543,cpu_experts14817,ram_experts0,
+draftingoff. Daraus allein keine ungeprüfte Tuningänderung ableiten.
+
+Gefilterter privater Nachweis im bestehenden Prüfbaum:
+logs/p4-model-speed-readonly-findings.json. Weitere Reparatur muss
+Learning/Originalauftrag/Projekt- und Autorenisolation erhalten und
+Cachemiss-Ursache gezielt unterscheiden. Keine Produktionsfreigabe
+für neue Learning-/Modelländerungen aus bloßer Diagnose ableiten.
