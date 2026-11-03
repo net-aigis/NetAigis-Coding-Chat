@@ -5576,3 +5576,44 @@ ableiten. Root-Passworteingabe bleibt ausschließlich im Benutzerterminal.
 Vorbereiteter Aufruf im ruhenden Wartungsfenster (bereits genehmigter Adapter-
 Reparaturumfang; keine neue Modell-/Konfigurations-/Dienstentscheidung):
 `PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-coding-agent-stream-usage-activate.py apply --remote --maintenance-confirmed --external-copy-verified`
+
+
+### 2026-11-03 – Tokenanzeige produktiv ausgeliefert, Acer-Rootschritt ausstehend
+
+Eigener VSIX-Kandidat im bestehenden Prüfbaum:
+netaigis-coding-chat-0.1.0-shared-runtime-token-summary-candidate.vsix,
+SHA2568bc1ee286fce18efeff16a5aa4ea6255600046cae58706a6d8d19bd475edb754.
+Bundle p4-turn-summary-vscode-bundle Exit0(2,94s), Paketierung
+p4-token-summary-package Exit0(5,36s). ZIP-CRC/sichere Pfade/eigene Identität
+0.1.0 und389Payload-Dateien gegen Build geprüft.
+Isolierter echter Browser-/nativer Runtime-Pakettest
+p4-token-summary-native-package Exit0(27,90s): Anmeldung/Reload/Wake/Logout,
+Entwurfsisolation, fünf Viewportgrößen mit erreichbarem Input/Senden und
+Kontrastprüfungen bestanden; keine Inferenz und kein physischer Handytest.
+
+Danach ausschließlich Browserpayload produktiv atomar übernommen: sieben neue
+Hash-Assets und eine HTML-Einstiegsdatei, alle389Payloads verifiziert.
+Bestehender Sicherungsbaum R/browser-token-summary-assets-delta, ManifestSHA
+07500ddd597f2ae1c20a2eaf75ee865f366b43731fdf9945dedfd7c3860a8e70;
+Original-index tatsächlich mit Attributen wiederhergestellt geprüft.
+Alte Assets bleiben erhalten. Keine Dienste oder VS Code neu gestartet;
+beide eigenen Userdienst-PIDs/InvocationIDs sowie Launchkonfiguration identisch.
+Keine Session-/Secretmigration, kein Acer-/Modell-/Endpoint-/Firewalleingriff.
+Produktiver HTTPS-Nachtest p4-token-summary-productive-ui Exit0(3,92s):
+Friseer-Anmeldung, gleicher Verlauf, ungesendeter Entwurf nach Reload, explizites
+Leeren, sichtbarer Senden-Knopf/Kontrast bestätigt; kanonische Historie unverändert,
+keine Schreibübernahme/Modellanforderung.
+
+Root-Aufruf des Adapterhelfers cc6269c12 dem Benutzer bereits übermittelt.
+Keine erneute Freigabefrage; es fehlt die privilegierte Terminalausführung und
+deren tatsächlicher Nachweis. Unabhängige Browserarbeiten währenddessen erledigt.
+Noch keine Behauptung korrigierter produktiver Tokenmessung.
+
+Zusätzliche gezielte lesende Projektvertragsprüfung: Coding-Agent app.py
+liest x-ai-user/x-ai-project für Learning-Kontext und Korrektur sowie
+x-ai-conversation für die Kontextsession. Der Fork setzt derzeit nur
+Benutzer/Sitzung; kanonische Recall-Projektzuordnung existiert bereits in
+sessionMetadata.recallProjectId, mit Schutz gegen widersprüchliche Umzuordnung.
+Kein globaler Projektwert und keine neue Speicherarchitektur eingeführt.
+Die sichere Weitergabe genau dieser vorhandenen Bindung bleibt als konkrete
+Integrationsaufgabe offen; kein produktiver Header- oder Routingwechsel erfolgt.
