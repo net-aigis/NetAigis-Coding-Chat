@@ -5446,3 +5446,15 @@ neuladen, NEUEN Entwurf tippen, erneut aktualisieren, Text/Lesbarkeit prüfen,
 keine Modellanforderung. Ergebnisse aus Browseremulation nicht als dessen Antwort
 vorwegnehmen. Der weiterhin offene eigentliche geräteübergreifende Modell-/
 Werkzeugturn und die übrigen Originalaufträge bleiben offen, kein Gesamtabschluss.
+
+
+### 2026-11-03 – Physischer Android-Nachweis: Entwurf und Lesbarkeit
+
+Benutzerantwort auf den angeleiteten Test (neuen ungesendeten Entwurf eingeben,
+erneut aktualisieren und Erhalt sowie Lesbarkeit prüfen): „ja, alles jetzt ok“.
+Damit ist die zuvor offene physische Geräteprüfung dieser UI-Korrektur bestätigt.
+Keine Tests, Sicherungen, Installation oder Modellanforderungen wiederholt.
+Dieser Nachweis ist kein Modellturn und keine Gesamtabnahme. Als nächster offener
+Geräteschritt bleibt der einmalige Modellturn in derselben bestehenden Sitzung
+1793603066247_pk2cs als Friseer, anschließend lesender Vergleich von kanonischem
+Verlauf, Urheberschaft und tatsächlicher TOTAL-RECALL-Archivierung.
