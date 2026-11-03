@@ -5544,3 +5544,35 @@ Adapterumfang mit vorhandener Sicherung/Wiederherstellungsprüfung, aktueller
 Deltaabsicherung soweit nötig und Root-Terminalweg; danach echte Streaming-
 Telemetrie prüfen. UI-Fallbackkorrektur b55b0f36b ebenfalls noch nicht
 ausgerollt. Keine alte erfolgreiche Handy-Anforderung erneut senden.
+
+
+### 2026-11-03 – Einführung der Streaming-Telemetrie vorbereitet
+
+Bestehendes phase4-model-context-preflight enthält bereits exakt den aktuellen
+Adapter307497...; deshalb KEINE neue Sicherung. Externes Manifest mit bekanntem
+SHA6fb8ad9472f47875d01a35b4a3b73284951eeb5dc85048363255563824f36677
+und genau dessen Adaptermember im bestehenden externen Archiv lesend bestätigt.
+Vorhandene vollständige Archiv-/Restoreprüfung weiterverwendet.
+
+Neuer Helfer netaigis-coding-agent-stream-usage-activate.py verwendet die bereits
+getesteten Controller-/Dateiersetzungsfunktionen des bisherigen Adapterhelfers.
+Vor jeder Änderung prüft er Root-Backup/Archivhash, tatsächliche Restore-Datei
+mit Eigentümer/Modus/mtime/xattrs und aktuellen Sourcehash; nur307497... oder
+exakt bereits installierter Kandidat205b... zulässig. Kein alter Adapterstand
+wird als produktiver Ausgang akzeptiert. Ausführung verweigert ohne beide
+expliziten Maintenance-/externe-Kopie-Flags. Quiet-/Health-/Unit-Isolationsprüfungen
+vor Stop, unveränderte Konfigurationsbytes vor/nach, nur Coding-Agent stoppen/
+starten. Bei Fehler neue Version erhalten, Startversuch, keine automatische
+Rücknahme. Exakt bereits angewendet bedeutet reine Prüfung ohne zweiten Neustart.
+Keine neue Modellanforderung; tatsächliche Streamingabnahme bleibt separat.
+
+Sieben neue Aktivierungsregressionen mit echten isolierten Dateiersetzungen
+und simuliertem Dienst bestanden: p4-stream-usage-activation-final Exit0(0,24s).
+Prüfen Restorebelege, manipulierte Sicherung/Quelle, laufende Aufträge,
+Attributerhalt, idempotente Wiederholung, Konfigurationswechsel und Forwardrepair
+nach fehlgeschlagener neuer Health-Prüfung. Keine produktive Installation daraus
+ableiten. Root-Passworteingabe bleibt ausschließlich im Benutzerterminal.
+
+Vorbereiteter Aufruf im ruhenden Wartungsfenster (bereits genehmigter Adapter-
+Reparaturumfang; keine neue Modell-/Konfigurations-/Dienstentscheidung):
+`PYTHONDONTWRITEBYTECODE=1 python3 /home/friseer/MyGIT/cline-4.1.26-repair/sdk/scripts/netaigis-coding-agent-stream-usage-activate.py apply --remote --maintenance-confirmed --external-copy-verified`

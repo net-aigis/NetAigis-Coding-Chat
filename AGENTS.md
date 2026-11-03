@@ -1,5 +1,7 @@
 This is the **NetAigis Coding Chat** fork of the Cline monorepo. Toolchain is **Bun 1.4.2** (package manager + task runner) with **Node >=22** as the runtime. Do not use npm/yarn/pnpm.
 
+Streaming-usage activation helper ready,7 real-file/fake-service regressions pass. Reuses EXACT current adapter307497 from already verified phase4-model-context-preflight/external copy, no new backup. Root terminal apply command in latest Phase4 report, only adapter+Coding-Agent restart, explicit quiet flags, no automatic rollback; not executed yet. Browser token-summary bundle/package preparation continues independently.
+
 Latest verified telemetry cause: actual Acer adapter SHA307497... has no usage frame in sse_stream although nonstream completion reports usage and client requests it. New pinned in-memory stream-usage rewriter produces candidate205b879bba773dae0184097fbddbcc01c941f080b89f2969cf41be1563d691eb;4 regressions and6 isolated actual-source synthetic cases pass, unrelated functions unchanged. Not installed, no service/model requests. Root-backed controlled application and actual telemetry acceptance remain open; see latest Phase4 report.
 
 Current source-only continuation: Chat turn summary now labels missing/invalid token counters "nicht gemeldet", preserves measured0;5/5 targeted tests and web/types build40.95s passed. Not packaged/deployed. Actual phone persisted metrics contain explicit0/0, so provider telemetry provenance still open; UI fallback fix alone must not be called full token repair. See latest Phase4 entry.
