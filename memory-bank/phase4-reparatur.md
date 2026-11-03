@@ -5723,3 +5723,32 @@ Keine Modellanforderung, keine produktiven Rechte oder Historien verändert.
 Produktiver Browser-only-Rollout mit tatsächlicher Index-Restoreprüfung und
 anschließendem rein lesendem HTTPS-Nachtest folgt. Physische Androidprüfung
 dieser neuen Layoutänderung noch offen.
+
+
+### Produktiver Nachweis der kompakten mobilen Einstellungen
+
+Sourcecommit0d1688754, isolierter nativer Pakettest tatsächlich Exit0(33,46s).
+Browser-only-Rollout erfolgreich: acht neue Assets und ein atomarer HTML-Einstieg,
+alle404Payloads gegen Paket geprüft. Sicherung ausschließlich der betroffenen
+vorherigen HTML-Einstiegsdatei mit tatsächlicher Attribut-Restoreprobe unter
+R/browser-compact-settings-assets-delta, ManifestSHA
+6f908f57812f2884ca647d05d037e1402c8d65634e10fbe21e9b298ad6ac0587.
+Kein eigener Dienst/VS Code neu gestartet, PIDs/InvocationIDs und Launchbytes
+gleich. Alte Hashassets erhalten; keine Sitzungs-/Secret-/Acer-/Modelländerung.
+
+p4-compact-settings-productive-readonly Exit0(13,29s), tatsächliche laufende
+HTTPS-Seite/Chromium, weiterhin kein physisches Android: vier Viewports
+390x844→557px Verlauf,360x640→353px,390x430→143px,844x390→122px.
+Abweichung zu Fixture-Höhen beruht auf tatsächlichem Sitzungsinhalt/-kopf;
+keine Fixturezahl als produktive Messung ausgegeben. Einstellungen in allen
+vier Größen geöffnet, Inhalt bis unten scrollbar, Schließen-Knopf im Viewport
+per Hittest erreichbar und funktional, erneutes Öffnen/Escape funktioniert.
+Anmeldung, ausgewählte Sitzung, Historie und ungesendeter Text nach Reload
+behalten; bewusstes Leeren bleibt leer. Keine Werkzeug-/Modellanfrage und
+keine Writer-Übernahme, kanonische Historie bytegleich. Originalbranch weiterhin
+624c2cd6661e100680d8b61daa3a3447f4708536.
+
+Benutzer kann nun am echten Handy nach Reload Platzangebot und Einstellungen
+prüfen. Diese physische UI-Bestätigung bleibt separat offen; die bereits
+bestätigte tatsächliche Handy-Schreibübernahme wird nicht erneut getestet.
+Token-Abnahmeturn bleibt ohne gezielte Einzelfreigabe ungesendet.
