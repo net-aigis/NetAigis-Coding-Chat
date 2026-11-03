@@ -5960,3 +5960,32 @@ Weitere Originalaufgaben einschließlich produktiver VS-Code-Runtimebindung,
 realem Learning-Verhalten, vollständiger Werkzeug-/Originalauftragsfortsetzung
 und Gesamtabnahme bleiben offen. Keine erneute physische UI-Abnahme für bereits
 bestätigte Layoutfunktionen verlangen; Icons kann Benutzer nach Reload sehen.
+
+
+## 2026-11-03 – Tatsächlicher Benutzerturn und Streaming-Tokennachweis
+
+Benutzer meldet „hab genau das gesendet“. Kein Modellaufruf durch diese
+Prüfung und keine Wiederholung. Tatsächlich gespeichert ist der letzte
+Benutzertext `NETAIGIS_ANDROID_USAGE_READY. Verwende keine Werkzeuge.`,
+nicht der vorgeschlagene STREAM-Marker. Antwort exakt
+`NETAIGIS_ANDROID_USAGE_READY.`; authentifizierter Urheber Friseer
+(`hub-authenticated`). Tatsächliche Assistant-Metriken: 30.695 Eingabe-,
+15 Ausgabetokens. Auch der vorangehende neue VPN-Turn meldet 30.656/15;
+daraus keine zusätzlichen eigenen Modelltests ableiten.
+
+Ausschließlich lesende Live-Prüfung über bestehenden Hub und Recall:
+`p4-operator-actual-usage-readonly-network`, Exit 0, 1,47 s. Kanonische
+Testsitzung 1793603066247_pk2cs enthält 21 Nachrichten; erste 15 mit
+bestehendem Nachweis identisch. Zustand idle, Runtime resident.
+TOTAL RECALL Projekt total-recall-production-test, Journal seq134,
+Quelle verifiziert; sämtliche 21 Nachrichten und finale Metadaten stimmen
+mit kanonischem Verlauf überein. Datei vor/nach Prüfung bytegleich.
+Nachweis im bestehenden Prüfbaum:
+`test-data/p4-operator-actual-usage-readonly-network/data/result.json`.
+Erster Sandbox-Netzversuch Exit1 (Gt) erhalten; Netzfreigabe ermöglichte
+dieselbe reine Leseprüfung. Keine Dienste/Modelle/Konfigurationen verändert.
+
+Damit ist reale Tokenübermittlung für diesen tatsächlichen Benutzerturn
+belegt. Keine rückwirkende Korrektur alter 0/0-Metriken behaupten.
+Produktive VS-Code-Bindung, reales Learning-Verhalten und vollständige
+Gesamtabnahme bleiben offen; keine erneute Geräte-/Layoutabnahme nötig.
