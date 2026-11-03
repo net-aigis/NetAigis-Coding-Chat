@@ -5501,3 +5501,46 @@ Quelländerung gebaut/getestet, noch nicht paketiert oder produktiv ausgerollt.
 Nächste Arbeit: fehlende/Null-Telemetrie im vorhandenen Provider-/Adapterpfad
 verfolgen, anschließend zusammenhängend paketieren und prüfen. Keine neue
 Modellanfrage, kein Dienstneustart und keine produktive Dateiänderung hierfür.
+
+
+### 2026-11-03 – Ursache der Streaming-Tokenverluste im echten Acer-Adapter
+
+Gezielte lesende SSH-Prüfung ausschließlich im bestehenden Coding-Agent:
+/opt/netaigis-coding-agent/ollama_adapter.py weiterhin SHA256
+307497023baea81eabda77d96045c81fecc605a296748dc0ad163f7e01c4ffd9.
+completion() liefert im Nichtstreamingfall usage. Die tatsächliche async
+sse_stream()-Funktion liefert dagegen Text, finish_reason und [DONE], aber
+keinerlei usage-Ereignis aus prompt_eval_count/eval_count des finalen nativen
+Datensatzes. Der vorhandene OpenAI-compatible Client setzt includeUsage:true;
+der bestehende Router fordert upstream stream_options.include_usage:true an.
+Damit ist ein konkreter Verlustpfad belegt; keine Behauptung, dass sämtliche
+Modelle oder jede fehlende Verbrauchsangabe damit abschließend erklärt sind.
+
+Neuer modellunabhängiger, bytegeprüfter In-Memory-Rewriter
+sdk/scripts/netaigis-coding-agent-stream-usage.py ergänzt vor [DONE] ein
+OpenAI-Usage-Ereignis mit choices:[], ausschließlich wenn beide bestätigten
+nativen Zähler nichtnegative Ganzzahlen sind. Echte0 bleiben0; fehlende,
+partielle, negative, boolesche oder ungültige Werte werden nicht erfunden.
+Text/Finish/Tools sowie Request-, Modell-, Kontext- und Routinglogik bleiben
+unverändert. Quellhash und wiederholte Anwendung werden strikt geprüft.
+Kandidat auf tatsächlichem Source im Arbeitsspeicher erfolgreich erstellt:
+205b879bba773dae0184097fbddbcc01c941f080b89f2969cf41be1563d691eb.
+AST-Vergleich aller übrigen Top-Level-Funktionen identisch. Kein Kandidat
+auf Acer geschrieben und kein Dienst verändert.
+
+Vier lokale Regressionstests bestanden: p4-stream-token-usage-regression
+Exit0(0,51s), einschließlich reproduziertem Verlust, Erhalt von Text/Finish,
+Null-/Fehlwerten, Fehler-/Abbruchpfad und Quell-/Wiederholungsschutz.
+Zusätzlich echten aktuellen Adapter und Kandidaten auf Acer isoliert im
+Speicher mit sechs synthetischen Streams ausgeführt (stop/length × echte
+Werte/Null/fehlend): alle erfolgreich, keinerlei Modell- oder HTTP-Anforderung.
+Erster Vergleich scheiterte an naturgemäß unterschiedlichen UUID/Zeitstempeln
+zweier isolierter Aufrufe; zweiter Vergleich normalisiert ausschließlich diese
+zwei Antwortfelder und bestätigt unveränderte semantische Frames. Das ist
+keine produktive Inferenzabnahme.
+
+Noch offen: kontrollierte produktive Einführung im bereits freigegebenen
+Adapterumfang mit vorhandener Sicherung/Wiederherstellungsprüfung, aktueller
+Deltaabsicherung soweit nötig und Root-Terminalweg; danach echte Streaming-
+Telemetrie prüfen. UI-Fallbackkorrektur b55b0f36b ebenfalls noch nicht
+ausgerollt. Keine alte erfolgreiche Handy-Anforderung erneut senden.
