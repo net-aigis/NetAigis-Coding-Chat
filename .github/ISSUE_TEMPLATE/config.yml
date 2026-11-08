@@ -1,8 +1,8 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 contact_links:
-    - name: ✨ Feature Request
-      url: https://github.com/cline/cline/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop
-      about: Share and vote on feature requests for Cline
-    - name: 👋 Cline Discord
-      url: https://discord.gg/cline
-      about: Join our Discord community for discussions and support
+  - name: Product page
+    url: https://net-aigis.de/coding-chat.html
+    about: Development status and project overview on net-aigis.de
+  - name: Source repository
+    url: https://github.com/net-aigis/NetAigis-Coding-Chat
+    about: Code, commits and releases for this NetAigis fork (not the Cline organization)

@@ -1,25 +1,32 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-We actively patch only the most recent minor release of Cline. Older versions receive fixes at our discretion.
+NetAigis Coding Chat is under active development and has no public Marketplace
+release yet. Security fixes apply to the current `main` branch of this
+repository at our discretion.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-We appreciate your efforts to responsibly disclose your findings and will make every effort to acknowledge your contributions.
+Please **do not** open a public GitHub Issue for security vulnerabilities.
 
-To report a security issue, please submit your report through our [Bugcrowd Vulnerability Disclosure Program](https://bugcrowd.com/engagements/clinebot-vdp-ess). Bugcrowd will manage communication and triage on our behalf.
+Prefer one of these private channels:
 
-When reporting, please include:
+1. **GitHub private vulnerability reporting** on this repository  
+   (Security tab → “Report a vulnerability”), when available.
+2. **Email:** info@net-aigis.de with subject `Security: NetAigis Coding Chat`
+
+Include:
 
 - A short summary of the issue
 - Steps to reproduce or a proof of concept
-- Any logs, stack traces, or screenshots that might help us understand the problem
+- Affected version or Git commit, if known
+- Any logs or screenshots that help (no secrets)
 
-Please keep the details private until a resolution has been reached.
+Please keep details private until a fix or coordinated disclosure is agreed.
 
-## Escalation
+## Out of scope for this file
 
-If you are unable to submit through Bugcrowd, you may send an email to security@cline.bot.
-
-Thank you for helping us keep Cline users safe.
+Do **not** report Cline organization / `cline.bot` / Marketplace
+`saoudrizwan.claude-dev` issues here. Those belong to upstream Cline, not to
+this NetAigis fork.

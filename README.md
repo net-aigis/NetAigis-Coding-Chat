@@ -56,11 +56,15 @@ Substantial code originates from [cline/cline](https://github.com/cline/cline)
 source tree remain authoritative. Pulling upstream changes is a deliberate local
 decision; nothing from Cline is applied automatically to this repository.
 
-## Contributing
+## Bugs, feedback and security
 
-This is a NetAigis-maintained project. Prefer issues and discussion on
-**this** repository. Do not open feature requests against the Cline org for
-NetAigis-specific work.
+- **Bugs and feature ideas:** open a GitHub Issue on **this** repository
+  ([New issue](https://github.com/net-aigis/NetAigis-Coding-Chat/issues/new/choose)).
+  Use the Bug report or Feature request templates.
+- **Security vulnerabilities:** do **not** file a public issue. Use
+  [private vulnerability reporting](https://github.com/net-aigis/NetAigis-Coding-Chat/security/advisories/new)
+  or email info@net-aigis.de (see [`SECURITY.md`](SECURITY.md)).
+- Do not open NetAigis-specific requests against the Cline organization.
 
 ## License
 
