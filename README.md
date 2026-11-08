@@ -34,6 +34,12 @@ The open source coding agent in your IDE, terminal, & desktop!
 
 </div>
 
+
+## Support
+
+- [GitHub Sponsors](https://github.com/sponsors/net-aigis?metadata_project=NetAigis-Coding-Chat)
+- [PayPal](https://www.paypal.com/ncp/payment/CH7T8EWYR7C4W)
+
 <br>
 
 <div align="center">
