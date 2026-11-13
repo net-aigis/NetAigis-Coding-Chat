@@ -1,5 +1,52 @@
 import { describe, expect, it } from "vitest";
-import { LoopDetectionTracker } from "./loop-detection";
+import {
+	buildBlockedToolStatus,
+	checkRepeatedToolCall,
+	createLoopDetectionState,
+	LoopDetectionTracker,
+} from "./loop-detection";
+
+describe("softThreshold clamp (P0)", () => {
+	it("never soft-blocks the first distinct call even if softThreshold is 1", () => {
+		const state = createLoopDetectionState();
+		const first = checkRepeatedToolCall(
+			state,
+			"run_commands",
+			"run:a",
+			{ softThreshold: 1, hardThreshold: 2 },
+		);
+		expect(first).toMatchObject({
+			softWarning: false,
+			hardEscalation: false,
+			skipCall: false,
+		});
+		const second = checkRepeatedToolCall(
+			state,
+			"run_commands",
+			"run:a",
+			{ softThreshold: 1, hardThreshold: 2 },
+		);
+		expect(second.softWarning).toBe(true);
+		expect(second.hardEscalation).toBe(false);
+	});
+
+	it("buildBlockedToolStatus keeps model context short and structured", () => {
+		const status = buildBlockedToolStatus({
+			toolName: "run_commands",
+			count: 2,
+			kind: "soft",
+			toolCallId: "tc-1",
+		});
+		expect(status).toMatchObject({
+			status: "blocked",
+			reason: "identical_tool_call",
+			tool: "run_commands",
+			toolCallId: "tc-1",
+		});
+		expect(String(status.summary).length).toBeLessThan(200);
+		expect(JSON.stringify(status)).not.toContain("MUST change approach");
+	});
+});
 
 describe("wait-only tool loop guard", () => {
 	it("counts changing sleep durations as the same nonproductive operation", () => {
@@ -13,12 +60,13 @@ describe("wait-only tool loop guard", () => {
 				input: { commands: ["sleep 1"] },
 			}).kind,
 		).toBe("ok");
+		// 2nd identical wait poll: soft-skip + recovery (no second dump).
 		expect(
 			tracker.inspect({
 				name: "run_commands",
 				input: { commands: ["sleep 2"] },
-			}).kind,
-		).toBe("soft");
+			}),
+		).toMatchObject({ kind: "soft", skip: true });
 		expect(
 			tracker.inspect({
 				name: "run_commands",

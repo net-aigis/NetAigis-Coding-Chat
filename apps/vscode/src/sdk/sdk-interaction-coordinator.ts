@@ -1,5 +1,5 @@
 import type { AskQuestionExecutor } from "@cline/core"
-import type { ConsecutiveMistakeLimitContext, ConsecutiveMistakeLimitDecision, ImageContent, TextContent } from "@cline/shared"
+import { visibleMistakeLimitText, type ConsecutiveMistakeLimitContext, type ConsecutiveMistakeLimitDecision, type ImageContent, type TextContent } from "@cline/shared"
 import type { ClineAskQuestion, ClineMessage, TurnPhase } from "@shared/ExtensionMessage"
 import type { ClineAskResponse } from "@shared/WebviewMessage"
 import { processFilesIntoText } from "@/integrations/misc/extract-text"
@@ -96,13 +96,11 @@ export class SdkInteractionCoordinator {
 	async handleConsecutiveMistakeLimitReached(
 		context: ConsecutiveMistakeLimitContext,
 	): Promise<ConsecutiveMistakeLimitDecision> {
-		const detail = context.details?.trim()
-		const latest = detail ? `${context.reason}: ${detail}` : `${context.reason} at iteration ${context.iteration}`
 		const errorMessage: ClineMessage = {
 			ts: this.nextMessageTs(),
 			type: "say",
 			say: "error",
-			text: `NetAigis Coding Chat ran into ${context.consecutiveMistakes} errors in a row and stopped the task.\n\nLatest: ${latest}\n\nSend a message to give NetAigis Coding Chat guidance and continue the task.`,
+			text: visibleMistakeLimitText(context),
 			partial: false,
 		}
 
@@ -112,6 +110,9 @@ export class SdkInteractionCoordinator {
 		})
 		await this.options.postStateToWebview()
 
+		const latest = context.details?.trim()
+			? `${context.reason}: ${context.details.trim()}`
+			: `${context.reason} at iteration ${context.iteration}`
 		return { action: "stop", reason: `mistake_limit_reached: ${latest}` }
 	}
 
@@ -233,7 +234,7 @@ export class SdkInteractionCoordinator {
 		const pendingMessage = this.pendingToolApprovalMessage
 
 		if (responseType === "messageResponse") {
-			Logger.log("[SdkController] Leaving pending tool approval open and routing user message as queued follow-up")
+			Logger.log("[SdkController] Leaving pending tool approval open and routing user message as steered follow-up")
 			this.options.setTurnPhase?.("awaiting_approval", pendingMessage?.messageTs)
 			// The approval remains pending. The chat message still needs normal follow-up routing.
 			return false

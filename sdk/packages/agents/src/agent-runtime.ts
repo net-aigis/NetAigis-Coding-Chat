@@ -311,6 +311,12 @@ interface PreparedToolExecution {
 	tool?: AgentTool;
 	input: unknown;
 	skipReason?: string;
+	/** Loop/policy soft-block: not an execution failure for the mistake tracker. */
+	skipBlocked?: boolean;
+	skipBlockedStatus?: Record<string, unknown>;
+	/** Identical successful call already ran: return prior result, do not re-execute. */
+	skipReused?: boolean;
+	skipReusedResult?: Record<string, unknown>;
 }
 
 interface HookBag {
@@ -602,6 +608,8 @@ export class AgentRuntime {
 	private initialization?: Promise<void>;
 	private abortController?: AbortController;
 	private modelSteerController?: AbortController;
+	/** Set by mid-run steer so tool batches stop before the next model call. */
+	private pendingUserSteer = false;
 	private readonly telemetryProviderId?: string;
 	private readonly telemetryModelId?: string;
 	private modelRequestId?: string;
@@ -632,8 +640,13 @@ export class AgentRuntime {
 		return this.execute(input);
 	}
 
-	/** Interrupt only the current model request; running tools finish normally. */
+	/**
+	 * Mid-run steer: abort the in-flight model stream and skip tools that have
+	 * not started yet so the next prepareModelRequest boundary can inject the
+	 * user message (Codex-style redirect without cancelling the whole run).
+	 */
 	notifyPendingUserMessage(): void {
+		this.pendingUserSteer = true;
 		this.modelSteerController?.abort();
 	}
 
@@ -795,6 +808,7 @@ export class AgentRuntime {
 		}
 
 		this.abortController = new AbortController();
+		this.pendingUserSteer = false;
 		this.state.runId = createUID("run");
 		this.modelRequestId = undefined;
 		this.state.status = "running";
@@ -1092,6 +1106,8 @@ export class AgentRuntime {
 			return result;
 		} finally {
 			this.abortController = undefined;
+			this.pendingUserSteer = false;
+			this.modelSteerController = undefined;
 		}
 	}
 
@@ -1693,6 +1709,7 @@ export class AgentRuntime {
 		// continuations within the first iteration.
 		const pendingUserMessage = await this.consumePendingUserMessage();
 		if (pendingUserMessage) {
+			this.pendingUserSteer = false;
 			request = {
 				...request,
 				messages: [...request.messages, ...cloneMessages([pendingUserMessage])],
@@ -2387,6 +2404,15 @@ export class AgentRuntime {
 
 		const results: AgentMessage[] = [];
 		for (let index = 0; index < prepared.length; ) {
+			if (this.pendingUserSteer) {
+				while (index < prepared.length) {
+					prepared[index].skipReason =
+						"Skipped: the user sent a mid-run steer message";
+					results.push(await this.executePreparedTool(prepared[index]));
+					index += 1;
+				}
+				break;
+			}
 			const execution = prepared[index];
 			const mode = execution.tool?.executionMode ?? this.config.toolExecution;
 			if (mode === "sequential") {
@@ -2444,6 +2470,10 @@ export class AgentRuntime {
 		const tool = this.tools.get(toolCall.toolName);
 		let input = toolCall.input;
 		let skipReason: string | undefined;
+		let skipBlocked = false;
+		let skipBlockedStatus: Record<string, unknown> | undefined;
+		let skipReused = false;
+		let skipReusedResult: Record<string, unknown> | undefined;
 		const metadata =
 			toolCall.metadata &&
 			typeof toolCall.metadata === "object" &&
@@ -2503,6 +2533,32 @@ export class AgentRuntime {
 				if (result?.skip) {
 					skipReason =
 						result.reason ?? `Tool ${tool.name} was blocked by a runtime hook`;
+					if (result.reused) {
+						skipReused = true;
+						skipReusedResult =
+							result.reusedResult &&
+							typeof result.reusedResult === "object" &&
+							!Array.isArray(result.reusedResult)
+								? result.reusedResult
+								: {
+										status: "completed",
+										reason: "reused_prior_result",
+										summary: skipReason,
+										execution: { state: "executed" },
+									};
+					} else if (result.blocked) {
+						skipBlocked = true;
+						skipBlockedStatus =
+							result.blockedStatus &&
+							typeof result.blockedStatus === "object" &&
+							!Array.isArray(result.blockedStatus)
+								? result.blockedStatus
+								: {
+										status: "blocked",
+										reason: "runtime_hook",
+										summary: skipReason,
+									};
+					}
 					break;
 				}
 			}
@@ -2533,6 +2589,10 @@ export class AgentRuntime {
 			tool,
 			input,
 			skipReason,
+			skipBlocked,
+			skipBlockedStatus,
+			skipReused,
+			skipReusedResult,
 		};
 	}
 
@@ -2591,9 +2651,39 @@ export class AgentRuntime {
 		});
 
 		let result: AgentToolResult;
-		if (prepared.skipReason) {
+		if (prepared.skipReason && prepared.skipReused) {
+			const reused = prepared.skipReusedResult ?? {
+				status: "completed",
+				reason: "reused_prior_result",
+				summary: prepared.skipReason,
+				execution: { state: "executed" },
+			};
 			result = {
-				output: { error: prepared.skipReason },
+				output: {
+					...reused,
+					status: "completed",
+					execution: { state: "executed" },
+				},
+				isError: false,
+			};
+		} else if (prepared.skipReason && prepared.skipBlocked) {
+			// Soft loop/policy block: did not execute — not a failed execution.
+			const status = prepared.skipBlockedStatus ?? {
+				status: "blocked",
+				reason: "runtime_hook",
+				summary: prepared.skipReason,
+			};
+			result = {
+				output: {
+					...status,
+					status: "blocked",
+					execution: { state: "blocked" },
+				},
+				isError: false,
+			};
+		} else if (prepared.skipReason) {
+			result = {
+				output: { error: prepared.skipReason, status: "failed" },
 				isError: true,
 			};
 		} else if (!prepared.tool) {

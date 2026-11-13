@@ -40,6 +40,8 @@ export function commandStatusText(state: ReturnType<typeof commandUiState>): str
 		unknown: "Status unknown",
 		observation_failed: "Observation failed",
 		not_started: "Not started",
+		blocked: "Blocked",
+		executed: "Executed",
 	}[state]
 }
 

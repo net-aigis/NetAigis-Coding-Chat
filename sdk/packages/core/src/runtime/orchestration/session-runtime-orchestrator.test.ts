@@ -2600,7 +2600,7 @@ describe("SessionRuntime.run — initialMessages seeding (P1 #1)", () => {
 // =============================================================================
 
 describe("checkRepeatedToolCall", () => {
-	it("counts a streak of identical calls and warns once at the soft threshold", () => {
+	it("counts a streak of identical calls and soft-warns from soft until hard", () => {
 		const state = createLoopDetectionState();
 		const config = { softThreshold: 3, hardThreshold: 5 };
 
@@ -2625,7 +2625,20 @@ describe("checkRepeatedToolCall", () => {
 			hardEscalation: false,
 			skipCall: false,
 		});
-		// Past the soft threshold the warning is not repeated every call.
+		// Soft range continues until hard — do not re-execute between soft and hard.
+		expect(
+			checkRepeatedToolCall(state, "run_commands", '{"a":1}', config),
+		).toEqual({
+			softWarning: true,
+			hardEscalation: false,
+			skipCall: false,
+		});
+		expect(state.consecutiveIdenticalCount).toBe(4);
+	});
+
+	it("never soft-blocks the first call even if softThreshold is misconfigured as 1", () => {
+		const state = createLoopDetectionState();
+		const config = { softThreshold: 1, hardThreshold: 3 };
 		expect(
 			checkRepeatedToolCall(state, "run_commands", '{"a":1}', config),
 		).toEqual({
@@ -2633,7 +2646,9 @@ describe("checkRepeatedToolCall", () => {
 			hardEscalation: false,
 			skipCall: false,
 		});
-		expect(state.consecutiveIdenticalCount).toBe(4);
+		expect(
+			checkRepeatedToolCall(state, "run_commands", '{"a":1}', config),
+		).toMatchObject({ softWarning: true, skipCall: false });
 	});
 
 	it("refuses every call from the hard threshold onward", () => {
@@ -2686,38 +2701,100 @@ describe("LoopDetectionTracker", () => {
 			input: { commands: ["grep -rn x ."] },
 		};
 
+		// 1st ok, 2nd soft-skip with recovery, 3rd+ hard-stop.
 		expect(tracker.inspect(call)).toEqual({ kind: "ok", skip: false });
-		expect(tracker.inspect(call)).toEqual({
-			kind: "soft",
-			skip: false,
-			message: expect.stringContaining("2 consecutive identical calls"),
-		});
+		const soft = tracker.inspect(call);
+		expect(soft.kind).toBe("soft");
+		expect(soft.skip).toBe(true);
+		expect(soft.blockedStatus).toMatchObject({ status: "blocked" });
+		expect(soft.message).toContain("×2");
+		expect(soft.message).toContain("change tool");
+
 		const hard = tracker.inspect(call);
 		expect(hard.kind).toBe("hard");
 		expect(hard.skip).toBe(true);
-		expect(hard.message).toContain("3 consecutive identical calls");
+		expect(hard.message).toContain("×3");
 
 		// Every further identical call stays refused, not just the first one.
-		for (let i = 4; i <= 7; i++) {
+		for (let i = 4; i <= 6; i++) {
 			const verdict = tracker.inspect(call);
 			expect(verdict.kind).toBe("hard");
 			expect(verdict.skip).toBe(true);
-			expect(verdict.message).toContain(`${i} consecutive identical calls`);
+			expect(verdict.message).toContain(`×${i}`);
 		}
+	});
+
+	it("executes the first distinct run_commands (P0: softThreshold must not be 1)", () => {
+		const tracker = new LoopDetectionTracker();
+		expect(
+			tracker.inspect({
+				name: "run_commands",
+				input: {
+					commands: [
+						'timeout 25 ssh host "sed -n 1,10p /tmp/a"',
+					],
+				},
+			}),
+		).toEqual({ kind: "ok", skip: false });
+		expect(
+			tracker.inspect({
+				name: "run_commands",
+				input: {
+					commands: [
+						'timeout 25 ssh host "sed -n 11,20p /tmp/a"',
+					],
+				},
+			}),
+		).toEqual({ kind: "ok", skip: false });
+	});
+
+	it("treats sleep-only duration changes as the same run_commands loop", () => {
+		const tracker = new LoopDetectionTracker({
+			softThreshold: 2,
+			hardThreshold: 3,
+		});
+		expect(
+			tracker.inspect({
+				name: "run_commands",
+				input: { commands: ["ps -p 1; sleep 5"] },
+			}).kind,
+		).toBe("ok");
+		const second = tracker.inspect({
+			name: "run_commands",
+			input: { commands: ["ps -p 1; sleep 30"] },
+		});
+		expect(second.kind).toBe("soft");
+		expect(second.skip).toBe(true);
+		const third = tracker.inspect({
+			name: "run_commands",
+			input: { commands: ["ps -p 1; sleep 60"] },
+		});
+		expect(third.kind).toBe("hard");
+		expect(third.skip).toBe(true);
 	});
 
 	it("treats key order in the tool input as the same call", () => {
 		const tracker = new LoopDetectionTracker({
-			softThreshold: 1,
-			hardThreshold: 2,
+			softThreshold: 2,
+			hardThreshold: 3,
 		});
-		tracker.inspect({ name: "editor", input: { path: "/a", new_text: "x" } });
-		const verdict = tracker.inspect({
+		expect(
+			tracker.inspect({ name: "editor", input: { path: "/a", new_text: "x" } })
+				.kind,
+		).toBe("ok");
+		const soft = tracker.inspect({
 			name: "editor",
 			input: { new_text: "x", path: "/a" },
 		});
-		expect(verdict.kind).toBe("hard");
-		expect(verdict.skip).toBe(true);
+		expect(soft.kind).toBe("soft");
+		// Non-run_commands soft still executes; hard refuses.
+		expect(soft.skip).toBe(false);
+		const hard = tracker.inspect({
+			name: "editor",
+			input: { path: "/a", new_text: "x" },
+		});
+		expect(hard.kind).toBe("hard");
+		expect(hard.skip).toBe(true);
 	});
 
 	it("clears the streak on reset()", () => {
@@ -3039,7 +3116,8 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 			},
 			input: identicalCall,
 		});
-		const second = await beforeTool?.({
+		// Second identical run_commands: soft-skip (recovery), no stop yet.
+		const softRefused = await beforeTool?.({
 			snapshot: makeSnapshot(),
 			tool: { name: "run_commands" } as never,
 			toolCall: {
@@ -3050,7 +3128,9 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 			},
 			input: identicalCall,
 		});
-		expect(second).toBeUndefined();
+		expect(softRefused).toMatchObject({ skip: true });
+		expect(softRefused).not.toMatchObject({ stop: true });
+		// Third identical: hard-stop.
 		const refused = await beforeTool?.({
 			snapshot: makeSnapshot(),
 			tool: { name: "run_commands" } as never,
@@ -3104,6 +3184,55 @@ describe("SessionRuntime.run — tracker wiring (P1 #3)", () => {
 		expect(abortCalls).toHaveLength(0);
 		// The streak restarts with the new conversation, so the same call is
 		// still refused only once it reaches the hard threshold again.
+		const first = await beforeTool?.(context());
+		expect(first).toBeUndefined();
+		const second = await beforeTool?.(context());
+		expect(second).toBeUndefined();
+		const third = await beforeTool?.(context());
+		expect(third).toMatchObject({ skip: true, stop: true });
+	});
+
+	it("resets loop detection when continue() receives a new user message", async () => {
+		const identicalCall = { a: 1 };
+		const { deps, abortCalls } = makeScriptedRuntime({ events: [] });
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: {
+					maxConsecutiveMistakes: 6,
+					loopDetection: { softThreshold: 2, hardThreshold: 3 },
+				},
+			}),
+			deps,
+		);
+		const beforeTool = (
+			session as unknown as {
+				createRuntimeHooks(): AgentRuntimeConfig["hooks"];
+			}
+		).createRuntimeHooks()!.beforeTool!;
+		const context = () => ({
+			snapshot: makeSnapshot(),
+			tool: { name: "same" } as never,
+			toolCall: {
+				type: "tool-call" as const,
+				toolCallId: "tc",
+				toolName: "same",
+				input: identicalCall,
+			},
+			input: identicalCall,
+		});
+
+		// Drive the streak to a hard stop (threshold 3).
+		await beforeTool?.(context());
+		await beforeTool?.(context());
+		const stopped = await beforeTool?.(context());
+		expect(stopped).toMatchObject({ skip: true, stop: true });
+		// Drain the async forceAtLimit mistake enqueue before continuing.
+		await Promise.resolve();
+		await Promise.resolve();
+
+		await session.continue("guidance after mistake limit");
+		expect(abortCalls).toHaveLength(0);
+
 		const first = await beforeTool?.(context());
 		expect(first).toBeUndefined();
 		const second = await beforeTool?.(context());
@@ -3427,22 +3556,87 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 		await expect(
 			beforeTool?.(toolCallContext("run_commands", input)),
 		).resolves.toBeUndefined();
-		// Soft verdict: no control object is returned, but the model gets a notice.
+		// 2nd identical: soft-skip with recovery guidance (run continues).
 		const soft = await beforeTool?.(toolCallContext("run_commands", input));
-		expect(soft).toBeUndefined();
-
+		expect(soft).toMatchObject({
+			skip: true,
+			blocked: true,
+			blockedStatus: { status: "blocked" },
+		});
+		expect(soft).not.toMatchObject({ stop: true });
+		expect(soft?.reason).toContain("not executed");
+		// 3rd identical: hard-stop.
 		const control = await beforeTool?.(toolCallContext("run_commands", input));
-		expect(control).toMatchObject({ skip: true, stop: true });
-		expect(control?.reason).toContain("3 consecutive identical calls");
+		expect(control).toMatchObject({
+			skip: true,
+			stop: true,
+			blocked: true,
+			reason: "repeated_tool_call_loop",
+			blockedStatus: { reason: "identical_tool_call_deduped" },
+		});
 
 		// Upstream's stop decision is sticky for the whole run. Later boundaries
-		// remain stopped without incrementing the loop counter again. The queued
-		// mistake-limit decision supplies the subsequent stop reason.
+		// remain stopped as a loop stop — not as inflated mistake-limit counts.
 		for (let count = 4; count <= 6; count++) {
 			const again = await beforeTool?.(toolCallContext("run_commands", input));
 			expect(again).toMatchObject({ stop: true });
-			expect(again?.reason).toBe("maximum consecutive mistakes reached (6)");
+			expect(again?.reason).toBe("repeated_tool_call_loop");
 		}
+	});
+
+	it("keeps a different call stopped after the run was refused", async () => {
+		const { deps, abortCalls } = makeScriptedRuntime({ events: [] });
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: {
+					maxConsecutiveMistakes: 6,
+					loopDetection: { softThreshold: 2, hardThreshold: 3 },
+				},
+			}),
+			deps,
+		);
+		const beforeTool = beforeToolHook(session)!;
+
+		await expect(
+			beforeTool?.(toolCallContext("run_commands", { commands: ["ls"] })),
+		).resolves.toBeUndefined();
+		const soft = await beforeTool?.(
+			toolCallContext("run_commands", { commands: ["ls"] }),
+		);
+		expect(soft).toMatchObject({ skip: true });
+		expect(soft).not.toMatchObject({ stop: true });
+		const refused = await beforeTool?.(
+			toolCallContext("run_commands", { commands: ["ls"] }),
+		);
+		expect(refused).toMatchObject({ skip: true, stop: true });
+
+		await expect(
+			beforeTool?.(
+				toolCallContext("read_files", { files: [{ path: "/tmp/a" }] }),
+			),
+		).resolves.toMatchObject({
+			stop: true,
+			reason: "repeated_tool_call_loop",
+		});
+	});
+
+	it("hard loop stop does not claim maxConsecutiveMistakes as errors", async () => {
+		const { deps } = makeScriptedRuntime({ events: [] });
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: {
+					maxConsecutiveMistakes: 15,
+					loopDetection: { softThreshold: 2, hardThreshold: 3 },
+				},
+			}),
+			deps,
+		);
+		const beforeTool = beforeToolHook(session)!;
+		const input = { commands: ["echo same"] };
+		await beforeTool?.(toolCallContext("run_commands", input));
+		await beforeTool?.(toolCallContext("run_commands", input));
+		const hard = await beforeTool?.(toolCallContext("run_commands", input));
+		expect(hard).toMatchObject({ skip: true, stop: true });
 
 		const conversation = (
 			session as unknown as {
@@ -3460,40 +3654,13 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 						)
 					: [],
 			);
-		expect(
-			texts.some((text) => text.includes("2 consecutive identical calls")),
-		).toBe(true);
-		expect(
-			texts.some((text) => text.includes("3 consecutive identical calls")),
-		).toBe(true);
-	});
-
-	it("keeps a different call stopped after the run was refused", async () => {
-		const { deps, abortCalls } = makeScriptedRuntime({ events: [] });
-		const session = new SessionRuntime(
-			makeAgentConfig({
-				execution: { loopDetection: { softThreshold: 1, hardThreshold: 2 } },
-			}),
-			deps,
+		expect(texts.some((text) => text.includes("stopped repeating"))).toBe(
+			true,
 		);
-		const beforeTool = beforeToolHook(session)!;
-
-		await expect(
-			beforeTool?.(toolCallContext("run_commands", { commands: ["ls"] })),
-		).resolves.toBeUndefined();
-		const refused = await beforeTool?.(
-			toolCallContext("run_commands", { commands: ["ls"] }),
-		);
-		expect(refused).toMatchObject({ skip: true, stop: true });
-
-		await expect(
-			beforeTool?.(
-				toolCallContext("read_files", { files: [{ path: "/tmp/a" }] }),
-			),
-		).resolves.toMatchObject({
-			stop: true,
-			reason: "maximum consecutive mistakes reached (6)",
-		});
+		expect(texts.some((text) => /\b15 errors\b/.test(text))).toBe(false);
+		expect(
+			texts.some((text) => text.includes("maximum consecutive mistakes")),
+		).toBe(false);
 	});
 
 	it("does not guard when execution.loopDetection is false", async () => {
@@ -3514,7 +3681,7 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 		expect(abortCalls).toHaveLength(0);
 	});
 
-	it("appends the soft warning to the conversation so the model can change approach", async () => {
+	it("does not dump soft warnings into the conversation for non-command tools", async () => {
 		const { deps } = makeScriptedRuntime({ events: [] });
 		const session = new SessionRuntime(
 			makeAgentConfig({
@@ -3523,10 +3690,11 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 			deps,
 		);
 		const beforeTool = beforeToolHook(session)!;
-		const input = { commands: ["cat file.txt"] };
+		const input = { files: [{ path: "/tmp/a" }] };
 
-		await beforeTool?.(toolCallContext("run_commands", input));
-		const soft = await beforeTool?.(toolCallContext("run_commands", input));
+		await beforeTool?.(toolCallContext("read_files", input));
+		const soft = await beforeTool?.(toolCallContext("read_files", input));
+		// Soft for non-run_commands still executes; no skip and no conversation dump.
 		expect(soft).toBeUndefined();
 
 		const conversation = (
@@ -3545,9 +3713,211 @@ describe("SessionRuntime loop-detection beforeTool guard", () => {
 						)
 					: [],
 			);
+		expect(texts.some((text) => text.includes("Blocked"))).toBe(false);
 		expect(
-			texts.some((text) => text.includes("2 consecutive identical calls")),
-		).toBe(true);
+			texts.some((text) => text.includes("consecutive identical")),
+		).toBe(false);
+	});
+
+	it("soft-skips identical run_commands with structured blocked status (no conversation dump)", async () => {
+		const { deps } = makeScriptedRuntime({ events: [] });
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: { loopDetection: { softThreshold: 2, hardThreshold: 3 } },
+			}),
+			deps,
+		);
+		const beforeTool = beforeToolHook(session)!;
+		const input = { commands: ["grep -rn MANUFACTURER_APPLICATION_SETTING ."] };
+
+		await beforeTool?.(toolCallContext("run_commands", input));
+		const soft = await beforeTool?.(toolCallContext("run_commands", input));
+		expect(soft).toMatchObject({
+			skip: true,
+			blocked: true,
+			blockedStatus: {
+				status: "blocked",
+				reason: "identical_tool_call",
+			},
+		});
+		expect(soft).not.toMatchObject({ stop: true });
+		expect(soft?.reason).toContain("Do not resubmit the same shell block");
+		expect(soft?.reason).toContain("MANUFACTURER_APPLICATION_SETTING");
+
+		const conversation = (
+			session as unknown as {
+				conversation: { getMessages(): readonly AgentMessage[] };
+			}
+		).conversation;
+		const texts = conversation
+			.getMessages()
+			.flatMap((message) =>
+				Array.isArray(message.content)
+					? message.content.flatMap((part) =>
+							part && typeof part !== "string" && part.type === "text"
+								? [part.text]
+								: [],
+						)
+					: [],
+			);
+		expect(texts.some((text) => text.includes("MUST change approach"))).toBe(
+			false,
+		);
+	});
+
+	it("M23/M24: after Completed, identical run_commands reuses prior result (no block spiral)", async () => {
+		/**
+		 * Protocol root cause (Eingefügter Text / live chat 2026-11-13):
+		 * 1) Model re-requested the exact M23/M24 shell after status Completed.
+		 * 2) Source: new model tool-call (new toolCallId), not executor retry.
+		 * 3) Soft block alone did not stop the agent loop; retries polluted context.
+		 * 4) Identical block errors were re-injected as failures.
+		 * 5) Hard path previously forceAtLimit → "15 errors".
+		 *
+		 * Expected: reuse completed outcome; never soft-block a prior success.
+		 */
+		const { M23_M24_COMMAND } = await import("../safety/tool-call-outcomes");
+		const { deps } = makeScriptedRuntime({ events: [] });
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: {
+					maxConsecutiveMistakes: 15,
+					loopDetection: { softThreshold: 2, hardThreshold: 3 },
+				},
+			}),
+			deps,
+		);
+		const input = { commands: [M23_M24_COMMAND] };
+		(
+			session as unknown as {
+				toolOutcomes: {
+					recordCompleted(
+						toolName: string,
+						input: unknown,
+						toolCallId: string,
+						output: unknown,
+					): void;
+				};
+			}
+		).toolOutcomes.recordCompleted("run_commands", input, "call_m23_completed", {
+			results: [
+				{
+					stdout: "6\n",
+					execution: { state: "completed", exitCode: 0 },
+				},
+			],
+		});
+
+		const beforeTool = beforeToolHook(session)!;
+		const firstRetry = await beforeTool?.(
+			toolCallContext("run_commands", input),
+		);
+		expect(firstRetry).toMatchObject({
+			skip: true,
+			reused: true,
+			reusedResult: {
+				status: "completed",
+				reason: "reused_prior_result",
+				priorToolCallId: "call_m23_completed",
+				execution: { state: "executed" },
+			},
+		});
+		expect(firstRetry).not.toMatchObject({ blocked: true });
+		expect(firstRetry).not.toMatchObject({ stop: true });
+
+		// Further identical requests keep reusing — no mistake spiral, no 15 errors.
+		const secondRetry = await beforeTool?.(
+			toolCallContext("run_commands", input),
+		);
+		expect(secondRetry).toMatchObject({
+			skip: true,
+			reused: true,
+			reusedResult: { priorToolCallId: "call_m23_completed" },
+		});
+		expect(secondRetry).not.toMatchObject({ stop: true });
+
+		const conversation = (
+			session as unknown as {
+				conversation: { getMessages(): readonly AgentMessage[] };
+			}
+		).conversation;
+		const texts = conversation
+			.getMessages()
+			.flatMap((message) =>
+				Array.isArray(message.content)
+					? message.content.flatMap((part) =>
+							part && typeof part !== "string" && part.type === "text"
+								? [part.text]
+								: [],
+						)
+					: [],
+			);
+		expect(texts.some((text) => /\b15 errors\b/.test(text))).toBe(false);
+		expect(texts.some((text) => text.includes("stopped repeating"))).toBe(
+			false,
+		);
+	});
+
+	it("M23/M24: second identical block stops the tool path with deduped status", async () => {
+		const { M23_M24_COMMAND } = await import("../safety/tool-call-outcomes");
+		const { deps } = makeScriptedRuntime({ events: [] });
+		const session = new SessionRuntime(
+			makeAgentConfig({
+				execution: {
+					maxConsecutiveMistakes: 15,
+					loopDetection: { softThreshold: 2, hardThreshold: 3 },
+				},
+			}),
+			deps,
+		);
+		const beforeTool = beforeToolHook(session)!;
+		const input = { commands: [M23_M24_COMMAND] };
+
+		await expect(
+			beforeTool?.(toolCallContext("run_commands", input)),
+		).resolves.toBeUndefined();
+		const soft = await beforeTool?.(toolCallContext("run_commands", input));
+		expect(soft).toMatchObject({
+			skip: true,
+			blocked: true,
+			blockedStatus: { status: "blocked" },
+		});
+		expect(soft).not.toMatchObject({ stop: true });
+
+		const again = await beforeTool?.(toolCallContext("run_commands", input));
+		expect(again).toMatchObject({
+			skip: true,
+			stop: true,
+			blocked: true,
+			blockedStatus: { reason: "identical_tool_call_deduped" },
+			reason: "repeated_tool_call_loop",
+		});
+
+		const conversation = (
+			session as unknown as {
+				conversation: { getMessages(): readonly AgentMessage[] };
+			}
+		).conversation;
+		const texts = conversation
+			.getMessages()
+			.flatMap((message) =>
+				Array.isArray(message.content)
+					? message.content.flatMap((part) =>
+							part && typeof part !== "string" && part.type === "text"
+								? [part.text]
+								: [],
+						)
+					: [],
+			);
+		expect(texts.some((text) => text.includes("stopped repeating"))).toBe(
+			true,
+		);
+		expect(texts.some((text) => /\b15 errors\b/.test(text))).toBe(false);
+		// Deduped: no second full identical dump in the conversation notice.
+		const blockNotices = texts.filter((text) =>
+			text.includes("Blocked identical"),
+		);
+		expect(blockNotices.length).toBeLessThanOrEqual(1);
 	});
 });
 // Auth retry

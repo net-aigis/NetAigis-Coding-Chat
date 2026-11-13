@@ -34,6 +34,7 @@ describe("HubServerTransport boundaries", () => {
 		return new HubServerTransport({
 			runtimeHandlers: createLocalHubScheduleRuntimeHandlers(),
 			scheduleOptions: { dbPath: ":memory:" },
+			taskOptions: { dbPath: ":memory:", watchFiles: false },
 			sessionHost: {
 				subscribe: vi.fn(),
 				startSession: vi.fn(),
@@ -2004,6 +2005,67 @@ describe("HubServerTransport boundaries", () => {
 		expect(
 			[...ctx.pendingCapabilityRequests.values()].map((r) => r.targetClientId),
 		).toEqual(["owner-client"]);
+	});
+
+	it("routes sticky hook proxies to the creator that reclaimed after detach", async () => {
+		const transport = createTransport();
+		const ctx = getContext(transport);
+		for (const clientId of ["owner-old", "owner-new"]) {
+			await transport.handleCommand({
+				version: "v1",
+				requestId: `req-register-${clientId}`,
+				command: "client.register",
+				clientId,
+				payload: { clientId, clientType: "desktop" },
+			});
+		}
+		ensureSessionState(ctx, "session-1", "owner-old", "creator");
+
+		await transport.handleCommand({
+			version: "v1",
+			requestId: "req-detach-old",
+			command: "session.detach",
+			clientId: "owner-old",
+			sessionId: "session-1",
+		});
+		// Reopen/resume: new client becomes creator while the resident agent
+		// still holds hook proxies that name the detached owner.
+		ensureSessionState(ctx, "session-1", "owner-new", "creator");
+		expect(ctx.sessionState.get("session-1")?.createdByClientId).toBe(
+			"owner-new",
+		);
+
+		const requested: string[] = [];
+		const unsubscribe = transport.subscribe(
+			"owner-new",
+			(event) => {
+				if (event.event === "capability.requested") {
+					requested.push(String(event.payload?.targetClientId));
+				}
+			},
+			{ sessionId: "session-1" },
+		);
+		const pending = requestCapability(
+			ctx,
+			"session-1",
+			"hook.beforeRun",
+			{},
+			"owner-old",
+		);
+		expect(requested).toEqual(["owner-new"]);
+		expect(
+			[...ctx.pendingCapabilityRequests.values()].map((r) => r.targetClientId),
+		).toEqual(["owner-new"]);
+		const [requestId] = [...ctx.pendingCapabilityRequests.keys()];
+		await transport.handleCommand({
+			version: "v1",
+			requestId: "req-respond-new",
+			command: "capability.respond",
+			clientId: "owner-new",
+			payload: { requestId, ok: true, payload: { control: {} } },
+		});
+		await expect(pending).resolves.toEqual({ control: {} });
+		unsubscribe();
 	});
 
 	it("cancels pending capability requests when a run is aborted", async () => {

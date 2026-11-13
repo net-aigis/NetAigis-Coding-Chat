@@ -85,6 +85,146 @@ function isWaitOnlyInput(input: unknown): boolean {
 		: isWait(commands);
 }
 
+/**
+ * Collapse volatile wait / clock noise so observation polls that only change
+ * `sleep N` still count as the same loop (otherwise 5× near-identical dumps
+ * fill the context before hard stop).
+ */
+export function normalizeRunCommandsSignature(input: unknown): string {
+	const stripVolatile = (text: string): string =>
+		text
+			.replace(/\bsleep\s+(?:\d+(?:\.\d+)?|\.\d+)[smhd]?\b/giu, "sleep <n>")
+			.replace(/\btimeout\s+(?:\d+(?:\.\d+)?|\.\d+)[smhd]?\b/giu, "timeout <n>")
+			.replace(/\b\d+(?:\.\d+)?\s*(?:seconds?|secs?|minutes?|mins?|s|sec)\b/giu, "<n>s")
+			.replace(/"[^"]*sleep[^"]*"/giu, '"<sleep>"')
+			.replace(/; *echo +EXIT=\$\?/giu, "")
+			.replace(/\s+/gu, " ")
+			.trim();
+
+	const normalizeOne = (command: unknown): unknown => {
+		if (typeof command === "string") return stripVolatile(command);
+		if (!command || typeof command !== "object") return command;
+		const value = { ...(command as Record<string, unknown>) };
+		if (typeof value.command === "string") {
+			value.command = stripVolatile(value.command);
+		}
+		if (Array.isArray(value.args)) {
+			value.args = value.args.map((arg) =>
+				typeof arg === "string" &&
+				/^(?:\d+(?:\.\d+)?|\.\d+)[smhd]?$/u.test(arg)
+					? "<n>"
+					: arg,
+			);
+		}
+		return value;
+	};
+
+	if (input && typeof input === "object" && "commands" in input) {
+		const commands = (input as { commands: unknown }).commands;
+		if (Array.isArray(commands)) {
+			return toolCallSignature({
+				...(input as Record<string, unknown>),
+				commands: commands.map(normalizeOne),
+			});
+		}
+	}
+	if (Array.isArray(input)) {
+		return toolCallSignature(input.map(normalizeOne));
+	}
+	return toolCallSignature(normalizeOne(input));
+}
+
+/**
+ * run_commands dumps large outputs — intervene sooner than generic tools.
+ * Soft at 2: refuse the identical *repeat* and inject short recovery guidance.
+ * Hard at 3: stop the run.
+ *
+ * softThreshold MUST be >= 2. soft=1 skipped the first real command (P0 bug:
+ * every new shell looked like "1 consecutive identical" and never executed).
+ */
+const RUN_COMMANDS_CONFIG: LoopDetectionConfig = {
+	softThreshold: 2,
+	hardThreshold: 3,
+};
+
+/** Clip a command snippet for recovery notices (keep context small). */
+function clipCommandSnippet(input: unknown, max = 240): string {
+	const raw =
+		input && typeof input === "object" && "commands" in input
+			? JSON.stringify((input as { commands: unknown }).commands)
+			: typeof input === "string"
+				? input
+				: input == null
+					? ""
+					: JSON.stringify(input);
+	const oneLine = raw.replace(/\s+/gu, " ").trim();
+	if (oneLine.length <= max) return oneLine;
+	return `${oneLine.slice(0, Math.max(0, max - 1))}…`;
+}
+
+/**
+ * Short structured status for the model context (full text stays out of turns).
+ */
+export function buildBlockedToolStatus(input: {
+	toolName: string;
+	count: number;
+	kind: "soft" | "hard";
+	waitOnly?: boolean;
+	toolCallId?: string;
+}): Record<string, unknown> {
+	const label = input.waitOnly ? "wait_only" : "identical";
+	return {
+		status: "blocked",
+		reason:
+			input.kind === "hard"
+				? "identical_tool_call_hard"
+				: "identical_tool_call",
+		tool: input.toolName,
+		count: input.count,
+		label,
+		...(input.toolCallId ? { toolCallId: input.toolCallId } : {}),
+		summary:
+			input.kind === "hard"
+				? `Blocked ${label} ${input.toolName} (×${input.count}); stop retrying — summarize or ask.`
+				: `Blocked ${label} ${input.toolName} (×${input.count}); not executed — change tool/args or use prior result.`,
+		guidance:
+			input.toolName === "run_commands"
+				? [
+						"Do not resubmit the same shell block.",
+						"Prefer read_files/search or a different path/pattern.",
+						"For writes (e.g. /learning/pending/.../approve): GET the rule state first; do not re-POST blindly after timeout/block.",
+					]
+				: ["Change tool or arguments; do not repeat the same call."],
+	};
+}
+
+/**
+ * Actionable recovery text so the model changes the command/tool instead of
+ * retrying the same failing shell block (e.g. grep exit 1).
+ * Keep this short — full dumps pollute the model context.
+ */
+export function buildLoopRecoveryMessage(input: {
+	toolName: string;
+	count: number;
+	kind: "soft" | "hard";
+	waitOnly?: boolean;
+	toolInput?: unknown;
+}): string {
+	const status = buildBlockedToolStatus(input);
+	const snippet =
+		input.kind === "soft" && input.toolName === "run_commands"
+			? clipCommandSnippet(input.toolInput, 120)
+			: "";
+	const parts = [
+		String(status.summary),
+		...(Array.isArray(status.guidance)
+			? (status.guidance as string[]).map((line) => `- ${line}`)
+			: []),
+	];
+	if (snippet) parts.push(`Blocked command: ${snippet}`);
+	return parts.join("\n");
+}
+
 export interface LoopCheckResult {
 	softWarning: boolean;
 	hardEscalation: boolean;
@@ -117,10 +257,14 @@ export function checkRepeatedToolCall(
 	state.lastToolName = toolName;
 	state.lastToolSignature = signature;
 
+	const count = state.consecutiveIdenticalCount;
+	const soft = Math.max(2, config.softThreshold);
+	const hard = Math.max(soft + 1, config.hardThreshold);
 	return {
-		softWarning: state.consecutiveIdenticalCount === config.softThreshold,
-		hardEscalation: state.consecutiveIdenticalCount >= config.hardThreshold,
-		skipCall: state.consecutiveIdenticalCount >= config.hardThreshold,
+		// Range, not equality: counts between soft and hard stay refused.
+		softWarning: count >= soft && count < hard,
+		hardEscalation: count >= hard,
+		skipCall: count >= hard,
 	};
 }
 
@@ -140,6 +284,8 @@ export function checkRepeatedToolCall(
 export interface LoopDetectionVerdict {
 	kind: "ok" | "soft" | "hard";
 	message?: string;
+	/** Structured blocked status for the tool result (short; model-facing). */
+	blockedStatus?: Record<string, unknown>;
 	/**
 	 * Set when the repeated call must not execute at all. `SessionRuntime`
 	 * feeds this to its `beforeTool` hook so identical calls past the hard
@@ -153,11 +299,13 @@ export interface LoopDetectionVerdict {
 export interface LoopDetectionCall {
 	name: string;
 	input: unknown;
+	toolCallId?: string;
 }
 
+/** Generic tools: warn at 2, hard-stop at 3 (was 3/5 — too late after context pollution). */
 const DEFAULT_CONFIG: LoopDetectionConfig = {
-	softThreshold: 3,
-	hardThreshold: 5,
+	softThreshold: 2,
+	hardThreshold: 3,
 };
 
 /**
@@ -181,27 +329,65 @@ export class LoopDetectionTracker {
 	inspect(call: LoopDetectionCall): LoopDetectionVerdict {
 		const waitOnly =
 			call.name === "run_commands" && isWaitOnlyInput(call.input);
+		const runCommands = call.name === "run_commands";
 		const signature = waitOnly
 			? "wait-only-sleep"
-			: `input:${toolCallSignature(call.input)}`;
+			: runCommands
+				? `run:${normalizeRunCommandsSignature(call.input)}`
+				: `input:${toolCallSignature(call.input)}`;
+		// Command polls dump large tool results; always warn/stop at 2 identical
+		// calls regardless of a looser session config (soft=1 would skip the
+		// first real command).
+		const config = runCommands ? RUN_COMMANDS_CONFIG : this.config;
 		const result = checkRepeatedToolCall(
 			this.state,
 			call.name,
 			signature,
-			this.config,
+			config,
 		);
 		if (result.hardEscalation) {
+			const blockedStatus = buildBlockedToolStatus({
+				toolName: call.name,
+				count: this.state.consecutiveIdenticalCount,
+				kind: "hard",
+				waitOnly,
+				toolCallId: call.toolCallId,
+			});
 			return {
 				kind: "hard",
-				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive ${waitOnly ? "wait-only" : "identical"} calls to \`${call.name}\`; stopping to avoid a loop.`,
+				message: buildLoopRecoveryMessage({
+					toolName: call.name,
+					count: this.state.consecutiveIdenticalCount,
+					kind: "hard",
+					waitOnly,
+					toolInput: call.input,
+				}),
+				blockedStatus,
 				skip: result.skipCall,
 			};
 		}
 		if (result.softWarning) {
+			const blockedStatus = buildBlockedToolStatus({
+				toolName: call.name,
+				count: this.state.consecutiveIdenticalCount,
+				kind: "soft",
+				waitOnly,
+				toolCallId: call.toolCallId,
+			});
 			return {
 				kind: "soft",
-				message: `Detected ${this.state.consecutiveIdenticalCount} consecutive ${waitOnly ? "wait-only" : "identical"} calls to \`${call.name}\`; consider trying a different approach.`,
-				skip: false,
+				message: buildLoopRecoveryMessage({
+					toolName: call.name,
+					count: this.state.consecutiveIdenticalCount,
+					kind: "soft",
+					waitOnly,
+					toolInput: call.input,
+				}),
+				blockedStatus,
+				// Soft used to still execute and dump another full tool result into
+				// context. For command polls that is the pollution; skip the call
+				// but keep the run alive so the recovery text can steer the model.
+				skip: runCommands,
 			};
 		}
 		return { kind: "ok", skip: false };

@@ -8,7 +8,9 @@ export type CommandExecutionState =
 	| "timed_out"
 	| "unknown"
 	| "observation_failed"
-	| "not_started";
+	| "not_started"
+	| "blocked"
+	| "executed";
 export interface CommandObservation {
 	state: CommandExecutionState;
 	exitCode?: number;
@@ -40,6 +42,8 @@ export function commandExecutionStatusText(
 		unknown: "Status unknown",
 		observation_failed: "Observation failed",
 		not_started: "Not started",
+		blocked: "Blocked",
+		executed: "Executed",
 	}[state];
 }
 function record(value: unknown): Record<string, unknown> {
@@ -63,6 +67,8 @@ export function normalizeCommandObservation(
 			"unknown",
 			"observation_failed",
 			"not_started",
+			"blocked",
+			"executed",
 		].includes(state)
 	)
 		state = "unknown";
@@ -115,16 +121,29 @@ export function aggregateCommandObservations(
 		"timed_out",
 		"aborted",
 		"terminated",
+		"blocked",
 		"not_started",
+		"executed",
 	] as const)
 		if (commands.some((command) => command.state === state)) return state;
 	return "completed";
 }
 export function extractCommandExecution(output: unknown): CommandExecution {
+	const top = record(output);
+	// Soft loop-block payload: { status: "blocked", execution: { state: "blocked" } }
+	if (top.status === "blocked") {
+		const blocked = normalizeCommandObservation(
+			top.execution ?? { state: "blocked" },
+		);
+		return {
+			state: "blocked",
+			commands: [{ ...blocked, state: "blocked" }],
+		};
+	}
 	const rows = Array.isArray(output)
 		? output
-		: Array.isArray(record(output).results)
-			? (record(output).results as unknown[])
+		: Array.isArray(top.results)
+			? (top.results as unknown[])
 			: output && typeof output === "object"
 				? [output]
 				: [];

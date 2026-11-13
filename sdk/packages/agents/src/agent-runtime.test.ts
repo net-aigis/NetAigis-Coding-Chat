@@ -195,6 +195,79 @@ describe("AgentRuntime", () => {
 		).toBe(false);
 	});
 
+	it("skips not-yet-started tools when a mid-run steer arrives", async () => {
+		const firstStarted = Promise.withResolvers<void>();
+		const releaseFirst = Promise.withResolvers<void>();
+		let pending: string | undefined;
+		const first = createEchoTool();
+		first.name = "first";
+		first.execute = async () => {
+			firstStarted.resolve();
+			await releaseFirst.promise;
+			return { echoed: "first" };
+		};
+		const second = createEchoTool();
+		second.name = "second";
+		const secondExecute = vi.spyOn(second, "execute");
+		const model = new ScriptedModel([
+			() => [
+				{
+					type: "tool-call-delta",
+					toolCallId: "t1",
+					toolName: "first",
+					inputText: '{"text":"a"}',
+				},
+				{
+					type: "tool-call-delta",
+					toolCallId: "t2",
+					toolName: "second",
+					inputText: '{"text":"b"}',
+				},
+				{ type: "finish", reason: "tool_calls" },
+			],
+			(request) => {
+				expect(request.messages.at(-1)).toMatchObject({
+					role: "user",
+					content: [{ type: "text", text: "Change direction" }],
+				});
+				return [
+					{ type: "text-delta", text: "Steered after tools" },
+					{ type: "finish", reason: "stop" },
+				];
+			},
+		]);
+		const runtime = new AgentRuntime({
+			model,
+			tools: [first, second],
+			consumePendingUserMessage: () => {
+				const message = pending;
+				pending = undefined;
+				return message;
+			},
+		});
+		const resultPromise = runtime.run("Start");
+		await firstStarted.promise;
+		pending = "Change direction";
+		runtime.notifyPendingUserMessage();
+		releaseFirst.resolve();
+		const result = await resultPromise;
+		expect(result.status).toBe("completed");
+		expect(result.outputText).toBe("Steered after tools");
+		expect(secondExecute).not.toHaveBeenCalled();
+		expect(
+			result.messages.some(
+				(message) =>
+					message.role === "tool" &&
+					message.content.some(
+						(part) =>
+							part.type === "tool-result" &&
+							part.toolCallId === "t2" &&
+							part.isError === true,
+					),
+			),
+		).toBe(true);
+	});
+
 	it("passes the surfaced request ID to afterModel without carrying it into the next call", async () => {
 		const afterModel = vi.fn();
 		const model = new ScriptedModel([
@@ -3905,6 +3978,118 @@ describe("AgentRuntime", () => {
 		expect(toolMessage?.content[0]).toMatchObject({
 			type: "tool-result",
 			isError: true,
+		});
+	});
+
+	it("reused prior tool results return status completed without re-executing", async () => {
+		const execute = vi.fn(async () => ({ echoed: "should-not-run" }));
+		const model = new ScriptedModel([
+			() => [
+				{
+					type: "tool-call-delta",
+					toolCallId: "reuse1",
+					toolName: "echo",
+					inputText: '{"text":"x"}',
+				},
+				{ type: "finish", reason: "tool-calls" },
+			],
+			(request) => {
+				const toolResult = request.messages.at(-1)?.content[0];
+				expect(toolResult).toMatchObject({
+					type: "tool-result",
+					isError: false,
+					output: expect.objectContaining({
+						status: "completed",
+						reason: "reused_prior_result",
+						priorToolCallId: "prior-1",
+						execution: { state: "executed" },
+					}),
+				});
+				return [
+					{ type: "text-delta", text: "used prior result" },
+					{ type: "finish", reason: "stop" },
+				];
+			},
+		]);
+		const runtime = new AgentRuntime({
+			model,
+			tools: [{ ...createEchoTool(), execute }],
+			hooks: {
+				beforeTool: () => ({
+					skip: true,
+					reused: true,
+					reusedResult: {
+						status: "completed",
+						reason: "reused_prior_result",
+						priorToolCallId: "prior-1",
+						summary: "Reusing prior echo result (prior-1)",
+						execution: { state: "executed" },
+					},
+					reason: "Reusing prior echo result (prior-1)",
+				}),
+			},
+		});
+
+		const result = await runtime.run("Reuse");
+		expect(result.status).toBe("completed");
+		expect(execute).not.toHaveBeenCalled();
+	});
+
+	it("soft-blocked tools return status blocked without isError (no mistake burn)", async () => {
+		const model = new ScriptedModel([
+			() => [
+				{
+					type: "tool-call-delta",
+					toolCallId: "blocked1",
+					toolName: "echo",
+					inputText: '{"text":"x"}',
+				},
+				{ type: "finish", reason: "tool-calls" },
+			],
+			(request) => {
+				const toolResult = request.messages.at(-1)?.content[0];
+				expect(toolResult).toMatchObject({
+					type: "tool-result",
+					isError: false,
+				});
+				expect(toolResult).toMatchObject({
+					output: expect.objectContaining({ status: "blocked" }),
+				});
+				return [
+					{ type: "text-delta", text: "changed approach" },
+					{ type: "finish", reason: "stop" },
+				];
+			},
+		]);
+		const runtime = new AgentRuntime({
+			model,
+			tools: [createEchoTool()],
+			hooks: {
+				beforeTool: () => ({
+					skip: true,
+					blocked: true,
+					blockedStatus: {
+						status: "blocked",
+						reason: "identical_tool_call",
+						summary: "Blocked identical echo (×2)",
+					},
+					reason: "Blocked identical echo (×2)",
+				}),
+			},
+		});
+
+		const result = await runtime.run("Soft block");
+		expect(result.status).toBe("completed");
+		const toolMessage = result.messages.find(
+			(message) => message.role === "tool",
+		);
+		expect(toolMessage?.content[0]).toMatchObject({
+			type: "tool-result",
+			isError: false,
+			output: expect.objectContaining({
+				status: "blocked",
+				execution: { state: "blocked" },
+			}),
 		});
 	});
 

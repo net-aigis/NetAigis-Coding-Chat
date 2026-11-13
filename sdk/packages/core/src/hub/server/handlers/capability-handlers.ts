@@ -24,6 +24,33 @@ export const CAPABILITY_OWNER_GONE_MESSAGE =
 export const CAPABILITY_OWNER_RECONNECT_GRACE_MS = 7_000;
 
 /**
+ * Live sessions keep the first client's hook/tool proxies after a reopen
+ * reattaches without rebuilding the agent. Those proxies still name the old
+ * targetClientId. When that owner has left and a new creator has claimed the
+ * session, route to the live creator — not to a mere observer that joined.
+ */
+export function resolveCapabilityTargetClientId(
+	ctx: HubTransportContext,
+	sessionId: string,
+	targetClientId: string,
+): string {
+	const liveOwner = ctx.sessionState.get(sessionId)?.createdByClientId?.trim();
+	if (!liveOwner || liveOwner === targetClientId) {
+		return targetClientId;
+	}
+	const detachedForSession = ctx.detachedClientsBySession?.get(sessionId);
+	if (detachedForSession?.has(liveOwner)) {
+		return targetClientId;
+	}
+	const originalDetached = detachedForSession?.has(targetClientId) === true;
+	const originalGone = !ctx.clients.has(targetClientId);
+	if (!originalDetached && !originalGone) {
+		return targetClientId;
+	}
+	return liveOwner;
+}
+
+/**
  * Requests that waited for their owner to reconnect, to deliver to that owner
  * now that it is subscribed again. Each is returned once.
  */
@@ -57,18 +84,26 @@ export async function requestCapability(
 ): Promise<Record<string, unknown> | undefined> {
 	const requestId = createSessionId("capreq_");
 	const startedAt = performance.now();
+	const resolvedTargetClientId = resolveCapabilityTargetClientId(
+		ctx,
+		sessionId,
+		targetClientId,
+	);
 	logHubMessage("info", "capability.request.start", {
 		requestId,
 		sessionId,
 		capabilityName,
-		targetClientId,
+		targetClientId: resolvedTargetClientId,
+		...(resolvedTargetClientId !== targetClientId
+			? { previousTargetClientId: targetClientId }
+			: {}),
 	});
 	const fail = (reason: "detached" | "disconnected") => {
 		logHubMessage("warn", "capability.request.end", {
 			requestId,
 			sessionId,
 			capabilityName,
-			targetClientId,
+			targetClientId: resolvedTargetClientId,
 			ok: false,
 			error: `target_client_${reason}`,
 			durationMs: Math.round(performance.now() - startedAt),
@@ -83,9 +118,13 @@ export async function requestCapability(
 	// Unregistering or detaching cancels the owner's pending requests, but a
 	// request raised after that (a run still in flight when its client
 	// restarted) would wait forever: nobody answers it and nothing times it
-	// out. Requests are never handed to another client: a client that joined
-	// later may enforce different hooks or tools under the same name.
-	if (ctx.detachedClientsBySession?.get(sessionId)?.has(targetClientId)) {
+	// out. Do not hand requests to a mere joiner; only the live creator after
+	// reclaim (see resolveCapabilityTargetClientId) may replace a gone owner.
+	if (
+		ctx.detachedClientsBySession
+			?.get(sessionId)
+			?.has(resolvedTargetClientId)
+	) {
 		throw fail("detached");
 	}
 	return await new Promise((resolve, reject) => {
@@ -93,18 +132,18 @@ export async function requestCapability(
 			"capability.requested",
 			{
 				requestId,
-				targetClientId,
+				targetClientId: resolvedTargetClientId,
 				capabilityName,
 				payload,
 			},
 			sessionId,
 		);
-		const connected = ctx.clients.has(targetClientId);
+		const connected = ctx.clients.has(resolvedTargetClientId);
 		// Registered before any waiting, so Stop (or a detach) cancels it
 		// whether it is waiting for the owner to reconnect or to answer.
 		ctx.pendingCapabilityRequests.set(requestId, {
 			sessionId,
-			targetClientId,
+			targetClientId: resolvedTargetClientId,
 			capabilityName,
 			onProgress,
 			undeliveredEvent: connected ? undefined : event,
@@ -113,7 +152,7 @@ export async function requestCapability(
 					requestId,
 					sessionId,
 					capabilityName,
-					targetClientId,
+					targetClientId: resolvedTargetClientId,
 					ok: result.ok,
 					error: result.error,
 					durationMs: Math.round(performance.now() - startedAt),
@@ -129,7 +168,7 @@ export async function requestCapability(
 					reject(
 						new Error(
 							result.error ||
-								`Capability ${capabilityName} was rejected by ${targetClientId}.`,
+								`Capability ${capabilityName} was rejected by ${resolvedTargetClientId}.`,
 						),
 					);
 					return;
@@ -154,7 +193,7 @@ export async function requestCapability(
 			requestId,
 			sessionId,
 			capabilityName,
-			targetClientId,
+			targetClientId: resolvedTargetClientId,
 		});
 	});
 }

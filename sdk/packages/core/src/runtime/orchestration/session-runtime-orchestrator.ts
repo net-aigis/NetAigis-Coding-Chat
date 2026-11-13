@@ -53,6 +53,7 @@ import {
 	modelSupportsToolCalling,
 	type ToolCallRecord,
 	usesImageGenerationOperation,
+	visibleMistakeLimitText,
 } from "@cline/shared";
 import { filterDisabledTools } from "../../services/global-settings";
 import {
@@ -87,8 +88,16 @@ import {
 	type ConnectionUpdate,
 	normalizeConnectionUpdate,
 } from "../config/connection-update";
-import { LoopDetectionTracker } from "../safety/loop-detection";
+import {
+	LoopDetectionTracker,
+	normalizeRunCommandsSignature,
+	toolCallSignature,
+} from "../safety/loop-detection";
 import { MistakeTracker } from "../safety/mistake-tracker";
+import {
+	buildReusedToolResult,
+	ToolCallOutcomeStore,
+} from "../safety/tool-call-outcomes";
 import { RuntimeEventAdapter } from "./runtime-event-adapter";
 
 export const SESSION_RUN_IN_PROGRESS_ERROR_CODE = "session_run_in_progress";
@@ -117,13 +126,27 @@ export class SessionRunInProgressError extends Error {
 
 function formatToolResultError(output: unknown): string {
 	if (typeof output === "string") {
-		return output;
+		return output.length > 400 ? `${output.slice(0, 399)}…` : output;
 	}
 	if (output instanceof Error) {
 		return output.message;
 	}
+	if (output && typeof output === "object" && !Array.isArray(output)) {
+		const record = output as Record<string, unknown>;
+		if (typeof record.summary === "string" && record.summary.trim()) {
+			return record.summary.trim();
+		}
+		if (typeof record.error === "string" && record.error.trim()) {
+			const err = record.error.trim();
+			return err.length > 400 ? `${err.slice(0, 399)}…` : err;
+		}
+		if (record.status === "blocked") {
+			return `blocked:${String(record.reason ?? "tool")}`;
+		}
+	}
 	try {
-		return JSON.stringify(output);
+		const raw = JSON.stringify(output);
+		return raw.length > 400 ? `${raw.slice(0, 399)}…` : raw;
 	} catch {
 		return String(output);
 	}
@@ -345,12 +368,16 @@ export class SessionRuntime {
 		| undefined;
 	private readonly mistakeTracker: MistakeTracker;
 	private readonly loopTracker: LoopDetectionTracker;
+	/** Successful/blocked outcomes by fingerprint — reuse & dedupe (P0 M23/M24). */
+	private readonly toolOutcomes = new ToolCallOutcomeStore();
 	/**
 	 * True when `execution.loopDetection === false` at construction
 	 * time. Loop inspection is skipped entirely — the tracker still
 	 * exists for API compatibility but is never fed.
 	 */
 	private readonly loopDetectionDisabled: boolean;
+	/** True once the hard-stop recovery notice has been surfaced for the current streak. */
+	private hardStopNoticeAnnounced = false;
 	// Host-owned provider request preparation. This runs immediately
 	// before the model call so every loop iteration sees extension
 	// message builders and API-safe normalization.
@@ -417,6 +444,12 @@ export class SessionRuntime {
 	 * in `executeRun` before returning the `AgentResult`.
 	 */
 	private activeTrackerWork: Promise<void> = Promise.resolve();
+	/**
+	 * Bumped when conversation-boundary trackers reset so orphaned
+	 * `activeTrackerWork` callbacks from a prior stop cannot re-arm
+	 * `trackerAbortInFlight` after the user continues.
+	 */
+	private trackerEpoch = 0;
 	/** True when tracker logic has issued an abort for the active run. */
 	private trackerAbortInFlight = false;
 	/** Why the tracker stopped the run; returned as stop control from the hooks. */
@@ -473,7 +506,7 @@ export class SessionRuntime {
 		this.contributionRegistry.resolve();
 		this.contributionRegistry.validate();
 
-		const maxMistakes = config.execution?.maxConsecutiveMistakes ?? 6;
+		const maxMistakes = config.execution?.maxConsecutiveMistakes ?? 15;
 		this.mistakeTracker = new MistakeTracker({
 			maxConsecutiveMistakes: maxMistakes,
 			onLimitReached: config.onConsecutiveMistakeLimitReached,
@@ -629,6 +662,12 @@ export class SessionRuntime {
 		this.messageBuilder.resetConversationState();
 		this.mistakeTracker.reset();
 		this.loopTracker.reset();
+		this.toolOutcomes.reset();
+		this.hardStopNoticeAnnounced = false;
+		this.trackerEpoch += 1;
+		this.activeTrackerWork = Promise.resolve();
+		this.trackerAbortInFlight = false;
+		this.trackerStopReason = undefined;
 	}
 
 	// -------------------------------------------------------------------
@@ -765,6 +804,13 @@ export class SessionRuntime {
 	): Promise<AgentResult> {
 		const rejection = this.getRunAdmissionError();
 		if (rejection) return Promise.reject(rejection);
+		// A new user turn must clear mistake/loop streaks left by a prior stop
+		// (e.g. run_commands hard-loop → 6-error halt). Without this, phone→PC
+		// continue / Own-UI follow-ups die on the first tool call. Do not call
+		// conversation.resetForRun() — that would wipe history.
+		if (userMessage !== undefined) {
+			this.resetConversationBoundaryTrackers();
+		}
 		return this.executeRun({
 			userMessage,
 			userImages,
@@ -954,6 +1000,9 @@ export class SessionRuntime {
 		this.currentTurnSuccessfulTools = 0;
 		this.currentTurnFailedTools = 0;
 		this.currentTurnFailureDetails = [];
+		// Fresh run: drop prior abort latch. Epoch already advanced when
+		// `continue(userMessage)` / `run()` reset conversation trackers.
+		this.trackerEpoch += 1;
 		this.activeTrackerWork = Promise.resolve();
 		this.trackerAbortInFlight = false;
 		this.trackerStopReason = undefined;
@@ -1267,6 +1316,7 @@ export class SessionRuntime {
 					ctx.toolCall.toolName,
 					control?.input !== undefined ? control.input : ctx.input,
 					ctx.snapshot.iteration,
+					ctx.toolCall.toolCallId,
 				);
 				if (loopControl) {
 					return { ...control, ...loopControl };
@@ -1433,22 +1483,51 @@ export class SessionRuntime {
 				const resultPart = event.message.content.find(
 					(part) => part.type === "tool-result",
 				);
+				const output =
+					resultPart?.type === "tool-result" ? resultPart.output : undefined;
 				const isError =
 					resultPart?.type === "tool-result" && resultPart.isError === true;
-				const errorText = isError
-					? formatToolResultError(
-							resultPart?.type === "tool-result"
-								? resultPart.output
-								: undefined,
-						)
-					: undefined;
+				const outputRecord =
+					output && typeof output === "object" && !Array.isArray(output)
+						? (output as Record<string, unknown>)
+						: undefined;
+				const blocked =
+					outputRecord?.status === "blocked" ||
+					(outputRecord?.execution &&
+						typeof outputRecord.execution === "object" &&
+						!Array.isArray(outputRecord.execution) &&
+						(outputRecord.execution as { state?: unknown }).state ===
+							"blocked");
+				const executionStatus = isError
+					? "failed"
+					: blocked
+						? "blocked"
+						: output === undefined
+							? "unknown"
+							: "completed";
+				const errorText = isError ? formatToolResultError(output) : undefined;
+				this.logger?.log?.("tool_call_finished", {
+					agentId: this.agentId,
+					toolCallId: event.toolCall.toolCallId,
+					toolName: event.toolCall.toolName,
+					fingerprint:
+						event.toolCall.toolName === "run_commands"
+							? `run:${normalizeRunCommandsSignature(input)}`
+							: `input:${toolCallSignature(input)}`,
+					status: executionStatus,
+					isError,
+					executorResult: blocked
+						? outputRecord?.summary ?? "blocked"
+						: isError
+							? errorText
+							: "executed",
+				});
 				const record: ToolCallRecord = {
 					id: event.toolCall.toolCallId,
 					name: event.toolCall.toolName,
 					execution: event.toolCall.execution,
 					input,
-					output:
-						resultPart?.type === "tool-result" ? resultPart.output : undefined,
+					output,
 					error: errorText,
 					durationMs:
 						startedAt === undefined
@@ -1458,10 +1537,26 @@ export class SessionRuntime {
 					endedAt,
 				};
 				this.currentRunToolCalls.push(record);
+				const reused =
+					outputRecord?.reason === "reused_prior_result" ||
+					(outputRecord?.status === "completed" &&
+						typeof outputRecord.priorToolCallId === "string");
+				if (!this.loopDetectionDisabled && !blocked && !isError && !reused) {
+					this.toolOutcomes.recordCompleted(
+						event.toolCall.toolName,
+						input,
+						event.toolCall.toolCallId,
+						output,
+					);
+				}
 				if (event.toolCall.execution) {
 					break;
 				}
 				// Per-turn success/failure bookkeeping for MistakeTracker.
+				// Soft-blocked / reused tools are not execution failures.
+				if (blocked || reused) {
+					break;
+				}
 				if (isError) {
 					this.currentTurnFailedTools += 1;
 					if (errorText) {
@@ -1567,51 +1662,224 @@ export class SessionRuntime {
 	}
 
 	/**
-	 * Feed the `LoopDetectionTracker` with a tool-call and react to
-	 * the returned verdict. Parity with pre-Step-9 agent.ts L917-954:
+	 * Feed outcome ledger + `LoopDetectionTracker` before tool execution.
 	 *
-	 *   - `"soft"`  → append a recovery notice telling the model to
-	 *                 change approach;
-	 *   - `"hard"`  → feed `MistakeTracker.record` with
-	 *                 `forceAtLimit:true`. When the tracker returns
-	 *                 `action: "stop"`, append the stop notice and
-	 *                 abort the active runtime.
+	 * M23/M24 root cause: the model re-issued an identical `run_commands`
+	 * after `Completed`. Reuse prior success; never re-execute. Identical
+	 * blocks are deduped; a second block stops the tool path without
+	 * burning maxConsecutiveMistakes.
 	 */
 	private inspectLoopForToolCall(
 		toolName: string,
 		input: unknown,
 		iteration: number,
+		toolCallId?: string,
 	): AgentBeforeToolResult | undefined {
 		if (this.trackerAbortInFlight || this.loopDetectionDisabled) {
 			return undefined;
 		}
-		const verdict = this.loopTracker.inspect({ name: toolName, input });
-		if (verdict.kind === "ok") {
-			return undefined;
+		const fingerprint =
+			toolName === "run_commands"
+				? `run:${normalizeRunCommandsSignature(input)}`
+				: `input:${toolCallSignature(input)}`;
+		const prior = this.toolOutcomes.lookup(toolName, input);
+
+		// 1) Prior success → reuse (do not soft-block, do not re-execute).
+		if (prior?.kind === "completed") {
+			const reusedResult = buildReusedToolResult(prior);
+			this.logger?.log?.("tool_call_guard", {
+				agentId: this.agentId,
+				toolCallId,
+				toolName,
+				fingerprint,
+				status: "completed",
+				kind: "reused",
+				priorToolCallId: prior.toolCallId,
+				iteration,
+			});
+			return {
+				skip: true,
+				reused: true,
+				reusedResult,
+				reason:
+					typeof reusedResult.summary === "string"
+						? reusedResult.summary
+						: `Reusing prior ${toolName} result`,
+			};
 		}
-		if (verdict.kind === "soft") {
-			if (verdict.message) {
-				this.conversation.appendMessage({
-					role: "user",
-					content: [{ type: "text", text: verdict.message }],
+
+		// 2) Already blocked this fingerprint → stop tool path (deduped).
+		if (prior?.kind === "blocked") {
+			const { stored } = this.toolOutcomes.recordBlocked(
+				toolName,
+				input,
+				toolCallId ?? prior.toolCallId,
+				prior.modelPayload,
+			);
+			const summary =
+				typeof stored.modelPayload.summary === "string"
+					? stored.modelPayload.summary
+					: `Already blocked identical ${toolName}`;
+			this.logger?.log?.("tool_call_guard", {
+				agentId: this.agentId,
+				toolCallId,
+				toolName,
+				fingerprint,
+				status: "blocked",
+				kind: "deduped",
+				priorToolCallId: prior.toolCallId,
+				iteration,
+			});
+			if (!this.hardStopNoticeAnnounced) {
+				this.hardStopNoticeAnnounced = true;
+				this.abortForRepeatedToolLoop({
+					iteration,
+					toolName,
+					toolCallId,
+					summary,
+					reason: "repeated_tool_call_loop",
 				});
 			}
+			return {
+				skip: true,
+				stop: true,
+				blocked: true,
+				blockedStatus: stored.modelPayload,
+				reason: this.trackerStopReason ?? "repeated_tool_call_loop",
+			};
+		}
+
+		const verdict = this.loopTracker.inspect({
+			name: toolName,
+			input,
+			toolCallId,
+		});
+		if (verdict.kind === "ok") {
+			this.logger?.debug?.("tool_call_guard", {
+				agentId: this.agentId,
+				toolCallId,
+				toolName,
+				fingerprint,
+				status: "ok",
+				iteration,
+			});
 			return undefined;
 		}
-		// Hard escalation. Refuse the call outright (`skip`) so a repeated tool
-		// cannot execute one more time while the tracker abort settles, then
-		// record the mistake with forceAtLimit:true so the run stops.
-		this.enqueueMistakeRecord({
+		this.logger?.log?.("tool_call_guard", {
+			agentId: this.agentId,
+			toolCallId,
+			toolName,
+			fingerprint,
+			status: "blocked",
+			kind: verdict.kind,
+			skip: verdict.skip,
+			summary:
+				typeof verdict.blockedStatus?.summary === "string"
+					? verdict.blockedStatus.summary
+					: verdict.message,
 			iteration,
-			reason: "tool_execution_failed",
-			forceAtLimit: true,
-			details:
-				verdict.message ??
-				`Detected repeated tool calls to \`${toolName}\`; stopping to avoid a loop.`,
+		});
+		if (verdict.kind === "soft") {
+			if (!verdict.skip) {
+				return undefined;
+			}
+			const blockedStatus = verdict.blockedStatus ?? {
+				status: "blocked",
+				reason: "identical_tool_call",
+				summary: verdict.message,
+			};
+			this.toolOutcomes.recordBlocked(
+				toolName,
+				input,
+				toolCallId ?? "unknown",
+				blockedStatus,
+			);
+			return {
+				skip: true,
+				blocked: true,
+				blockedStatus,
+				reason: verdict.message,
+			};
+		}
+		// Hard escalation without a prior soft record (e.g. wait-only streak).
+		const shortDetails =
+			typeof verdict.blockedStatus?.summary === "string"
+				? verdict.blockedStatus.summary
+				: `Repeated ${toolName} blocked; stopping to avoid a loop.`;
+		const blockedStatus = verdict.blockedStatus ?? {
+			status: "blocked",
+			reason: "identical_tool_call_hard",
+			summary: shortDetails,
+		};
+		this.toolOutcomes.recordBlocked(
+			toolName,
+			input,
+			toolCallId ?? "unknown",
+			blockedStatus,
+		);
+		const loopStopReason = "repeated_tool_call_loop";
+		if (this.hardStopNoticeAnnounced) {
+			return {
+				skip: true,
+				stop: true,
+				blocked: true,
+				blockedStatus,
+				reason: this.trackerStopReason ?? loopStopReason,
+			};
+		}
+		this.hardStopNoticeAnnounced = true;
+		this.abortForRepeatedToolLoop({
+			iteration,
+			toolName,
+			toolCallId,
+			summary: shortDetails,
+			reason: loopStopReason,
 		});
 		return verdict.skip
-			? { skip: true, stop: true, reason: verdict.message }
+			? {
+					skip: true,
+					stop: true,
+					blocked: true,
+					blockedStatus,
+					reason: verdict.message ?? loopStopReason,
+				}
 			: undefined;
+	}
+
+	/**
+	 * Stop the run because the same tool call was repeated past the hard
+	 * threshold. Honest user-facing text — not "N errors in a row".
+	 */
+	private abortForRepeatedToolLoop(input: {
+		iteration: number;
+		toolName: string;
+		toolCallId?: string;
+		summary: string;
+		reason: string;
+	}): void {
+		if (this.trackerAbortInFlight) {
+			return;
+		}
+		this.trackerAbortInFlight = true;
+		this.trackerStopReason = input.reason;
+		const notice =
+			`NetAigis Coding Chat stopped repeating the same tool call to avoid a loop.\n\n` +
+			`Latest: ${input.summary}\n\n` +
+			`Send a message to continue with a different approach.`;
+		this.conversation.appendMessage({
+			role: "user",
+			content: [{ type: "text", text: notice }],
+		});
+		this.recordTerminalError(notice, "result");
+		this.logger?.log?.("tool_call_loop_stop", {
+			agentId: this.agentId,
+			toolCallId: input.toolCallId,
+			toolName: input.toolName,
+			iteration: input.iteration,
+			status: "blocked",
+			summary: input.summary,
+		});
+		this.activeRuntime?.abort(input.reason);
 	}
 
 	/**
@@ -1634,11 +1902,15 @@ export class SessionRuntime {
 		if (this.trackerAbortInFlight) {
 			return;
 		}
+		const epoch = this.trackerEpoch;
 		this.activeTrackerWork = this.activeTrackerWork.then(async () => {
-			if (this.trackerAbortInFlight) {
+			if (epoch !== this.trackerEpoch || this.trackerAbortInFlight) {
 				return;
 			}
 			const outcome = await this.mistakeTracker.record(input);
+			if (epoch !== this.trackerEpoch) {
+				return;
+			}
 			if (outcome.action === "stop") {
 				this.trackerAbortInFlight = true;
 				this.trackerStopReason = outcome.reason ?? outcome.message;
@@ -1646,6 +1918,24 @@ export class SessionRuntime {
 					role: "user",
 					content: [{ type: "text", text: outcome.message }],
 				});
+				// The desktop draws this from its own webview. The phone only
+				// reads the shared transcript, so the same sentence is stored
+				// here and emitted as a normal error.
+				const limitContext = {
+					consecutiveMistakes: this.mistakeTracker.value,
+					reason: input.reason,
+					details: input.details,
+					iteration: input.iteration,
+				};
+				const limitText =
+					typeof visibleMistakeLimitText === "function"
+						? visibleMistakeLimitText(limitContext)
+						: `NetAigis Coding Chat ran into ${limitContext.consecutiveMistakes} errors in a row and stopped the task.\n\nLatest: ${
+								limitContext.details?.trim()
+									? `${limitContext.reason}: ${limitContext.details.trim()}`
+									: `${limitContext.reason} at iteration ${limitContext.iteration}`
+							}\n\nSend a message to give NetAigis Coding Chat guidance and continue the task.`;
+				this.recordTerminalError(limitText, "result");
 				this.activeRuntime?.abort(outcome.reason ?? outcome.message);
 			}
 		});

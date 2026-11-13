@@ -238,8 +238,17 @@ export function ensureSessionState(
 		if (options.interactive !== undefined) {
 			existing.interactive = options.interactive;
 		}
-		if (role === "creator" && !existing.createdByClientId) {
-			existing.createdByClientId = clientId;
+		if (role === "creator") {
+			const previous = existing.createdByClientId?.trim();
+			const previousGone =
+				!!previous &&
+				previous !== clientId &&
+				(ctx.detachedClientsBySession?.get(sessionId)?.has(previous) ===
+					true ||
+					!ctx.clients.has(previous));
+			if (!previous || previous === clientId || previousGone) {
+				existing.createdByClientId = clientId;
+			}
 		}
 		if (!existing.participants.has(clientId)) {
 			existing.participants.set(clientId, {

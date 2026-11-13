@@ -18,7 +18,13 @@ export const RUNTIME_OWNER_METADATA_FIELDS = [
 	"terminal_marker_source",
 ] as const;
 
-/** Losing a runtime owner is not a waitpid result for that owner or its tools. */
+/**
+ * True when a live owner may still exist and resume must not invent an exit.
+ * False when the owner is confirmed gone — including after a host crash where
+ * the stale-session reconciler recorded `runtime_pid_unavailable` / failed
+ * external process exit. Those markers used to block every interactive resume
+ * (Retry loop); they mean "abandon and continue", not "wait for waitpid".
+ */
 export function hasUnconfirmedRuntimeOwner(
 	metadata: Record<string, unknown> | null | undefined,
 ): boolean {
@@ -30,11 +36,14 @@ export function hasUnconfirmedRuntimeOwner(
 		value.terminationConfirmed === true
 	)
 		return false;
-	return (
-		metadata.runtimeOwnerObservation !== undefined ||
-		(metadata.terminal_marker_source === "stale_session_reconciler" &&
-			metadata.terminal_marker === "failed_external_process_exit")
-	);
+	const staleAbandoned =
+		metadata.terminal_marker_source === "stale_session_reconciler" &&
+		metadata.terminal_marker === "failed_external_process_exit";
+	const pidUnavailable =
+		value.reason === "runtime_pid_unavailable" ||
+		(value.state === "unknown" && value.exitConfirmed === false);
+	if (staleAbandoned || pidUnavailable) return false;
+	return metadata.runtimeOwnerObservation !== undefined;
 }
 
 export function assertRuntimeOwnerConfirmed(
@@ -129,7 +138,8 @@ export function hasUnresolvedCommandObservation(
 						: [output];
 			if (!results.length && !matchingExit) return true;
 			for (const result of results) {
-				const execution = record(record(result).execution);
+				const resultRecord = record(result);
+				const execution = record(resultRecord.execution);
 				// Legacy text and empty records cannot prove an exit. The protected
 				// journal may independently identify this exact tool call's processes.
 				if (!Object.keys(execution).length && matchingExit) continue;
@@ -150,10 +160,32 @@ export function hasUnresolvedCommandObservation(
 					execution.observationFailed !== true
 				)
 					continue;
+				// "Proceed while running" leaves state=unknown + detached without a
+				// later waitpid. After a host restart that is abandoned work, not a
+				// live process fence — admit resume instead of Retry loops.
+				if (execution.state === "unknown" && execution.detached === true)
+					continue;
+				// Explicit empty `execution: {}` has no pid/state to wait on.
+				// Blocking resume only produces Retry loops after host restarts.
+				// Missing execution on legacy/unstructured results still fences.
+				if (
+					Object.keys(execution).length === 0 &&
+					Object.hasOwn(resultRecord, "execution")
+				)
+					continue;
+				// Tool-level validation failures never started a process. Keeping
+				// them unresolved forces Retry loops with nothing to waitpid.
+				if (
+					typeof resultRecord.error === "string" &&
+					resultRecord.error.length > 0 &&
+					!Object.hasOwn(resultRecord, "execution") &&
+					!Array.isArray(resultRecord.results)
+				)
+					continue;
 				if (
 					!isConfirmedCommandExit({
 						...execution,
-						exitCode: execution.exitCode ?? record(result).exitCode,
+						exitCode: execution.exitCode ?? resultRecord.exitCode,
 					} as RuntimeCommandObservation["execution"])
 				)
 					return true;

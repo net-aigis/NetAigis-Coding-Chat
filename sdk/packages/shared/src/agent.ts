@@ -434,6 +434,20 @@ export interface AgentBeforeToolResult {
 	skip?: boolean;
 	stop?: boolean;
 	reason?: string;
+	/**
+	 * Soft policy/loop refusal: tool did not run. Runtime must return a short
+	 * structured `status: "blocked"` tool result with `isError: false` so the
+	 * mistake tracker does not treat the block as a failed execution.
+	 */
+	blocked?: boolean;
+	/** Optional structured payload for blocked skips (preferred over long reason). */
+	blockedStatus?: Record<string, unknown>;
+	/**
+	 * Prior successful identical call exists: skip execution and return
+	 * `reusedResult` with `isError: false` (status completed / executed).
+	 */
+	reused?: boolean;
+	reusedResult?: Record<string, unknown>;
 	input?: unknown;
 	policy?: ToolPolicy;
 	/**

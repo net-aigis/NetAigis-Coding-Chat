@@ -12,6 +12,7 @@ it("treats lost legacy and current owner state as unknown, while undefined optio
 	expect(() =>
 		assertSnapshotImportComplete({ runtimeSnapshotImport: undefined }),
 	).not.toThrow();
+	// Host-crash markers: PID gone / stale reconciler → admit interactive resume.
 	for (const metadata of [
 		{
 			terminal_marker_source: "stale_session_reconciler",
@@ -22,14 +23,62 @@ it("treats lost legacy and current owner state as unknown, while undefined optio
 				version: 1,
 				state: "unknown",
 				exitConfirmed: false,
+				reason: "runtime_pid_unavailable",
 			},
 		},
+		{
+			runtimeOwnerObservation: {
+				version: 1,
+				state: "unknown",
+				exitConfirmed: false,
+			},
+		},
+	])
+		expect(hasUnconfirmedRuntimeOwner(metadata)).toBe(false);
+	// Still unconfirmed: other owner shapes that are not a confirmed crash.
+	for (const metadata of [
 		{
 			runtimeOwnerObservation: { version: 1, state: "completed", exitCode: 0 },
 		},
 		{ runtimeOwnerObservation: null },
 	])
 		expect(hasUnconfirmedRuntimeOwner(metadata)).toBe(true);
+});
+
+it("does not fence resume on abandoned proceed-while-running (detached unknown)", () => {
+	expect(
+		hasUnresolvedCommandObservation(
+			[
+				{
+					role: "assistant",
+					content: [
+						{ type: "tool_use", id: "call", name: "run_commands" },
+					],
+				},
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "call",
+							name: "run_commands",
+							content: [
+								{
+									execution: {
+										state: "unknown",
+										detached: true,
+										logPath: "/tmp/proceed.log",
+									},
+								},
+							],
+						},
+					],
+				},
+			],
+			{ version: 1, entries: [] },
+			"s",
+		),
+	).toBe(false);
 });
 
 const messages = [
@@ -125,7 +174,6 @@ it.each([
 	["legacy text parts", [{ type: "text", text: "Completed" }]],
 	["empty result", []],
 	["missing evidence", { success: true, exitCode: 0 }],
-	["empty execution", { execution: {} }],
 	["failed without exit", { execution: { state: "failed" } }],
 	["terminated without signal", { execution: { state: "terminated" } }],
 	["invalid state", { execution: { state: "Completed", exitCode: 0 } }],
@@ -147,7 +195,12 @@ it.each([
 	{ execution: { state: "aborted", terminationConfirmed: true } },
 	{ execution: { state: "timed_out", terminationConfirmed: true } },
 	{ execution: { state: "not_started" } },
-])("admits explicit terminal or never-started evidence: %j", (content) => {
+	// Empty / detached proofs cannot be waitpid'd after restart — admit resume.
+	{ execution: {} },
+	{ execution: { state: "unknown", detached: true } },
+	// Tool rejected input before a process existed.
+	{ error: "✖ Invalid input" },
+])("admits explicit terminal, never-started, or abandoned evidence: %j", (content) => {
 	expect(hasUnresolvedCommandObservation(commandHistory(content))).toBe(false);
 });
 
